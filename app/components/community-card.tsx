@@ -1,6 +1,5 @@
 import { MessageCircle, Users } from "lucide-react-native";
 import { Image, Text, TouchableOpacity, View } from "react-native";
-
 const PALETTE = {
   coral: "#FF8FA3",
   apricot: "#FFBC8F",
