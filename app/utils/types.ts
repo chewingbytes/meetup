@@ -6,3 +6,19 @@ export interface EventProps {
   interest: string;
   image: string;
 }
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+export interface CommunityProps {
+  id: string;
+  name: string;
+  description: string;
+  dateCreated: string;
+  privacyMode: boolean;
+  rules: string[];
+  faq: FaqItem[];
+  profileImage: string;
+}

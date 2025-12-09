@@ -1,9 +1,16 @@
 import { Link, usePathname } from "expo-router";
-import { CalendarPlus, Hash, Home, MessageCircle, User } from "lucide-react-native";
+import {
+  CalendarPlus,
+  Hash,
+  Home,
+  MessageCircle,
+  User,
+} from "lucide-react-native";
 import { Text, TouchableOpacity, View } from "react-native";
+import { BlurView } from "expo-blur"; // add this
 
 interface MobileNavProps {
-  active: "groups" | "explore" | "inbox" | "host" | "profile";
+  active: "home" | "explore" | "chat";
 }
 
 export default function MobileNav({ active }: MobileNavProps) {
@@ -12,14 +19,31 @@ export default function MobileNav({ active }: MobileNavProps) {
   const navItems = [
     { id: "home", icon: Home, label: "Home", href: "/" },
     { id: "explore", icon: Hash, label: "Discover", href: "/explore" },
-    { id: "inbox", icon: MessageCircle, label: "Alerts", href: "/inbox" },
-    { id: "host", icon: CalendarPlus, label: "Host", href: "/host" },
-    { id: "profile", icon: User, label: "Profile", href: "/profile" },
+    { id: "chats", icon: MessageCircle, label: "Chat", href: "/inbox" },
   ];
 
   return (
-    <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", borderTopWidth: 1, borderColor: "#eee", paddingBottom: 12, paddingTop: 8, zIndex: 50 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingHorizontal: 8 }}>
+    <BlurView
+      intensity={50}
+      tint="default"
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingBottom: 30,
+        paddingTop: 12,
+        zIndex: 50,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+          paddingHorizontal: 8,
+        }}
+      >
         {navItems.map((item) => {
           const Icon = item.icon as any;
           const isActive = pathname === item.href;
@@ -27,13 +51,22 @@ export default function MobileNav({ active }: MobileNavProps) {
           return (
             <Link href={item.href as any} asChild key={item.id}>
               <TouchableOpacity style={{ alignItems: "center" }}>
-                <Icon size={26} color={isActive ? "#111" : "#9CA3AF"} />
-                <Text style={{ fontSize: 11, marginTop: 4, color: isActive ? "#111" : "#9CA3AF", fontWeight: isActive ? "700" : "400" }}>{item.label}</Text>
+                <Icon size={24} color={isActive ? "#C1341E" : "#9CA3AF"} />
+                <Text
+                  style={{
+                    fontSize: 11,
+                    marginTop: 4,
+                    color: isActive ? "#C1341E" : "#9CA3AF",
+                    fontWeight: isActive ? "700" : "400",
+                  }}
+                >
+                  {item.label}
+                </Text>
               </TouchableOpacity>
             </Link>
           );
         })}
       </View>
-    </View>
+    </BlurView>
   );
 }
