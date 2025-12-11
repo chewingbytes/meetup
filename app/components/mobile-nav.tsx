@@ -51,12 +51,12 @@ export default function MobileNav({ active }: MobileNavProps) {
           return (
             <Link href={item.href as any} asChild key={item.id}>
               <TouchableOpacity style={{ alignItems: "center" }}>
-                <Icon size={24} color={isActive ? "#C1341E" : "#9CA3AF"} />
+                <Icon size={24} color={isActive ? "#C1341E" : "#A9A9A9"} />
                 <Text
                   style={{
                     fontSize: 11,
                     marginTop: 4,
-                    color: isActive ? "#C1341E" : "#9CA3AF",
+                    color: isActive ? "#C1341E" : "#A9A9A9",
                     fontWeight: isActive ? "700" : "400",
                   }}
                 >

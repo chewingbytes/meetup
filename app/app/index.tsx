@@ -1,6 +1,12 @@
 import HorizontalCarousel from "@/components/horizontal-carousel";
 import VerticalList from "@/components/vertical-scroll-section";
 import MobileNav from "@/components/mobile-nav";
+import Header from "@/components/header";
+
+import CommunityCard from "@/components/community-card";
+import EventCard from "@/components/event-card";
+
+import { Plus, Bell, User } from "lucide-react-native";
 
 import { useRouter } from "expo-router";
 import {
@@ -37,8 +43,18 @@ export default function HomeScreen() {
       style={{ flex: 1, backgroundColor: PALETTE.background }}
       edges={["top"]}
     >
+      <Header
+        title="Welcome"
+        actions={[
+          {
+            icon: Plus,
+            onPress: () => console.log("Drawer opened"),
+          },
+          { icon: Bell, link: "/notifications" },
+        ]}
+      />
       <ScrollView>
-        <View
+        {/* <View
           style={{
             padding: 18,
           }}
@@ -52,17 +68,30 @@ export default function HomeScreen() {
           >
             Home
           </Text>
-        </View>
+        </View> */}
 
-        <View className="gap-y-6 mt-6 mb-28">
+        <View className="container">
           {/* Your Events */}
-          <HorizontalCarousel heading="Your Events" eventChunks={eventChunks} />
+          <HorizontalCarousel
+            heading="Your Events"
+            chunks={eventChunks}
+            cardComponent={EventCard}
+            dataKey="event"
+          />
 
           {/* Your Communities */}
           <VerticalList
             heading="Your Communities"
-            communities={usersCommunities}
+            items={usersCommunities}
+            cardComponent={CommunityCard}
+            dataKey="community"
           />
+          {/* <VerticalList
+            heading="Your Communities"
+            items={sampleEvents}
+            cardComponent={EventCard}
+            dataKey="event"
+          /> */}
         </View>
       </ScrollView>
       <MobileNav active="home" />

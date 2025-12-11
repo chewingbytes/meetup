@@ -7,11 +7,13 @@ export default function EventCard({
 }: {
   event: EventProps;
   onPress: () => void;
-}) {
+
+}) 
+{
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row w-full rounded-2xl my-4"
+      className="flex-row w-full rounded-xl"
       style={{
         shadowColor: "#000",
         shadowOpacity: 0.08,

@@ -1,58 +1,61 @@
 import React from "react";
 import { View, Text, FlatList, Dimensions } from "react-native";
 import { ArrowDownRight } from "lucide-react-native";
-import EventCard from "@/components/event-card";
-import { EventProps } from "@/utils/types";
 
-interface HorizontalCarouselProps {
+interface HorizontalCarouselProps<T> {
   heading: string;
-  eventChunks: EventProps[][];
+  chunks: T[][]; // generic chunks
+  cardComponent: React.ComponentType<any>;
+  dataKey: string; // prop name to pass (ex: "event")
   spacing?: number;
 }
 
-const HorizontalCarousel: React.FC<HorizontalCarouselProps> = ({
+function HorizontalCarousel<T>({
   heading,
-  eventChunks,
+  chunks,
+  cardComponent: Card,
+  dataKey,
   spacing = 16,
-}) => {
+}: HorizontalCarouselProps<T>) {
   const { width } = Dimensions.get("window");
   const cardWidth = width * 0.8;
-  const computedSnapInterval = cardWidth + spacing;
+  const snapInterval = cardWidth + spacing;
 
   return (
     <View>
       {/* Heading */}
-      <View className="flex-row w-full px-5 gap-x-1.5 items-center">
+      <View className="flex-row w-full px-5 gap-x-1.5 items-center mb-6">
         <Text className="text-white font-medium text-2xl">{heading}</Text>
         <ArrowDownRight color="grey" size={18} />
       </View>
 
-      <View style={{ marginTop: 4 }}>
+      <View>
         <FlatList
-          data={eventChunks}
+          data={chunks}
           keyExtractor={(_, index) => index.toString()}
           horizontal
           snapToAlignment="start"
           decelerationRate="fast"
           pagingEnabled={false}
-          snapToInterval={computedSnapInterval}
+          snapToInterval={snapInterval}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 20,
           }}
           renderItem={({ item: chunk }) => (
             <View
+              className="gap-y-6"
               style={{
                 width: cardWidth,
                 marginRight: spacing,
                 flexDirection: "column",
               }}
             >
-              {chunk.map((ev: EventProps) => (
-                <EventCard
-                  key={ev.title} // or ev.id if available
-                  event={ev}
-                  onPress={() => console.log("Pressed:", ev.title)}
+              {chunk.map((item: T, idx: number) => (
+                <Card
+                  key={idx}
+                  {...{ [dataKey]: item }} // dynamic prop name
+                  onPress={() => console.log("Pressed:", item)}
                 />
               ))}
             </View>
@@ -61,6 +64,6 @@ const HorizontalCarousel: React.FC<HorizontalCarouselProps> = ({
       </View>
     </View>
   );
-};
+}
 
 export default HorizontalCarousel;

@@ -11,7 +11,7 @@ export default function CommunityCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row w-full rounded-2xl"
+      className="flex-row w-full rounded-xl"
       style={{
         shadowColor: "#000",
         shadowOpacity: 0.08,

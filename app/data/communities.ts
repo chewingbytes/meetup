@@ -12,7 +12,8 @@ export const usersCommunities: CommunityProps[] = [
       { question: "Can I join?", answer: "Yes, everyone is welcome!" },
       { question: "Do I need to register?", answer: "No registration needed." },
     ],
-    profileImage: "https://picsum.photos/seed/c1/80/80",
+    profileImage: "https://picsum.photos/seed/c1/1980/1080",
+    location: "ohio",
   },
   {
     id: "c2",
@@ -25,7 +26,8 @@ export const usersCommunities: CommunityProps[] = [
       { question: "Who can join?", answer: "Students only." },
       { question: "Can I create my own study group?", answer: "Yes!" },
     ],
-    profileImage: "https://picsum.photos/seed/c2/80/80",
+    profileImage: "https://picsum.photos/seed/c2/1980/1080",
+    location: "punggol",
   },
   {
     id: "c3",
@@ -35,7 +37,8 @@ export const usersCommunities: CommunityProps[] = [
     privacyMode: false,
     rules: ["No spoilers without warning", "Respect opinions"],
     faq: [],
-    profileImage: "https://picsum.photos/seed/c3/80/80",
+    profileImage: "https://picsum.photos/seed/c3/1980/1080",
+    location: "sengkang",
   },
   {
     id: "c3292",
@@ -45,7 +48,8 @@ export const usersCommunities: CommunityProps[] = [
     privacyMode: false,
     rules: ["No spoilers without warning", "Respect opinions"],
     faq: [],
-    profileImage: "https://picsum.photos/seed/c3/80/80",
+    profileImage: "https://picsum.photos/seed/c3/1980/1080",
+    location: "hougang",
   },
   {
     id: "c3fsdfds",
@@ -55,7 +59,8 @@ export const usersCommunities: CommunityProps[] = [
     privacyMode: false,
     rules: ["No spoilers without warning", "Respect opinions"],
     faq: [],
-    profileImage: "https://picsum.photos/seed/c3/80/80",
+    profileImage: "https://picsum.photos/seed/c3/1980/1080",
+    location: "bangkok",
   },
   {
     id: "c3r0e",
@@ -65,6 +70,7 @@ export const usersCommunities: CommunityProps[] = [
     privacyMode: false,
     rules: ["No spoilers without warning", "Respect opinions"],
     faq: [],
-    profileImage: "https://picsum.photos/seed/c3/80/80",
+    profileImage: "https://picsum.photos/seed/c3/1980/1080",
+    location: "jesus",
   },
 ];

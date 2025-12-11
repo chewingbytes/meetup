@@ -1,3 +1,5 @@
+import { ElementType } from "react";
+
 export interface EventProps {
   title: string;
   location: string;
@@ -21,4 +23,16 @@ export interface CommunityProps {
   rules: string[];
   faq: FaqItem[];
   profileImage: string;
+  location: string;
+}
+
+export interface HeaderAction {
+  icon: ElementType;
+  onPress?: () => void;
+  link?: string; // optional if you're using expo-router for navigation
+}
+
+export interface HeaderProps {
+  title: string;
+  actions: HeaderAction[];
 }
