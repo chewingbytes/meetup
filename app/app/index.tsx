@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { sampleEvents } from "@/data/event";
 import { usersCommunities } from "@/data/communities";
+import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
 
@@ -72,19 +73,23 @@ export default function HomeScreen() {
 
         <View className="container">
           {/* Your Events */}
-          <HorizontalCarousel
+          <HorizontalCarousel<EventProps>
             heading="Your Events"
             chunks={eventChunks}
             cardComponent={EventCard}
             dataKey="event"
+            onItemPress={(event) => router.push(`/events/${event.id}` as any)}
           />
 
           {/* Your Communities */}
-          <VerticalList
+          <VerticalList<CommunityProps>
             heading="Your Communities"
             items={usersCommunities}
             cardComponent={CommunityCard}
             dataKey="community"
+            onItemPress={(community) =>
+              router.push(`/community/${community.id}` as any)
+            }
           />
           {/* <VerticalList
             heading="Your Communities"

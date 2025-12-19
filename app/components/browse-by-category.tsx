@@ -2,10 +2,11 @@ import React from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
   FlatList,
   Dimensions,
+  Pressable,
 } from "react-native";
+import { Link } from "expo-router";
 import {
   Home,
   Hash,
@@ -46,77 +47,79 @@ export default function BrowseByCommunity() {
   const pages = chunkArray(categories, itemsPerPage);
 
   return (
-    <View className="px-5">
-      <Text
-        className="mb-6"
-        style={{
-          color: "#fff",
-          fontSize: 20,
-          fontWeight: "600",
-        }}
-      >
-        Browse by Community
-      </Text>
+    <View>
+      <View className="w-full">
+        <Text
+          className="mb-6 px-5"
+          style={{
+            color: "#fff",
+            fontSize: 20,
+            fontWeight: "600",
+          }}
+        >
+          Browse by Community
+        </Text>
 
-      <FlatList
-        data={pages}
-        keyExtractor={(_, idx) => idx.toString()}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        renderItem={({ item: page }) => (
-          <View
-            style={{
-              flexDirection: "column",
-            }}
-          >
-            {/* Split into two rows */}
-            {[0, 1].map((rowIdx) => {
-              const start = rowIdx * 3;
-              const rowItems = page.slice(start, start + 3);
-              return (
-                <View
-                  key={rowIdx}
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  {rowItems.map((cat) => {
-                    const Icon = cat.icon;
-                    return (
-                      <TouchableOpacity
-                        key={cat.id}
-                        onPress={() =>
-                          console.log("Selected category:", cat.id)
-                        }
-                        className="flex-row justify-center gap-x-1.5 items-center mr-3 mb-3 rounded-xl border-2 border-[#232323]"
-                        style={{
-                          width: "auto",
-                          alignItems: "center",
-                          padding: 10,
-                        }}
-                      >
-                        <Icon size={20} color="#fff" />
-                        <Text
-                          style={{
-                            color: "#fff",
-                            textAlign: "center",
-                            fontSize: 16,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {cat.name}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              );
-            })}
-          </View>
-        )}
-      />
+        <FlatList
+          data={pages}
+          keyExtractor={(_, idx) => idx.toString()}
+          horizontal
+          pagingEnabled
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+          }}
+          showsHorizontalScrollIndicator={false}
+          renderItem={({ item: page }) => (
+            <View
+              style={{
+                flexDirection: "column",
+              }}
+            >
+              {[0, 1].map((rowIdx) => {
+                const start = rowIdx * 3;
+                const rowItems = page.slice(start, start + 3);
+                return (
+                  <View
+                    key={rowIdx}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    {rowItems.map((cat) => {
+                      const Icon = cat.icon;
+                      return (
+                        <Link key={cat.id} href={`/categories/${cat.id}`} asChild>
+                          <Pressable
+                            className="flex-row justify-center gap-x-1.5 items-center mr-3 mb-3 rounded-xl border-2 border-[#232323]"
+                            style={{
+                              width: "auto",
+                              alignItems: "center",
+                              padding: 10,
+                            }}
+                          >
+                            <Icon size={20} color="#fff" />
+                            <Text
+                              style={{
+                                color: "#fff",
+                                textAlign: "center",
+                                fontSize: 16,
+                                fontWeight: 500,
+                              }}
+                            >
+                              {cat.name}
+                            </Text>
+                          </Pressable>
+                        </Link>
+                      );
+                    })}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        />
+      </View>
     </View>
   );
 }

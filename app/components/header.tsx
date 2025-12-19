@@ -1,9 +1,16 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { HeaderProps } from "@/utils/types";
 
-export default function Header({ title, actions }: HeaderProps) {
+export default function Header({
+  title,
+  actions,
+  //profileImage,
+  onProfilePress,
+}: HeaderProps & { profileImage?: string; onProfilePress?: () => void }) {
+
+  const profileImage = "https://picsum.photos/seed/c1/180/180";
   const router = useRouter();
 
   return (
@@ -28,16 +35,31 @@ export default function Header({ title, actions }: HeaderProps) {
           justifyContent: "space-between",
         }}
       >
-        {/* Left Title */}
-        <Text
-          style={{
-            fontSize: 30,
-            fontWeight: "700",
-            color: "#fff",
-          }}
-        >
-          {title}
-        </Text>
+        {/* Left: Profile + Title */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          {profileImage && (
+            <TouchableOpacity onPress={onProfilePress}>
+              <Image
+                source={{ uri: profileImage }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20, // makes it round
+                }}
+              />
+            </TouchableOpacity>
+          )}
+
+          <Text
+            style={{
+              fontSize: 30,
+              fontWeight: "700",
+              color: "#fff",
+            }}
+          >
+            {title}
+          </Text>
+        </View>
 
         {/* Right Action Buttons */}
         <View

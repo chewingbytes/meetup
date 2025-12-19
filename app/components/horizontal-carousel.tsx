@@ -8,6 +8,7 @@ interface HorizontalCarouselProps<T> {
   cardComponent: React.ComponentType<any>;
   dataKey: string; // prop name to pass (ex: "event")
   spacing?: number;
+  onItemPress?: (item: T) => void;
 }
 
 function HorizontalCarousel<T>({
@@ -16,6 +17,7 @@ function HorizontalCarousel<T>({
   cardComponent: Card,
   dataKey,
   spacing = 16,
+  onItemPress,
 }: HorizontalCarouselProps<T>) {
   const { width } = Dimensions.get("window");
   const cardWidth = width * 0.8;
@@ -55,7 +57,7 @@ function HorizontalCarousel<T>({
                 <Card
                   key={idx}
                   {...{ [dataKey]: item }} // dynamic prop name
-                  onPress={() => console.log("Pressed:", item)}
+                  onPress={onItemPress ? () => onItemPress(item) : () => console.log("Pressed:", item)}
                 />
               ))}
             </View>

@@ -8,6 +8,7 @@ interface SingleRowCarouselProps<T> {
   cardComponent: React.ComponentType<any>;
   dataKey: string; // ex: "event"
   spacing?: number;
+  onItemPress?: (item: T) => void;
 }
 
 function SingleRowCarousel<T>({
@@ -16,6 +17,7 @@ function SingleRowCarousel<T>({
   cardComponent: Card,
   dataKey,
   spacing = 16,
+  onItemPress,
 }: SingleRowCarouselProps<T>) {
   const { width } = Dimensions.get("window");
   const cardWidth = width * 0.8;
@@ -51,7 +53,11 @@ function SingleRowCarousel<T>({
           >
             <Card
               {...{ [dataKey]: item }}
-              onPress={() => console.log("Pressed:", item)}
+              onPress={
+                onItemPress
+                  ? () => onItemPress(item)
+                  : () => console.log("Pressed:", item)
+              }
             />
           </View>
         )}

@@ -33,6 +33,7 @@ import { sampleEvents } from "@/data/event";
 import { usersCommunities } from "@/data/communities";
 
 import chunkArray from "@/scripts/chunkArray";
+import { EventProps } from "@/utils/types";
 
 const PALETTE = {
   background: "#000000",
@@ -73,28 +74,30 @@ export default function ExploreScreen() {
         actions={[
           {
             icon: Map,
-            onPress: () => console.log("Drawer opened"),
+            onPress: () => router.push("/map" as any),
           },
           {
             icon: Search,
-            onPress: () => console.log("Drawer opened"),
+            onPress: () => console.log("Search pressed"),
           },
         ]}
       />
       <ScrollView>
         <View className="container">
-          <HorizontalCarousel
+          <HorizontalCarousel<EventProps>
             heading="Popular Events"
             chunks={eventChunks}
             cardComponent={EventCard}
             dataKey="event"
+            onItemPress={(event) => router.push(`/events/${event.id}` as any)}
           />
           <BrowseByCommunity />
-          <SingleRowCarousel
-            heading="Locations"
-            data={usersCommunities}
+          <SingleRowCarousel<EventProps>
+            heading="By Locations"
+            data={sampleEvents}
             cardComponent={ImageCard}
-            dataKey="community"
+            dataKey="card"
+            onItemPress={(event) => router.push(`/events/${event.id}` as any)}
           />
         </View>
       </ScrollView>

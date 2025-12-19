@@ -7,6 +7,7 @@ interface VerticalListProps<T> {
   items: T[];
   cardComponent: React.ComponentType<any>; // flexible card
   dataKey: string; // prop name to pass the item under (e.g. "community")
+  onItemPress?: (item: T) => void;
 }
 
 function VerticalList<T>({
@@ -14,6 +15,7 @@ function VerticalList<T>({
   items,
   cardComponent: Card,
   dataKey,
+  onItemPress,
 }: VerticalListProps<T>) {
   return (
     <ScrollView>
@@ -30,7 +32,7 @@ function VerticalList<T>({
             <View key={idx} className="px-5">
               <Card
                 {...{ [dataKey]: item }} // dynamically passes correct prop
-                onPress={() => console.log("Clicked:", item)}
+                onPress={onItemPress ? () => onItemPress(item) : () => console.log("Clicked:", item)}
               />
             </View>
           );

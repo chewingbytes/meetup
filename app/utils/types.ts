@@ -1,12 +1,16 @@
 import { ElementType } from "react";
 
 export interface EventProps {
+  id: string;
   title: string;
   location: string;
   date: string;
   time: string;
   interest: string;
   image: string;
+  description?: string;
+  host?: string;
+  details?: string;
 }
 
 export interface FaqItem {
