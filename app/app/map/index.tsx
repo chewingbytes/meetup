@@ -22,7 +22,7 @@ export default function MapScreen() {
       id: community.id,
       title: community.name,
       image: community.profileImage,
-      location: community.location,
+      topic: community.topics,
       type: "community" as const,
     })),
   ];
@@ -50,7 +50,7 @@ export default function MapScreen() {
             <TouchableOpacity onPress={() => router.back()}>
               <ArrowLeft color="white" size={24} />
             </TouchableOpacity>
-            <Text className="text-white text-xl font-semibold ml-4">
+            <Text className="text-white text-[30px] font-semibold ml-4">
               Map
             </Text>
           </View>

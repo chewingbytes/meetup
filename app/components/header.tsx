@@ -7,9 +7,7 @@ export default function Header({
   title,
   actions,
   //profileImage,
-  onProfilePress,
 }: HeaderProps & { profileImage?: string; onProfilePress?: () => void }) {
-
   const profileImage = "https://picsum.photos/seed/c1/180/180";
   const router = useRouter();
 
@@ -38,7 +36,7 @@ export default function Header({
         {/* Left: Profile + Title */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           {profileImage && (
-            <TouchableOpacity onPress={onProfilePress}>
+            <TouchableOpacity onPress={() => router.push("/settings")}>
               <Image
                 source={{ uri: profileImage }}
                 style={{

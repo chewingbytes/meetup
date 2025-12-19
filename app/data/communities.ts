@@ -13,7 +13,7 @@ export const usersCommunities: CommunityProps[] = [
       { question: "Do I need to register?", answer: "No registration needed." },
     ],
     profileImage: "https://picsum.photos/seed/c1/1980/1080",
-    location: "ohio",
+    topics: ["Gaming", "Multiplayer", "Strategy"],
   },
   {
     id: "c2",
@@ -27,7 +27,7 @@ export const usersCommunities: CommunityProps[] = [
       { question: "Can I create my own study group?", answer: "Yes!" },
     ],
     profileImage: "https://picsum.photos/seed/c2/1980/1080",
-    location: "punggol",
+    topics: ["Study", "Homework", "Exams"],
   },
   {
     id: "c3",
@@ -38,7 +38,7 @@ export const usersCommunities: CommunityProps[] = [
     rules: ["No spoilers without warning", "Respect opinions"],
     faq: [],
     profileImage: "https://picsum.photos/seed/c3/1980/1080",
-    location: "sengkang",
+    topics: ["Fiction", "Discussion", "Recommendations"],
   },
   {
     id: "c4",
@@ -47,11 +47,9 @@ export const usersCommunities: CommunityProps[] = [
     dateCreated: "2025-05-01",
     privacyMode: false,
     rules: ["Share respectfully", "No copyright infringement"],
-    faq: [
-      { question: "What genres?", answer: "All genres welcome!" },
-    ],
+    faq: [{ question: "What genres?", answer: "All genres welcome!" }],
     profileImage: "https://picsum.photos/seed/c4/1980/1080",
-    location: "singapore",
+    topics: ["Listening", "Discovery", "Genres"],
   },
   {
     id: "c5",
@@ -62,7 +60,7 @@ export const usersCommunities: CommunityProps[] = [
     rules: ["Be friendly", "No harassment"],
     faq: [],
     profileImage: "https://picsum.photos/seed/c5/1980/1080",
-    location: "downtown",
+    topics: ["Meetups", "Networking", "Events"],
   },
   {
     id: "c6",
@@ -71,10 +69,8 @@ export const usersCommunities: CommunityProps[] = [
     dateCreated: "2025-07-01",
     privacyMode: false,
     rules: ["Respect all art forms", "Constructive criticism only"],
-    faq: [
-      { question: "All mediums?", answer: "Yes, digital, traditional, etc." },
-    ],
+    faq: [{ question: "All mediums?", answer: "Yes, digital, traditional, etc." }],
     profileImage: "https://picsum.photos/seed/c6/1980/1080",
-    location: "museum district",
+    topics: ["Painting", "Digital", "Exhibitions"],
   },
 ];

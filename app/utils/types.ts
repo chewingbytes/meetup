@@ -27,7 +27,7 @@ export interface CommunityProps {
   rules: string[];
   faq: FaqItem[];
   profileImage: string;
-  location: string;
+  topics: string[];
 }
 
 export interface HeaderAction {

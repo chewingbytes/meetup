@@ -25,12 +25,14 @@ import { usersCommunities } from "@/data/communities";
 import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
+import { useState } from "react";
 
 const PALETTE = {
   background: "#000000",
 };
 
 export default function HomeScreen() {
+  const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
 
   const openChat = (groupId: string, groupName: string) => {
@@ -49,11 +51,53 @@ export default function HomeScreen() {
         actions={[
           {
             icon: Plus,
-            onPress: () => console.log("Drawer opened"),
+            onPress: () => {
+              if (menuOpen) {
+                setMenuOpen(false);
+              } else {
+                setMenuOpen(true);
+              }
+            },
           },
           { icon: Bell, link: "/notifications" },
         ]}
       />
+      {menuOpen && (
+        <View
+          style={{
+            position: "absolute",
+            top: 90,
+            right: 20,
+            backgroundColor: "#111",
+            borderRadius: 12,
+            paddingVertical: 8,
+            zIndex: 1000,
+          }}
+        >
+          <TouchableOpacity
+            style={{ padding: 12 }}
+            onPress={() => {
+              setMenuOpen(false);
+              router.push("/create-community");
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 16 }}>
+              Create community
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ padding: 12 }}
+            onPress={() => {
+              setMenuOpen(false);
+              router.push("/create-event");
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 16 }}>Create event</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView>
         {/* <View
           style={{
