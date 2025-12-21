@@ -25,7 +25,8 @@ import { usersCommunities } from "@/data/communities";
 import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import api from "@/lib/api";
 
 const PALETTE = {
   background: "#000000",
@@ -33,6 +34,10 @@ const PALETTE = {
 
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [events, setEvents] = useState<EventProps[]>(sampleEvents);
+  const [communities, setCommunities] =
+    useState<CommunityProps[]>(usersCommunities);
+  const [loadingHome, setLoadingHome] = useState(true);
   const router = useRouter();
 
   const openChat = (groupId: string, groupName: string) => {
@@ -40,6 +45,34 @@ export default function HomeScreen() {
   };
 
   const eventChunks = chunkArray(sampleEvents, 3);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const [ev, comm] = await Promise.all([
+          api.getEvents().catch(() => null),
+          api.getCommunities().catch(() => null),
+        ]);
+        if (!mounted) return;
+        if (ev && Array.isArray(ev)) setEvents(ev);
+        if (comm && Array.isArray(comm)) setCommunities(comm);
+      } catch (err) {
+        console.warn("Home load failed", err);
+      } finally {
+        if (mounted) setLoadingHome(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("EVENTS:", events);
+    console.log("communites:", communities);
+  }, [events, communities]);
 
   return (
     <SafeAreaView
@@ -119,7 +152,7 @@ export default function HomeScreen() {
           {/* Your Events */}
           <HorizontalCarousel<EventProps>
             heading="Your Events"
-            chunks={eventChunks}
+            chunks={chunkArray(events, 3)}
             cardComponent={EventCard}
             dataKey="event"
             onItemPress={(event) => router.push(`/events/${event.id}` as any)}
@@ -128,7 +161,7 @@ export default function HomeScreen() {
           {/* Your Communities */}
           <VerticalList<CommunityProps>
             heading="Your Communities"
-            items={usersCommunities}
+            items={communities}
             cardComponent={CommunityCard}
             dataKey="community"
             onItemPress={(community) =>
