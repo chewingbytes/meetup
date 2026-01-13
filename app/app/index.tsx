@@ -20,8 +20,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { sampleEvents } from "@/data/event";
-import { usersCommunities } from "@/data/communities";
+// import { sampleEvents } from "@/data/event";
+// import { usersCommunities } from "@/data/communities";
 import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
@@ -34,9 +34,8 @@ const PALETTE = {
 
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [events, setEvents] = useState<EventProps[]>(sampleEvents);
-  const [communities, setCommunities] =
-    useState<CommunityProps[]>(usersCommunities);
+  const [events, setEvents] = useState([]);
+  const [communities, setCommunities] = useState([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const router = useRouter();
 
@@ -44,7 +43,7 @@ export default function HomeScreen() {
     router.push(`/chat/${groupId}?name=${groupName}` as any);
   };
 
-  const eventChunks = chunkArray(sampleEvents, 3);
+  // const eventChunks = chunkArray(sampleEvents, 3);
 
   useEffect(() => {
     let mounted = true;
@@ -69,10 +68,7 @@ export default function HomeScreen() {
     };
   }, []);
 
-  useEffect(() => {
-    console.log("EVENTS:", events);
-    console.log("communites:", communities);
-  }, [events, communities]);
+  useEffect(() => {}, [events, communities]);
 
   return (
     <SafeAreaView
@@ -164,9 +160,10 @@ export default function HomeScreen() {
             items={communities}
             cardComponent={CommunityCard}
             dataKey="community"
-            onItemPress={(community) =>
-              router.push(`/community/${community.id}` as any)
-            }
+            onItemPress={(community) => {
+              console.log("community id:", community.id)
+              router.push(`/community/${community.id}` as any);
+            }}
           />
           {/* <VerticalList
             heading="Your Communities"

@@ -6,7 +6,11 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const { data: events, error } = await supabase.from("events").select("*").order("start_at", { ascending: true });
+    console.log("FETHCING EVENTS");
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .order("start_at", { ascending: true });
     if (error) throw error;
     res.json(events);
   } catch (err: any) {
@@ -18,7 +22,11 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const { data: ev, error } = await supabase.from("events").select("*").eq("id", id).single();
+    const { data: ev, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("id", id)
+      .single();
     if (error && (error as any).code !== "PGRST116") throw error;
     if (!ev) return res.status(404).json({ message: "Not found" });
     res.json(ev);
@@ -56,34 +64,42 @@ router.post("/", upload.single("cover"), async (req, res) => {
     if (req.file) {
       const bucket = "event-covers";
       const filename = `event_${Date.now()}_${req.file.originalname}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage.from(bucket).upload(filename, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: false,
-      });
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filename, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false,
+        });
       if (!uploadError) {
-        const { publicURL } = supabase.storage.from(bucket).getPublicUrl(uploadData.path);
+        const { publicURL } = supabase.storage
+          .from(bucket)
+          .getPublicUrl(uploadData.path);
         cover_image_url = publicURL;
       } else {
         console.warn("cover upload failed", uploadError);
       }
     }
 
-    const { data: created, error } = await supabase.from("events").insert({
-      community_id: communityId || null,
-      organizer_id: organizerId || null,
-      cover_image: cover_image_url,
-      name,
-      description_md,
-      start_at,
-      end_at,
-      location_text,
-      location_instructions,
-      require_approval,
-      is_paid,
-      price: is_paid ? price : 0,
-      visibility,
-      capacity: capacity === null ? null : capacity,
-    }).select().single();
+    const { data: created, error } = await supabase
+      .from("events")
+      .insert({
+        community_id: communityId || null,
+        organizer_id: organizerId || null,
+        cover_image: cover_image_url,
+        name,
+        description_md,
+        start_at,
+        end_at,
+        location_text,
+        location_instructions,
+        require_approval,
+        is_paid,
+        price: is_paid ? price : 0,
+        visibility,
+        capacity: capacity === null ? null : capacity,
+      })
+      .select()
+      .single();
 
     if (error) throw error;
 

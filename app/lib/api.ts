@@ -1,5 +1,6 @@
 // ...new file...
-const API_BASE = "http://localhost:4000/api";
+// const API_BASE = "http://localhost:4000/api";
+const API_BASE = "http://172.20.10.2:4000/api"; 
 const AUTH_BASE = `${API_BASE}/auth`;
 
 async function request(path: string, options: RequestInit = {}) {
@@ -15,11 +16,16 @@ async function request(path: string, options: RequestInit = {}) {
     !(opts.body instanceof FormData) &&
     (!opts.headers || !(opts.headers as any)["Content-Type"])
   ) {
-    opts.headers = { ...(opts.headers || {}), "Content-Type": "application/json" };
+    opts.headers = {
+      ...(opts.headers || {}),
+      "Content-Type": "application/json",
+    };
   }
 
+  console.log("REQUESTING", url, "with options:", opts);
   const res = await fetch(url, opts);
   const text = await res.text();
+  console.log("REPSONESE:", text);
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;
@@ -28,7 +34,9 @@ async function request(path: string, options: RequestInit = {}) {
   }
 
   if (!res.ok) {
-    const err = new Error((json && json.message) || res.statusText || "Request failed");
+    const err = new Error(
+      (json && json.message) || res.statusText || "Request failed"
+    );
     (err as any).status = res.status;
     (err as any).body = json;
     throw err;
@@ -79,7 +87,8 @@ export const markNotificationRead = (id: string) =>
   request(`/notifications/${id}/read`, { method: "POST" });
 
 // Profile
-export const getProfile = (id?: string) => request(id ? `/users/${id}` : `/profile`);
+export const getProfile = (id?: string) =>
+  request(id ? `/users/${id}` : `/profile`);
 export const updateProfile = (body: any) =>
   request("/profile", { method: "PATCH", body: JSON.stringify(body) });
 

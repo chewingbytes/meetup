@@ -7,7 +7,7 @@ import notificationsRouter from "./src/routes/notifications.ts";
 import profileRouter from "./src/routes/profile.ts";
 import friendsRouter from "./src/routes/friends.ts";
 import authRouter from "./src/routes/auth.ts";
-import cors from "cors";
+// import cors from "cors";
 
 dotenv.config();
 const app = express();
@@ -25,7 +25,14 @@ const PORT = process.env.PORT || 4000;
 //   })
 // );
 
-app.use(cors());
+// app.use(cors());
+
+app.use((req, res, next) => {
+  console.log(
+    `➡️  ${req.method} ${req.originalUrl} @ ${new Date().toISOString()}`
+  );
+  next(); // important: continue to the next middleware / route
+});
 
 app.use("/api/topics", topicsRouter);
 app.use("/api/communities", communitiesRouter);

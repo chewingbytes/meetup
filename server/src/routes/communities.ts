@@ -16,6 +16,7 @@ async function ensureTopics(names: string[]) {
 }
 
 router.get("/", async (req, res) => {
+    console.log("fetching communities");
   try {
     const { data: communities, error } = await supabase.from("communities").select("*").order("created_at", { ascending: false });
     if (error) throw error;

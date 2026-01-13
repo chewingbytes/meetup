@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
+    console.log("hi")
     const { data, error } = await supabase.from("topics").select("*").order("id", { ascending: true });
     if (error) throw error;
     res.json(data);
