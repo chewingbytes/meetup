@@ -22,10 +22,8 @@ async function request(path: string, options: RequestInit = {}) {
     };
   }
 
-  console.log("REQUESTING", url, "with options:", opts);
   const res = await fetch(url, opts);
   const text = await res.text();
-  console.log("REPSONESE:", text);
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;

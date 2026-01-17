@@ -20,8 +20,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// import { sampleEvents } from "@/data/event";
-// import { usersCommunities } from "@/data/communities";
+import { sampleEvents } from "@/data/event";
+import { usersCommunities } from "@/data/communities";
 import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
@@ -34,8 +34,8 @@ const PALETTE = {
 
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [events, setEvents] = useState([]);
-  const [communities, setCommunities] = useState([]);
+  const [events, setEvents] = useState<EventProps[]>([]);
+  const [communities, setCommunities] = useState<CommunityProps[]>([]);
   const [loadingHome, setLoadingHome] = useState(true);
   const router = useRouter();
 
@@ -67,8 +67,6 @@ export default function HomeScreen() {
       mounted = false;
     };
   }, []);
-
-  useEffect(() => {}, [events, communities]);
 
   return (
     <SafeAreaView
@@ -161,7 +159,6 @@ export default function HomeScreen() {
             cardComponent={CommunityCard}
             dataKey="community"
             onItemPress={(community) => {
-              console.log("community id:", community.id)
               router.push(`/community/${community.id}` as any);
             }}
           />
