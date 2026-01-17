@@ -1,6 +1,6 @@
 // ...new file...
 // const API_BASE = "http://localhost:4000/api";
-const API_BASE = "http://172.20.10.2:4000/api"; 
+const API_BASE = "http://172.20.10.2:4000/api";
 const AUTH_BASE = `${API_BASE}/auth`;
 
 async function request(path: string, options: RequestInit = {}) {
@@ -22,10 +22,8 @@ async function request(path: string, options: RequestInit = {}) {
     };
   }
 
-  console.log("REQUESTING", url, "with options:", opts);
   const res = await fetch(url, opts);
   const text = await res.text();
-  console.log("REPSONESE:", text);
   let json = null;
   try {
     json = text ? JSON.parse(text) : null;

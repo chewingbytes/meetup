@@ -8,6 +8,11 @@ export default function CommunityCard({
   community: CommunityProps;
   onPress: () => void;
 }) {
+  const createdDate = new Date(community.created_at as string);
+  const formattedDate = createdDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -19,11 +24,17 @@ export default function CommunityCard({
         elevation: 3,
       }}
     >
-      <Image
-        source={{ uri: community.profileImage }}
-        className="w-24 h-24 rounded-xl mr-4"
-        resizeMode="cover"
-      />
+      {community.profileImage ? (
+        <Image
+          source={{ uri: community.profileImage }}
+          className="w-20 h-auto rounded-xl"
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="w-20 h-auto rounded-xl mr-4 bg-gray-600 justify-center items-center">
+          <Text className="text-2xl">📅</Text>
+        </View>
+      )}
 
       {/* Right Content */}
       <View className="flex-1 justify-between">
@@ -40,7 +51,7 @@ export default function CommunityCard({
         {/* Privacy mode */}
         <Text className="text-white/50 text-sm mt-1">
           {community.privacyMode ? "Private" : "Public"} • Created on{" "}
-          {community.dateCreated}
+          {formattedDate}
         </Text>
       </View>
     </TouchableOpacity>
