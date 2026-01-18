@@ -1,119 +1,168 @@
-import { Link } from "expo-router";
-import { useState } from "react";
+import React, { useState } from 'react';
 import {
-  Alert,
-  Image,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-} from "react-native";
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/lib/authContext';
+import { validateSingaporeSchoolEmail } from '@/lib/schoolEmailValidation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PALETTE = {
+  coral: '#FF8FA3',
+  apricot: '#FFBC8F',
+  beige: '#FFE0B2',
+  graphite: '#2C2C2C',
+  lightGrey: '#F5F5F5',
+  white: '#FFFFFF',
+  babyPink: '#FFD7E9',
+};
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { signIn } = useAuth();
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Missing fields", "Please fill in both email and password.");
-      return;
-    }
-
+  const handleSignIn = async () => {
     try {
-      setLoading(true);
-
-      const res = await fetch("http://localhost:4000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        Alert.alert("Login Failed", data.error || "Invalid email or password.");
+      // Validate input
+      if (!email.trim() || !password.trim()) {
+        Alert.alert('Error', 'Please fill in all fields');
         return;
       }
 
-      Alert.alert("Success", "Logged in!");
+      if (!validateSingaporeSchoolEmail(email)) {
+        Alert.alert('Invalid Email', 'Please use a valid Singapore school email (e.g., name@tp.edu.sg)');
+        return;
+      }
 
-      console.log("User Login Data:", data);
+      setIsLoading(true);
 
-      // TODO: Save token to SecureStore
-      // TODO: Redirect to home screen
-    } catch (err) {
-      Alert.alert("Error", "Could not connect to server.");
-      console.log("Login error:", err);
+      const { user, error } = await signIn(email, password);
+
+      if (error) {
+        Alert.alert('Sign In Error', error.message || 'Failed to sign in');
+        return;
+      }
+
+      if (user) {
+        // Check if email is verified
+        if (!user.email_confirmed_at) {
+          // Redirect to OTP verification
+          await AsyncStorage.setItem('pending_email_verification', email);
+          router.push('/verify/email');
+        } else {
+          // Successfully signed in
+          router.replace('/');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'An error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold mb-2">Welcome Back</Text>
-      <Text className="text-gray-500 mb-8">Login to your account</Text>
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={{ flex: 1, backgroundColor: PALETTE.white, padding: 20, paddingTop: 80, justifyContent: 'space-between' }}>
+        {/* Header */}
+        <View>
+          <Text style={{ fontSize: 32, fontWeight: '800', color: PALETTE.graphite, marginBottom: 8 }}>Welcome Back</Text>
+          <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 32 }}>Sign in with your school email</Text>
 
-      {/* Email */}
-      <Text className="mb-1 font-medium">Email</Text>
-      <TextInput
-        placeholder="name@student.school.edu"
-        className="border rounded-xl px-4 py-3 mb-4"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-      />
-
-      {/* Password */}
-      <Text className="mb-1 font-medium">Password</Text>
-      <TextInput
-        placeholder="••••••••"
-        secureTextEntry
-        className="border rounded-xl px-4 py-3 mb-2"
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      <TouchableOpacity className="mb-6">
-        <Text className="text-blue-600 text-right">Forgot Password?</Text>
-      </TouchableOpacity>
-
-      {/* LOGIN BUTTON */}
-      <TouchableOpacity
-        onPress={handleLogin}
-        disabled={loading}
-        className={`bg-blue-600 py-4 rounded-xl mb-4 ${loading ? "opacity-50" : ""}`}
-      >
-        <Text className="text-white text-center font-semibold">
-          {loading ? "Logging in..." : "Login"}
-        </Text>
-      </TouchableOpacity>
-
-      <Text className="text-center my-4 text-gray-500">or</Text>
-
-      {/* SINGPASS */}
-      <Link href="/singpass-login" asChild>
-        <TouchableOpacity className="flex-row items-center justify-center border py-4 rounded-xl">
-          <Image
-            source={{
-              uri: "https://www.singpass.gov.sg/images/singpass-icon.svg",
+          {/* Email Input */}
+          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>School Email</Text>
+          <TextInput
+            placeholder="name@tp.edu.sg"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            editable={!isLoading}
+            style={{
+              borderWidth: 1,
+              borderColor: PALETTE.babyPink,
+              padding: 14,
+              borderRadius: 12,
+              marginBottom: 20,
+              fontSize: 16,
+              backgroundColor: isLoading ? PALETTE.lightGrey : PALETTE.white,
             }}
-            className="w-6 h-6 mr-2"
           />
-          <Text className="font-medium">Login with Singpass</Text>
-        </TouchableOpacity>
-      </Link>
 
-      {/* SIGNUP LINK */}
-      <View className="flex-row justify-center mt-8">
-        <Text className="text-gray-500">Don’t have an account? </Text>
-        <Link href="/register" asChild>
-          <TouchableOpacity>
-            <Text className="text-blue-600 font-semibold">Sign Up</Text>
+          {/* Password Input */}
+          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>Password</Text>
+          <View style={{ position: 'relative', marginBottom: 24 }}>
+            <TextInput
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              editable={!isLoading}
+              style={{
+                borderWidth: 1,
+                borderColor: PALETTE.babyPink,
+                padding: 14,
+                borderRadius: 12,
+                fontSize: 16,
+                paddingRight: 50,
+                backgroundColor: isLoading ? PALETTE.lightGrey : PALETTE.white,
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: 14, top: 14 }}
+            >
+              <Text style={{ color: PALETTE.coral }}>{showPassword ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Info Box */}
+          <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 24 }}>
+            <Text style={{ fontSize: 13, color: '#7F1D1D', lineHeight: 18 }}>
+              Only Singapore school emails are allowed (tp.edu.sg, np.edu.sg, ite.edu.sg, jc emails, universities, etc.)
+            </Text>
+          </View>
+        </View>
+
+        {/* Buttons */}
+        <View>
+          <TouchableOpacity
+            onPress={handleSignIn}
+            disabled={isLoading}
+            style={{
+              backgroundColor: isLoading ? '#ddd' : PALETTE.coral,
+              paddingVertical: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginBottom: 12,
+            }}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={PALETTE.white} />
+            ) : (
+              <Text style={{ color: PALETTE.white, fontWeight: '700', fontSize: 16 }}>Sign In</Text>
+            )}
           </TouchableOpacity>
-        </Link>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+            <Text style={{ color: '#6b7280' }}>Don't have an account?</Text>
+            <TouchableOpacity onPress={() => router.push('/register')} disabled={isLoading}>
+              <Text style={{ color: PALETTE.coral, fontWeight: '700' }}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }

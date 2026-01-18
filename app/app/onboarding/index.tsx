@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
     Alert,
@@ -8,7 +8,10 @@ import {
     TouchableOpacity,
     TouchableWithoutFeedback,
     View,
+    ActivityIndicator,
 } from "react-native";
+import { useAuth } from "@/lib/authContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PALETTE = {
   coral: "#FF8FA3",
@@ -22,8 +25,15 @@ const PALETTE = {
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { signUp } = useAuth();
 
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auth params from register screen
+  const [email] = useState(params.email as string || "");
+  const [password] = useState(params.password as string || "");
 
   // Basic Info
   const [name, setName] = useState("");
@@ -50,7 +60,7 @@ export default function OnboardingScreen() {
   const personalityQuestions = [
     {
       id: "social",
-      q: "What’s your social energy like?",
+      q: "What's your social energy like?",
       opts: ["⚡ Extrovert", "🌙 Introvert", "🔄 Ambivert"],
     },
     {
@@ -79,8 +89,8 @@ export default function OnboardingScreen() {
     setPersonalityAnswers((p) => ({ ...p, [id]: opt }));
   };
 
-  const handleFinishOnboarding = () => {
-    const payload = {
+  const handleFinishOnboarding = async () => {
+    const onboardingData = {
       name,
       school,
       year,
@@ -91,10 +101,38 @@ export default function OnboardingScreen() {
       preferredTypes,
     };
 
-    console.log("onboarding finished:", payload);
-    Alert.alert("Onboarding complete", "Proceed to verification", [
-      { text: "Continue", onPress: () => router.push("/verify/singpass" as any) },
-    ]);
+    console.log("onboarding finished:", onboardingData);
+
+    // If coming from signup flow with email/password
+    if (email && password) {
+      try {
+        setIsSubmitting(true);
+
+        const { user, error } = await signUp(email, password, onboardingData);
+
+        if (error) {
+          Alert.alert("Signup Error", error.message || "Failed to create account");
+          return;
+        }
+
+        if (user) {
+          // Save onboarding data to AsyncStorage for reference
+          await AsyncStorage.setItem("onboarding_data", JSON.stringify(onboardingData));
+
+          // Redirect to email verification
+          await AsyncStorage.setItem("pending_email_verification", email);
+          router.push("/verify/email");
+        }
+      } catch (err: any) {
+        Alert.alert("Error", err.message || "An error occurred");
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Skip flow - just save onboarding data
+      await AsyncStorage.setItem("onboarding_data", JSON.stringify(onboardingData));
+      router.push("/login");
+    }
   };
 
   return (
@@ -246,8 +284,12 @@ export default function OnboardingScreen() {
               <TouchableOpacity onPress={() => setStep(3)} style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }}>
                 <Text style={{ color: "#6b7280" }}>Back</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleFinishOnboarding} style={{ backgroundColor: PALETTE.coral, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }}>
-                <Text style={{ color: PALETTE.white, fontWeight: "700" }}>Submit</Text>
+              <TouchableOpacity onPress={handleFinishOnboarding} disabled={isSubmitting} style={{ backgroundColor: isSubmitting ? "#ddd" : PALETTE.coral, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12, flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
+                {isSubmitting ? (
+                  <ActivityIndicator color={PALETTE.white} />
+                ) : (
+                  <Text style={{ color: PALETTE.white, fontWeight: "700" }}>Submit</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

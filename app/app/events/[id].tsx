@@ -14,34 +14,48 @@ import { sampleEvents } from "@/data/event";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { BlurView } from "expo-blur";
+import { useEventStore } from "@/lib/stores/eventStore";
 
 export default function EventDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
 
-  const event = sampleEvents.find((e) => e.id === id);
+  // Use Zustand store to fetch event
+  const { eventDetails, fetchEventById } = useEventStore();
+  const event = id ? eventDetails[id as string] : null;
+
+  // Try to fetch from API if not in cache
+  useEffect(() => {
+    if (!event && id) {
+      fetchEventById(id as string);
+    }
+  }, [id, event, fetchEventById]);
+
+  // Fallback to sample events if API event not found
+  const displayEvent = event || sampleEvents.find((e) => e.id === id);
 
   useEffect(() => {
-    if (event) {
+    if (displayEvent) {
       // Static gradients based on interest
-      const gradients = {
+      const gradients: { [key: string]: string[] } = {
         "Study Group": ["#1a1a2e", "#16213e", "#0f3460"],
         "Sports Buddies": ["#2d3436", "#636e72", "#b2bec3"],
         "Tech & Coding": ["#0c0c0c", "#1a1a1a", "#2d2d2d"],
         "Thrift Enthusiasts": ["#6c5ce7", "#a29bfe", "#d63031"],
         "Fitness Enthusiasts": ["#00b894", "#00cec9", "#55a3ff"],
       };
+      const interest = (displayEvent as any).interest || displayEvent.name;
       setGradientColors(
-        gradients[event.interest as keyof typeof gradients] || [
+        gradients[interest as keyof typeof gradients] || [
           "#000000",
           "#333333",
         ]
       );
     }
-  }, [event]);
+  }, [displayEvent]);
 
-  if (!event) {
+  if (!displayEvent) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
         <View className="flex-1 justify-center items-center">
@@ -76,7 +90,7 @@ export default function EventDetail() {
           {/* Hero Image */}
           <View className="px-5 mb-6">
               <Image
-                source={{ uri: event.image }}
+                source={{ uri: (displayEvent as any).image }}
                 className="w-full h-64 rounded-xl"
                 resizeMode="cover"
               />
@@ -86,11 +100,11 @@ export default function EventDetail() {
           <View className="px-5">
             {/* Title */}
             <Text className="text-white text-3xl font-bold mb-2">
-              {event.title}
+              {(displayEvent as any).title || displayEvent.name}
             </Text>
 
             {/* Interest */}
-            <Text className="text-white/70 text-lg mb-4">{event.interest}</Text>
+            <Text className="text-white/70 text-lg mb-4">{(displayEvent as any).interest}</Text>
 
             {/* CTA Buttons */}
             <View className="flex-row gap-3 mb-6">
@@ -107,14 +121,14 @@ export default function EventDetail() {
               {/* Location */}
               <View className="flex-row items-center">
                 <MapPin color="white" size={20} />
-                <Text className="text-white ml-3">{event.location}</Text>
+                <Text className="text-white ml-3">{(displayEvent as any).location || displayEvent.location_text}</Text>
               </View>
 
               {/* Date & Time */}
               <View className="flex-row items-center">
                 <Calendar color="white" size={20} />
                 <Text className="text-white ml-3">
-                  {event.date} at {event.time}
+                  {(displayEvent as any).date} at {(displayEvent as any).time}
                 </Text>
               </View>
 
@@ -131,7 +145,7 @@ export default function EventDetail() {
                 About Event
               </Text>
               <Text className="text-white/80 text-base leading-6">
-                {event.description}
+                {(displayEvent as any).description || displayEvent.description_md}
               </Text>
             </View>
 
@@ -141,7 +155,7 @@ export default function EventDetail() {
                 Event Details
               </Text>
               <Text className="text-white/80 text-base leading-6">
-                {event.details}
+                {(displayEvent as any).details}
               </Text>
             </View>
 

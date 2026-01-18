@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { BlurView } from "expo-blur";
-import api from "@/lib/api";
+import { useEventStore } from "@/lib/stores/eventStore";
 
 interface Event {
   id: string;
@@ -34,13 +34,16 @@ interface Event {
 export default function EventDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [event, setEvent] = useState<Event | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
   const [joined, setJoined] = useState(false);
+  const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
 
-  // Fetch event data from API
+  // Use Zustand store to fetch event
+  const { eventDetails, fetchEventById } = useEventStore();
+  const event = id ? eventDetails[id as string] : null;
+  const [loading, setLoading] = useState(!event);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch event data from store on mount
   useEffect(() => {
     let mounted = true;
 
@@ -48,19 +51,22 @@ export default function EventDetail() {
       try {
         if (!id) {
           setError("No event ID provided");
+          setLoading(false);
           return;
         }
 
         console.log("📡 Fetching event with ID:", id);
-        const data = await api.getEvent(id as string);
+        const data = await fetchEventById(id as string);
         
         if (!mounted) return;
         
-        console.log("✅ Event loaded:", data);
-        setEvent(data);
-        
-        // Set gradient based on event name or default
-        setGradientColors(["#0c0c0c", "#1a1a1a", "#2d2d2d"]);
+        if (data) {
+          console.log("✅ Event loaded:", data);
+          // Set gradient based on event name or default
+          setGradientColors(["#0c0c0c", "#1a1a1a", "#2d2d2d"]);
+        } else {
+          setError("Failed to load event");
+        }
       } catch (err: any) {
         if (!mounted) return;
         console.error("❌ Failed to load event:", err);
@@ -74,7 +80,7 @@ export default function EventDetail() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, fetchEventById]);
 
   const handleJoinEvent = async () => {
     try {

@@ -1,12 +1,11 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
   FlatList,
-  Dimensions,
   Pressable,
 } from "react-native";
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   Home,
   Hash,
@@ -16,6 +15,7 @@ import {
   Music,
   AlertCircle,
 } from "lucide-react-native";
+import { CommunityProps } from "@/utils/types";
 
 interface CommunityCategory {
   id: string;
@@ -41,10 +41,33 @@ const chunkArray = (arr: CommunityCategory[], itemsPerPage: number) => {
   return chunks;
 };
 
-export default function BrowseByCommunity() {
+interface BrowseByCommunityProps {
+  communities?: CommunityProps[];
+}
+
+export default function BrowseByCommunity({ communities = [] }: BrowseByCommunityProps) {
+  const router = useRouter();
   const rowsPerPage = 2;
   const itemsPerPage = rowsPerPage * 3; // 3 columns * 2 rows
   const pages = chunkArray(categories, itemsPerPage);
+
+  // Get unique topics from communities
+  const uniqueTopics = useMemo(() => {
+    const topics = new Set<string>();
+    communities.forEach(community => {
+      if (community.topics && Array.isArray(community.topics)) {
+        community.topics.forEach(topic => {
+          topics.add(topic);
+        });
+      }
+    });
+    return Array.from(topics);
+  }, [communities]);
+
+  const handleCategoryPress = (categoryId: string) => {
+    // Navigate to categories page with the selected category
+    router.push(`/categories/${categoryId}` as any);
+  };
 
   return (
     <View>
@@ -89,28 +112,28 @@ export default function BrowseByCommunity() {
                     {rowItems.map((cat) => {
                       const Icon = cat.icon;
                       return (
-                        <Link key={cat.id} href={`/categories/${cat.id}`} asChild>
-                          <Pressable
-                            className="flex-row justify-center gap-x-1.5 items-center mr-3 mb-3 rounded-xl border-2 border-[#232323]"
+                        <Pressable
+                          key={cat.id}
+                          onPress={() => handleCategoryPress(cat.id)}
+                          className="flex-row justify-center gap-x-1.5 items-center mr-3 mb-3 rounded-xl border-2 border-[#232323]"
+                          style={{
+                            width: "auto",
+                            alignItems: "center",
+                            padding: 10,
+                          }}
+                        >
+                          <Icon size={20} color="#fff" />
+                          <Text
                             style={{
-                              width: "auto",
-                              alignItems: "center",
-                              padding: 10,
+                              color: "#fff",
+                              textAlign: "center",
+                              fontSize: 16,
+                              fontWeight: "500",
                             }}
                           >
-                            <Icon size={20} color="#fff" />
-                            <Text
-                              style={{
-                                color: "#fff",
-                                textAlign: "center",
-                                fontSize: 16,
-                                fontWeight: 500,
-                              }}
-                            >
-                              {cat.name}
-                            </Text>
-                          </Pressable>
-                        </Link>
+                            {cat.name}
+                          </Text>
+                        </Pressable>
                       );
                     })}
                   </View>

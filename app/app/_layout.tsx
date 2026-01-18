@@ -1,14 +1,16 @@
 import { Stack } from "expo-router";
+import { AuthProvider } from "@/lib/authContext";
 import "../global.css";
+
 export default function RootLayout() {
   return (
-    <>
+    <AuthProvider>
       <Stack
         screenOptions={{
-          headerShown: false, // 👈 this removes the top bar globally
+          headerShown: false,
           animation: "none"
         }}
       />
-    </>
+    </AuthProvider>
   );
 }

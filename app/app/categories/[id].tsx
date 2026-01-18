@@ -3,38 +3,29 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { sampleEvents } from "@/data/event";
-import { usersCommunities } from "@/data/communities";
 import {
   Home,
-  Hash,
-  User,
-  Users,
   Book,
   Music,
+  Users,
+  Hash,
   AlertCircle,
   Gamepad,
-} from "lucide-react-native";
-
-import {
   ArrowLeft,
+  User,
   PenBoxIcon,
   Map,
-  Calendar,
-  Heart,
-  MapPin,
 } from "lucide-react-native";
+
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import EventCard from "@/components/event-card";
 import CommunityCard from "@/components/community-card";
 import { BlurView } from "expo-blur";
-
-const { width } = Dimensions.get("window");
+import { useCommunities } from "@/hooks/useCommunities";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 
 const categoryData = {
   gaming: {
@@ -94,36 +85,18 @@ export default function CategoryDetail() {
   const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
+  // Get communities from Zustand store
+  const { communities, isRefreshing, refresh } = useCommunities();
+
   const categoryId = Array.isArray(id) ? id[0] : id;
   const category = categoryData[categoryId as keyof typeof categoryData];
 
-  // Filter events and communities by category
-  const categoryEvents = sampleEvents.filter((event) => {
-    const interestMap = {
-      gaming: "Gaming Hub",
-      study: "Study Group",
-      music: "Music",
-      social: "Social",
-      art: "Art",
-      alert: "Announcements",
-      profile: "Profile-Centric",
-    };
-    return (
-      event.interest === interestMap[categoryId as keyof typeof interestMap]
-    );
-  });
-
-  const categoryCommunities = usersCommunities.filter((community) => {
-    const nameMap = {
-      gaming: "Gaming Hub",
-      study: "Study Groups",
-      music: "Music",
-      social: "Social",
-      art: "Art",
-      alert: "Announcements",
-      profile: "Profile-Centric",
-    };
-    return community.name === nameMap[categoryId as keyof typeof nameMap];
+  // Filter communities by topic - check if categoryId is in the community's topics array
+  const categoryCommunities = communities.filter((community) => {
+    if (!community.topics || !Array.isArray(community.topics)) {
+      return false;
+    }
+    return community.topics.includes(categoryId as string);
   });
 
   useEffect(() => {
@@ -131,6 +104,11 @@ export default function CategoryDetail() {
       setGradientColors(category.gradient);
     }
   }, [category]);
+
+    useEffect(() => {
+      console.log("CATEOGRY:", categoryId, categoryCommunities);
+
+  }, [categoryId, categoryCommunities]);
 
   if (!category) {
     return (
@@ -156,7 +134,12 @@ export default function CategoryDetail() {
   return (
     <LinearGradient colors={gradientColors} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-        <ScrollView stickyHeaderIndices={[0]}>
+        <ScrollView
+          stickyHeaderIndices={[0]}
+          refreshControl={
+            <PullToRefresh isRefreshing={isRefreshing} onRefresh={refresh} />
+          }
+        >
           <BlurView
             intensity={50}
             tint="default"
@@ -196,9 +179,9 @@ export default function CategoryDetail() {
               </View>
               <View className="flex-row items-center gap-x-1">
                 <Text className="text-white font-semibold">
-                  {categoryEvents.length}
+                  {categoryCommunities.length}
                 </Text>
-                <Text className="text-white/70 text-sm">Events</Text>
+                <Text className="text-white/70 text-sm">Members</Text>
               </View>
               <View className="flex-row items-center gap-x-1">
                 <Text className="text-white font-semibold">1.2K</Text>
@@ -254,27 +237,6 @@ export default function CategoryDetail() {
                     }
                   >
                     <CommunityCard community={community} onPress={() => {}} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Events Section */}
-          {categoryEvents.length > 0 && (
-            <View className="px-5 mb-8">
-              <Text className="text-white text-2xl font-semibold mb-4">
-                Events
-              </Text>
-              <View className="gap-y-4">
-                {categoryEvents.map((event, idx) => (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() =>
-                      router.push(`/events/${event.id}` as any)
-                    }
-                  >
-                    <EventCard event={event} onPress={() => {}}/>
                   </TouchableOpacity>
                 ))}
               </View>

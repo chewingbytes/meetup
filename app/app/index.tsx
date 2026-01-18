@@ -5,6 +5,7 @@ import Header from "@/components/header";
 
 import CommunityCard from "@/components/community-card";
 import EventCard from "@/components/event-card";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 
 import { Plus, Bell, User } from "lucide-react-native";
 
@@ -25,8 +26,9 @@ import { usersCommunities } from "@/data/communities";
 import { EventProps, CommunityProps } from "@/utils/types";
 
 import chunkArray from "@/scripts/chunkArray";
-import { useEffect, useState } from "react";
-import api from "@/lib/api";
+import { useState } from "react";
+import { useEvents } from "@/hooks/useEvents";
+import { useCommunities } from "@/hooks/useCommunities";
 
 const PALETTE = {
   background: "#000000",
@@ -34,39 +36,23 @@ const PALETTE = {
 
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [events, setEvents] = useState<EventProps[]>([]);
-  const [communities, setCommunities] = useState<CommunityProps[]>([]);
-  const [loadingHome, setLoadingHome] = useState(true);
   const router = useRouter();
+
+  // Use Zustand stores with custom hooks
+  const { events, isLoading: eventsLoading, isRefreshing: eventsRefreshing, refresh: refreshEvents } = useEvents();
+  const { communities, isLoading: communitiesLoading, isRefreshing: communitiesRefreshing, refresh: refreshCommunities } = useCommunities();
+
+  const isLoading = eventsLoading || communitiesLoading;
+  const isRefreshing = eventsRefreshing || communitiesRefreshing;
 
   const openChat = (groupId: string, groupName: string) => {
     router.push(`/chat/${groupId}?name=${groupName}` as any);
   };
 
-  // const eventChunks = chunkArray(sampleEvents, 3);
-
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      try {
-        const [ev, comm] = await Promise.all([
-          api.getEvents().catch(() => null),
-          api.getCommunities().catch(() => null),
-        ]);
-        if (!mounted) return;
-        if (ev && Array.isArray(ev)) setEvents(ev);
-        if (comm && Array.isArray(comm)) setCommunities(comm);
-      } catch (err) {
-        console.warn("Home load failed", err);
-      } finally {
-        if (mounted) setLoadingHome(false);
-      }
-    }
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    await Promise.all([refreshEvents(), refreshCommunities()]);
+  };
 
   return (
     <SafeAreaView
@@ -125,7 +111,9 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <ScrollView>
+      <ScrollView
+        refreshControl={<PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />}
+      >
         {/* <View
           style={{
             padding: 18,

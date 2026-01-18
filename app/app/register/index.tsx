@@ -1,106 +1,174 @@
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { Link } from "expo-router";
-import { useState } from "react";
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { validateSingaporeSchoolEmail } from '@/lib/schoolEmailValidation';
 
-export default function SignupScreen() {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+const PALETTE = {
+  coral: '#FF8FA3',
+  apricot: '#FFBC8F',
+  beige: '#FFE0B2',
+  graphite: '#2C2C2C',
+  lightGrey: '#F5F5F5',
+  white: '#FFFFFF',
+  babyPink: '#FFD7E9',
+};
 
-  const isSchoolEmail =
-    email.endsWith(".edu") ||
-    email.includes("student") ||
-    email.includes(".edu.sg");
+export default function RegisterScreen() {
+  const router = useRouter();
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignup = async () => {
-    setLoading(true);
-    setErrorMsg("");
-
-    try {
-      const res = await fetch("http://localhost:4000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(data.error || "Registration failed");
-      } else {
-        alert("Account created! Please log in.");
-      }
-    } catch (err) {
-      setErrorMsg("Network error");
+  const handleProceedToOnboarding = () => {
+    // Validate input
+    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
     }
 
-    setLoading(false);
+    if (!validateSingaporeSchoolEmail(email)) {
+      Alert.alert('Invalid Email', 'Please use a valid Singapore school email (e.g., name@tp.edu.sg)');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return;
+    }
+
+    // Store credentials temporarily and proceed to onboarding
+    // The onboarding screen will then call signUp with these credentials
+    router.push({
+      pathname: '/onboarding',
+      params: {
+        email,
+        password,
+      },
+    });
   };
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold mb-2">Create Account</Text>
-      <Text className="text-gray-500 mb-8">Join with your school email</Text>
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <View style={{ flex: 1, backgroundColor: PALETTE.white, padding: 20, paddingTop: 80, justifyContent: 'space-between' }}>
+        {/* Header */}
+        <View>
+          <Text style={{ fontSize: 32, fontWeight: '800', color: PALETTE.graphite, marginBottom: 8 }}>Create Account</Text>
+          <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 32 }}>Sign up with your school email</Text>
 
-      <Text className="mb-1 font-medium">Full Name</Text>
-      <TextInput
-        placeholder="John Tan"
-        className="border rounded-xl px-4 py-3 mb-4"
-        value={fullName}
-        onChangeText={setFullName}
-      />
+          {/* Email Input */}
+          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>School Email</Text>
+          <TextInput
+            placeholder="name@tp.edu.sg"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={{
+              borderWidth: 1,
+              borderColor: PALETTE.babyPink,
+              padding: 14,
+              borderRadius: 12,
+              marginBottom: 20,
+              fontSize: 16,
+            }}
+          />
 
-      <Text className="mb-1 font-medium">School Email</Text>
-      <TextInput
-        placeholder="name@student.school.edu"
-        className={`border rounded-xl px-4 py-3 mb-1 ${
-          email.length > 0 && !isSchoolEmail ? "border-red-500" : ""
-        }`}
-        value={email}
-        onChangeText={setEmail}
-      />
+          {/* Password Input */}
+          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>Password</Text>
+          <View style={{ position: 'relative', marginBottom: 20 }}>
+            <TextInput
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              style={{
+                borderWidth: 1,
+                borderColor: PALETTE.babyPink,
+                padding: 14,
+                borderRadius: 12,
+                fontSize: 16,
+                paddingRight: 50,
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={{ position: 'absolute', right: 14, top: 14 }}
+            >
+              <Text style={{ color: PALETTE.coral, fontSize: 12 }}>{showPassword ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
 
-      {email.length > 0 && !isSchoolEmail && (
-        <Text className="text-red-500 mb-4">
-          Only valid school emails are allowed.
-        </Text>
-      )}
+          {/* Confirm Password Input */}
+          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>Confirm Password</Text>
+          <View style={{ position: 'relative', marginBottom: 24 }}>
+            <TextInput
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry={!showConfirmPassword}
+              style={{
+                borderWidth: 1,
+                borderColor: PALETTE.babyPink,
+                padding: 14,
+                borderRadius: 12,
+                fontSize: 16,
+                paddingRight: 50,
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{ position: 'absolute', right: 14, top: 14 }}
+            >
+              <Text style={{ color: PALETTE.coral, fontSize: 12 }}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+            </TouchableOpacity>
+          </View>
 
-      <Text className="mb-1 font-medium">Password</Text>
-      <TextInput
-        placeholder="••••••••"
-        secureTextEntry
-        className="border rounded-xl px-4 py-3 mb-6"
-        value={password}
-        onChangeText={setPassword}
-      />
+          {/* Info Box */}
+          <View style={{ backgroundColor: '#FEE2E2', padding: 12, borderRadius: 8, marginBottom: 24 }}>
+            <Text style={{ fontSize: 13, color: '#7F1D1D', lineHeight: 18 }}>
+              Password must be at least 8 characters. Only Singapore school emails are allowed.
+            </Text>
+          </View>
+        </View>
 
-      {errorMsg.length > 0 && (
-        <Text className="text-red-500 text-center mb-4">{errorMsg}</Text>
-      )}
-
-      <TouchableOpacity
-        disabled={!isSchoolEmail || loading}
-        onPress={handleSignup}
-        className={`py-4 rounded-xl mb-4 ${
-          isSchoolEmail ? "bg-blue-600" : "bg-gray-300"
-        }`}
-      >
-        <Text className="text-white text-center font-semibold">
-          {loading ? "Creating..." : "Sign Up"}
-        </Text>
-      </TouchableOpacity>
-
-      <View className="flex-row justify-center mt-8">
-        <Text className="text-gray-500">Already have an account? </Text>
-        <Link href="/login" asChild>
-          <TouchableOpacity>
-            <Text className="text-blue-600 font-semibold">Login</Text>
+        {/* Buttons */}
+        <View>
+          <TouchableOpacity
+            onPress={handleProceedToOnboarding}
+            style={{
+              backgroundColor: PALETTE.coral,
+              paddingVertical: 16,
+              borderRadius: 12,
+              alignItems: 'center',
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ color: PALETTE.white, fontWeight: '700', fontSize: 16 }}>Continue to Onboarding</Text>
           </TouchableOpacity>
-        </Link>
+
+          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
+            <Text style={{ color: '#6b7280' }}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={{ color: PALETTE.coral, fontWeight: '700' }}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }

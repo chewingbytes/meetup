@@ -23,8 +23,6 @@ function HorizontalCarousel<T>({
   const cardWidth = width * 0.8;
   const snapInterval = cardWidth + spacing;
 
-  console.log("CHUNKS:", chunks);
-
   return (
     <View>
       {/* Heading */}
