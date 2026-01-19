@@ -1,164 +1,87 @@
-import HorizontalCarousel from "@/components/horizontal-carousel";
-import VerticalList from "@/components/vertical-scroll-section";
-import MobileNav from "@/components/mobile-nav";
-import Header from "@/components/header";
-
-import CommunityCard from "@/components/community-card";
-import EventCard from "@/components/event-card";
-import { PullToRefresh } from "@/components/pull-to-refresh";
-
-import { Plus, Bell, User } from "lucide-react-native";
-
-import { useRouter } from "expo-router";
+import React from "react";
 import {
-  Image,
-  ScrollView,
-  Text,
-  TouchableOpacity,
   View,
-  FlatList,
+  Text,
+  Image,
+  TouchableOpacity,
   Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
-import { sampleEvents } from "@/data/event";
-import { usersCommunities } from "@/data/communities";
-import { EventProps, CommunityProps } from "@/utils/types";
+const hero =
+  "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80";
 
-import chunkArray from "@/scripts/chunkArray";
-import { useState } from "react";
-import { useEvents } from "@/hooks/useEvents";
-import { useCommunities } from "@/hooks/useCommunities";
-
-const PALETTE = {
-  background: "#000000",
-};
-
-export default function HomeScreen() {
-  const [menuOpen, setMenuOpen] = useState(false);
+export default function WelcomeScreen() {
   const router = useRouter();
-
-  // Use Zustand stores with custom hooks
-  const { events, isLoading: eventsLoading, isRefreshing: eventsRefreshing, refresh: refreshEvents } = useEvents();
-  const { communities, isLoading: communitiesLoading, isRefreshing: communitiesRefreshing, refresh: refreshCommunities } = useCommunities();
-
-  const isLoading = eventsLoading || communitiesLoading;
-  const isRefreshing = eventsRefreshing || communitiesRefreshing;
-
-  const openChat = (groupId: string, groupName: string) => {
-    router.push(`/chat/${groupId}?name=${groupName}` as any);
-  };
-
-  // Handle pull-to-refresh
-  const handleRefresh = async () => {
-    await Promise.all([refreshEvents(), refreshCommunities()]);
-  };
+  const { height } = Dimensions.get("window");
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: PALETTE.background }}
-      edges={["top"]}
-    >
-      <Header
-        title="Welcome"
-        actions={[
-          {
-            icon: Plus,
-            onPress: () => {
-              if (menuOpen) {
-                setMenuOpen(false);
-              } else {
-                setMenuOpen(true);
-              }
-            },
-          },
-          { icon: Bell, link: "/notifications" },
-        ]}
-      />
-      {menuOpen && (
-        <View
-          style={{
-            position: "absolute",
-            top: 90,
-            right: 20,
-            backgroundColor: "#111",
-            borderRadius: 12,
-            paddingVertical: 8,
-            zIndex: 1000,
-          }}
-        >
-          <TouchableOpacity
-            style={{ padding: 12 }}
-            onPress={() => {
-              setMenuOpen(false);
-              router.push("/create-community");
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
+      <View style={{ flex: 1 }}>
+        {/* Hero image */}
+        <View style={{ flex: 1, overflow: "hidden" }}>
+          <Image
+            source={{ uri: hero }}
+            style={{ width: "100%", height: height * 0.6 }}
+            resizeMode="cover"
+          />
+          {/* Gradient overlay */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.75)", "rgba(0,0,0,0.95)"]}
+            style={{
+              position: "absolute",
+              inset: 0,
+              justifyContent: "flex-end",
+              paddingHorizontal: 24,
+              paddingBottom: 32,
+              gap: 12,
             }}
           >
-            <Text style={{ color: "#fff", fontSize: 16 }}>
-              Create community
+            <Text className="text-white text-4xl font-bold leading-tight">
+              Meet. Create. Thrive.
+            </Text>
+            <Text className="text-white/80 text-base">
+              Find events, join communities, and make friends around your campus
+              and beyond.
+            </Text>
+          </LinearGradient>
+        </View>
+
+        {/* Bottom actions */}
+        <View style={{ padding: 20, gap: 12 }}>
+          <TouchableOpacity onPress={() => router.push("/login")}>
+            <LinearGradient
+              colors={["#4f46e5", "#7c3aed"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text className="text-white font-bold text-base">Log In</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/register")}
+            style={{
+              borderRadius: 14,
+              paddingVertical: 14,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.15)",
+            }}
+          >
+            <Text className="text-white font-semibold text-base">
+              Sign Up
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{ padding: 12 }}
-            onPress={() => {
-              setMenuOpen(false);
-              router.push("/create-event");
-            }}
-          >
-            <Text style={{ color: "#fff", fontSize: 16 }}>Create event</Text>
-          </TouchableOpacity>
         </View>
-      )}
-
-      <ScrollView
-        refreshControl={<PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />}
-      >
-        {/* <View
-          style={{
-            padding: 18,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 40,
-              fontWeight: "600",
-              color: "#FFFFFF",
-            }}
-          >
-            Home
-          </Text>
-        </View> */}
-
-        <View className="container">
-          {/* Your Events */}
-          <HorizontalCarousel<EventProps>
-            heading="Your Events"
-            chunks={chunkArray(events, 3)}
-            cardComponent={EventCard}
-            dataKey="event"
-            onItemPress={(event) => router.push(`/events/${event.id}` as any)}
-          />
-
-          {/* Your Communities */}
-          <VerticalList<CommunityProps>
-            heading="Your Communities"
-            items={communities}
-            cardComponent={CommunityCard}
-            dataKey="community"
-            onItemPress={(community) => {
-              router.push(`/community/${community.id}` as any);
-            }}
-          />
-          {/* <VerticalList
-            heading="Your Communities"
-            items={sampleEvents}
-            cardComponent={EventCard}
-            dataKey="event"
-          /> */}
-        </View>
-      </ScrollView>
-      <MobileNav active="home" />
+      </View>
     </SafeAreaView>
   );
 }

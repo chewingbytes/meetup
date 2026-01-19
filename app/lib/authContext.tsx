@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Session } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 
 interface UserProfile {
   id: string;
@@ -35,6 +35,7 @@ interface OnboardingData {
 
 interface AuthContextType {
   session: Session | null;
+  user: User | null;
   isLoading: boolean;
   userProfile: UserProfile | null;
   userSettings: UserSettings | null;
@@ -57,70 +58,145 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
 
-  // Initialize session from AsyncStorage
+  // Initialize session from Supabase (not AsyncStorage - Supabase handles this)
   useEffect(() => {
+    console.log('🔵 AuthProvider: Initializing...');
+    
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
         
-        // Retrieve session from storage
-        const storedSession = await AsyncStorage.getItem('supabase_session');
-        if (storedSession) {
-          const session = JSON.parse(storedSession);
+        // Get session from Supabase (it auto-loads from storage)
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log('📱 Initial session check:', session ? `Found user: ${session.user.email}` : 'No session');
+        
+        if (error) {
+          console.error('❌ Session error:', error);
+        }
+        
+        if (session) {
           setSession(session);
+          setUser(session.user);
+          console.log('✅ Session set:', session.user.email);
           
-          // Fetch user profile and settings
-          await fetchUserProfile();
-          await fetchUserSettings();
+          // Fetch user data
+          await fetchUserProfileInternal(session.user.id);
+          await fetchUserSettingsInternal(session.user.id);
+        } else {
+          setSession(null);
+          setUser(null);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('❌ Error initializing auth:', error);
       } finally {
         setIsLoading(false);
+        console.log('✅ Auth initialization complete');
       }
     };
 
     initializeAuth();
 
     // Subscribe to auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event, session ? `User: ${session.user.email}` : 'No session');
+      
       setSession(session);
+      setUser(session?.user ?? null);
       
       if (session) {
-        await AsyncStorage.setItem('supabase_session', JSON.stringify(session));
-        await fetchUserProfile();
-        await fetchUserSettings();
+        await fetchUserProfileInternal(session.user.id);
+        await fetchUserSettingsInternal(session.user.id);
       } else {
-        await AsyncStorage.removeItem('supabase_session');
         setUserProfile(null);
         setUserSettings(null);
       }
+      
+      setIsLoading(false);
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+      console.log('🔴 Unsubscribing from auth changes');
+      subscription.unsubscribe();
     };
   }, []);
 
+  // Internal fetch methods that accept userId
+  const fetchUserProfileInternal = async (userId: string) => {
+    try {
+      console.log('🔵 Fetching profile for user:', userId);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching profile:', error);
+        return;
+      }
+
+      console.log('✅ Profile loaded:', data?.username);
+      setUserProfile(data);
+    } catch (error) {
+      console.error('❌ Error in fetchUserProfile:', error);
+    }
+  };
+
+  const fetchUserSettingsInternal = async (userId: string) => {
+    try {
+      console.log('🔵 Fetching settings for user:', userId);
+      
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching user settings:', error);
+        return;
+      }
+
+      console.log('✅ Settings loaded');
+      setUserSettings(data);
+    } catch (error) {
+      console.error('❌ Error in fetchUserSettings:', error);
+    }
+  };
+
   const signUp = async (email: string, password: string, onboardingData: OnboardingData) => {
     try {
+      console.log('🔵 Signing up:', email);
+      
       // Sign up with Supabase Auth
       const { data, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username: email.split('@')[0],
+            full_name: onboardingData.name,
+          }
+        }
       });
 
       if (authError) {
+        console.error('❌ Sign up error:', authError);
         return { user: null, error: authError };
       }
 
+      console.log('✅ Sign up successful:', data.user?.email);
+
       if (data.user) {
-        // Store onboarding data in AsyncStorage for later use
+        // Store onboarding data
         await AsyncStorage.setItem('onboarding_data', JSON.stringify(onboardingData));
 
         // Create profile entry
@@ -135,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
 
         if (profileError) {
-          console.error('Error creating profile:', profileError);
+          console.error('❌ Error creating profile:', profileError);
         }
 
         // Create user_settings entry
@@ -149,53 +225,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
 
         if (settingsError) {
-          console.error('Error creating user settings:', settingsError);
+          console.error('❌ Error creating user settings:', settingsError);
         }
       }
 
       return { user: data.user, error: null };
     } catch (error) {
+      console.error('❌ Sign up exception:', error);
       return { user: null, error };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('🔵 Signing in:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
+        console.error('❌ Sign in error:', error);
         return { user: null, error };
       }
 
-      if (data.session) {
-        await AsyncStorage.setItem('supabase_session', JSON.stringify(data.session));
-        setSession(data.session);
-      }
-
+      console.log('✅ Sign in successful:', data.user?.email);
+      
+      // Session is automatically set by onAuthStateChange
       return { user: data.user, error: null };
     } catch (error) {
+      console.error('❌ Sign in exception:', error);
       return { user: null, error };
     }
   };
 
   const signOut = async () => {
     try {
+      console.log('🔵 Signing out');
       await supabase.auth.signOut();
-      await AsyncStorage.removeItem('supabase_session');
       await AsyncStorage.removeItem('onboarding_data');
       setSession(null);
+      setUser(null);
       setUserProfile(null);
       setUserSettings(null);
+      console.log('✅ Signed out');
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ Error signing out:', error);
     }
   };
 
   const verifyOtp = async (email: string, token: string) => {
     try {
+      console.log('🔵 Verifying OTP for:', email);
+      
       const { data, error } = await supabase.auth.verifyOtp({
         email,
         token,
@@ -203,44 +286,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        console.error('❌ OTP verification error:', error);
         return { user: null, error };
       }
 
-      if (data.session) {
-        await AsyncStorage.setItem('supabase_session', JSON.stringify(data.session));
-        setSession(data.session);
-      }
-
+      console.log('✅ OTP verified:', data.user?.email);
       return { user: data.user, error: null };
     } catch (error) {
+      console.error('❌ OTP verification exception:', error);
       return { user: null, error };
     }
   };
 
   const fetchUserProfile = async () => {
-    try {
-      if (!session?.user?.id) return;
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      setUserProfile(data);
-    } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+    if (!user?.id) {
+      console.warn('⚠️ Cannot fetch profile: No user');
+      return;
     }
+    await fetchUserProfileInternal(user.id);
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
     try {
-      if (!session?.user?.id) return;
+      if (!user?.id) {
+        console.warn('⚠️ Cannot update profile: No user');
+        return;
+      }
+
+      console.log('🔵 Updating profile');
 
       const { error } = await supabase
         .from('profiles')
@@ -248,43 +321,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...updates,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', session.user.id);
+        .eq('id', user.id);
 
       if (error) {
-        console.error('Error updating profile:', error);
+        console.error('❌ Error updating profile:', error);
         return;
       }
 
+      console.log('✅ Profile updated');
       await fetchUserProfile();
     } catch (error) {
-      console.error('Error in updateUserProfile:', error);
+      console.error('❌ Error in updateUserProfile:', error);
     }
   };
 
   const fetchUserSettings = async () => {
-    try {
-      if (!session?.user?.id) return;
-
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (error) {
-        console.error('Error fetching user settings:', error);
-        return;
-      }
-
-      setUserSettings(data);
-    } catch (error) {
-      console.error('Error in fetchUserSettings:', error);
+    if (!user?.id) {
+      console.warn('⚠️ Cannot fetch settings: No user');
+      return;
     }
+    await fetchUserSettingsInternal(user.id);
   };
 
   const updateUserSettings = async (updates: Partial<UserSettings>) => {
     try {
-      if (!session?.user?.id) return;
+      if (!user?.id) {
+        console.warn('⚠️ Cannot update settings: No user');
+        return;
+      }
+
+      console.log('🔵 Updating settings');
 
       const { error } = await supabase
         .from('user_settings')
@@ -292,21 +358,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...updates,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', session.user.id);
+        .eq('user_id', user.id);
 
       if (error) {
-        console.error('Error updating user settings:', error);
+        console.error('❌ Error updating user settings:', error);
         return;
       }
 
+      console.log('✅ Settings updated');
       await fetchUserSettings();
     } catch (error) {
-      console.error('Error in updateUserSettings:', error);
+      console.error('❌ Error in updateUserSettings:', error);
     }
   };
 
   const value: AuthContextType = {
     session,
+    user,
     isLoading,
     userProfile,
     userSettings,
@@ -320,6 +388,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUserSettings,
     updateUserSettings,
   };
+
+  console.log('🟢 AuthContext render - Loading:', isLoading, 'User:', user?.email || 'None');
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

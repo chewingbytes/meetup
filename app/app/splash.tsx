@@ -30,13 +30,13 @@ export default function Splash() {
       // Route based on auth state
       if (session?.user) {
         // User is logged in, go to home
-        router.replace("/");
+        router.replace("/home");
       } else if (onboardingData) {
         // Onboarding done but not logged in, go to login
         router.replace("/login");
       } else {
         // New user, go to welcome/onboarding
-        router.replace("/welcome");
+        router.replace("/");
       }
     };
 

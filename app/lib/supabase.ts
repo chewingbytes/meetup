@@ -20,5 +20,3 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     detectSessionInUrl: false,
   },
 });
-
-export type Database = any; // You can replace this with your generated Supabase types

@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useAuth } from '@/lib/authContext';
+// import { useAuth } from '@/lib/authContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PALETTE = {
@@ -22,7 +22,7 @@ const PALETTE = {
 
 export default function EmailVerify() {
   const router = useRouter();
-  const { verifyOtp } = useAuth();
+  // const { verifyOtp } = useAuth();
 
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -59,9 +59,8 @@ export default function EmailVerify() {
 
     try {
       setIsLoading(true);
-      // In production, this would call your Supabase function to send OTP
-      // For now, we'll mock it
-      Alert.alert('Success', `OTP sent to ${email}. Check your email (or use 123456 in demo)`);
+      // DEV MODE: Mock OTP send
+      Alert.alert('Success', `🔧 DEV MODE: Use code 123456 to verify`);
       setCanResend(false);
       setTimeLeft(60);
     } catch (error: any) {
@@ -80,27 +79,28 @@ export default function EmailVerify() {
     try {
       setIsLoading(true);
 
-      // Demo bypass: 123456 auto-verifies for development
+      // DEV MODE: Only accept 123456
       if (otp === '123456') {
-        Alert.alert('Success', 'Demo account verified!');
+        Alert.alert('Success', '✅ Email verified! Redirecting...');
         await AsyncStorage.removeItem('pending_email_verification');
         router.replace('/');
         return;
       }
 
-      const { user, error } = await verifyOtp(email, otp);
+      // Invalid code
+      Alert.alert('Invalid Code', '🔧 DEV MODE: Use 123456');
+      setOtp('');
 
-      if (error) {
-        Alert.alert('Verification Failed', error.message || 'Invalid code');
-        return;
-      }
-
-      if (user) {
-        // Clear temporary data
-        await AsyncStorage.removeItem('pending_email_verification');
-        // Redirect to home
-        router.replace('/');
-      }
+      // COMMENTED OUT: Original verifyOtp logic
+      // const { user, error } = await verifyOtp(email, otp);
+      // if (error) {
+      //   Alert.alert('Verification Failed', error.message || 'Invalid code');
+      //   return;
+      // }
+      // if (user) {
+      //   await AsyncStorage.removeItem('pending_email_verification');
+      //   router.replace('/');
+      // }
     } catch (error: any) {
       Alert.alert('Error', error.message || 'An error occurred');
     } finally {
@@ -174,10 +174,10 @@ export default function EmailVerify() {
             }}
           />
 
-          {/* Info */}
-          <View style={{ backgroundColor: '#E0F2FE', padding: 12, borderRadius: 8, marginBottom: 24 }}>
-            <Text style={{ fontSize: 13, color: '#0C4A6E', lineHeight: 18 }}>
-              Check your email for a 6-digit code. If you don't see it, check your spam folder or request a new code.
+          {/* Info - DEV MODE */}
+          <View style={{ backgroundColor: '#FEF3C7', padding: 12, borderRadius: 8, marginBottom: 24, borderLeftWidth: 4, borderLeftColor: '#F59E0B' }}>
+            <Text style={{ fontSize: 13, color: '#92400E', lineHeight: 18, fontWeight: '600' }}>
+              🔧 DEV MODE: Enter 123456 to verify
             </Text>
           </View>
         </View>

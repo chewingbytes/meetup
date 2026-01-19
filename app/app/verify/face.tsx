@@ -15,7 +15,7 @@ export default function FaceVerify() {
         <Text style={{ textAlign: "center", color: PALETTE.white }}>Take selfie (mock)</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.replace("/" as any)} style={{ paddingVertical: 12, borderRadius: 10 }}>
+      <TouchableOpacity onPress={() => router.replace("/home" as any)} style={{ paddingVertical: 12, borderRadius: 10 }}>
         <Text style={{ textAlign: "center", color: "#6b7280" }}>Skip</Text>
       </TouchableOpacity>
     </View>

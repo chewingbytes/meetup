@@ -136,7 +136,7 @@ export default function HostScreen() {
     };
     console.log("Publishing event:", payload);
     Alert.alert("Event hosted", "Your event was published (mock).", [
-      { text: "OK", onPress: () => router.replace("/" as any) },
+      { text: "OK", onPress: () => router.replace("/home" as any) },
     ]);
   };
 

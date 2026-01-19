@@ -16,7 +16,7 @@ export default function SingpassVerify() {
         <Text style={{ textAlign: "center", color: PALETTE.white, fontWeight: "700" }}>Continue (mock)</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.replace("/" as any)} style={{ paddingVertical: 12, borderRadius: 12 }}>
+      <TouchableOpacity onPress={() => router.replace("/home" as any)} style={{ paddingVertical: 12, borderRadius: 12 }}>
         <Text style={{ textAlign: "center", color: "#6b7280" }}>Skip for now</Text>
       </TouchableOpacity>
     </View>
