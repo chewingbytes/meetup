@@ -110,4 +110,84 @@ router.post("/", upload.single("cover"), async (req, res) => {
   }
 });
 
+router.post("/join", async (req, res) => {
+  try {
+    const { user_id, event_id } = req.body;
+
+    if (!user_id || !event_id) {
+      return res
+        .status(400)
+        .json({ message: "user_id and event_id are required" });
+    }
+
+    console.log("🔵 User joining event:", { user_id, event_id });
+
+    // Check if user already joined
+    const { data: existing, error: checkError } = await supabase
+      .from("user_events")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("event_id", event_id)
+      .single();
+
+    if (existing) {
+      return res.status(409).json({ message: "Already joined this event" });
+    }
+
+    // Insert join record
+    const { data, error: joinError } = await supabase
+      .from("user_events")
+      .insert({
+        user_id,
+        event_id,
+        joined_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (joinError) {
+      console.error("❌ Join error:", joinError);
+      throw joinError;
+    }
+
+    console.log("✅ User successfully joined event");
+    res.status(201).json({ success: true, data });
+  } catch (err: any) {
+    console.error("❌ Error joining event:", err);
+    res.status(500).json({ message: err.message || "Failed to join event" });
+  }
+});
+
+// Leave event
+router.post("/leave", async (req, res) => {
+  try {
+    const { user_id, event_id } = req.body;
+
+    if (!user_id || !event_id) {
+      return res
+        .status(400)
+        .json({ message: "user_id and event_id are required" });
+    }
+
+    console.log("🔵 User leaving event:", { user_id, event_id });
+
+    const { error: leaveError } = await supabase
+      .from("user_events")
+      .delete()
+      .eq("user_id", user_id)
+      .eq("event_id", event_id);
+
+    if (leaveError) {
+      console.error("❌ Leave error:", leaveError);
+      throw leaveError;
+    }
+
+    console.log("✅ User successfully left event");
+    res.json({ success: true, message: "Successfully left event" });
+  } catch (err: any) {
+    console.error("❌ Error leaving event:", err);
+    res.status(500).json({ message: err.message || "Failed to leave event" });
+  }
+});
+
 export default router;

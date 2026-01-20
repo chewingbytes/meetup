@@ -17,7 +17,7 @@ export default function MobileNav({ active }: MobileNavProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { id: "home", icon: Home, label: "Home", href: "/" },
+    { id: "home", icon: Home, label: "Home", href: "/home" },
     { id: "explore", icon: Hash, label: "Discover", href: "/explore" },
     { id: "chats", icon: MessageCircle, label: "Chat", href: "/inbox" },
   ];

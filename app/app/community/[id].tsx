@@ -3,104 +3,78 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
-  MapPin,
-  Calendar,
-  Clock,
   Users,
   Heart,
+  MessageCircle,
+  Lock,
+  Globe,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { BlurView } from "expo-blur";
-import { useEventStore } from "@/lib/stores/eventStore";
+import { useCommunityStore } from "@/lib/stores/communityStore";
+import { CommunityProps } from "@/utils/types";
 
-interface Event {
-  id: string;
-  name: string;
-  description_md?: string;
-  cover_image?: string;
-  start_at: string;
-  end_at: string;
-  location_text?: string;
-  location_instructions?: string;
-  is_paid?: boolean;
-  price?: number;
-  capacity?: number;
-  require_approval?: boolean;
-  visibility?: string;
-  organizer_id?: string;
-}
-
-export default function EventDetail() {
+export default function CommunityDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [joined, setJoined] = useState(false);
   const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
+  const [joined, setJoined] = useState(false);
 
-  // Use Zustand store to fetch event
-  const { eventDetails, fetchEventById } = useEventStore();
-  const event = id ? eventDetails[id as string] : null;
-  const [loading, setLoading] = useState(!event);
-  const [error, setError] = useState<string | null>(null);
+  // Use Zustand store to fetch community
+  const { communityDetails, fetchCommunityById } = useCommunityStore();
+  const community = id ? communityDetails[id as string] : null;
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch event data from store on mount
+  // Fetch community if not in cache
   useEffect(() => {
     let mounted = true;
 
-    async function loadEvent() {
-      try {
-        if (!id) {
-          setError("No event ID provided");
-          setLoading(false);
-          return;
-        }
+    async function loadCommunity() {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
 
-        console.log("📡 Fetching event with ID:", id);
-        const data = await fetchEventById(id as string);
-        
-        if (!mounted) return;
-        
-        if (data) {
-          console.log("✅ Event loaded:", data);
-          // Set gradient based on event name or default
+      try {
+        console.log("📡 Fetching community with ID:", id);
+        await fetchCommunityById(id as string);
+        if (mounted) {
+          console.log("✅ Community loaded");
+          // Set gradient based on community topics or default
           setGradientColors(["#0c0c0c", "#1a1a1a", "#2d2d2d"]);
-        } else {
-          setError("Failed to load event");
         }
-      } catch (err: any) {
-        if (!mounted) return;
-        console.error("❌ Failed to load event:", err);
-        setError(err.message || "Failed to load event");
+      } catch (err) {
+        console.error("❌ Failed to load community:", err);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) setIsLoading(false);
       }
     }
 
-    loadEvent();
+    loadCommunity();
     return () => {
       mounted = false;
     };
-  }, [id, fetchEventById]);
+  }, [id, fetchCommunityById]);
 
-  const handleJoinEvent = async () => {
+  const handleJoinCommunity = async () => {
     try {
       setJoined(true);
-      // TODO: Call API to join event
-      console.log("🎉 Joined event:", event?.id);
+      // TODO: Call API to join community
+      console.log("🎉 Joined community:", community?.id);
     } catch (err) {
-      console.error("Failed to join event:", err);
+      console.error("Failed to join community:", err);
       setJoined(false);
     }
   };
 
   // Loading state
-  if (loading) {
+  if (isLoading) {
     return (
       <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>Loading event...</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -108,7 +82,7 @@ export default function EventDetail() {
   }
 
   // Error state
-  if (error || !event) {
+  if (!community) {
     return (
       <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
@@ -116,12 +90,11 @@ export default function EventDetail() {
             <TouchableOpacity onPress={() => router.back()}>
               <ArrowLeft color="white" size={24} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Event Details</Text>
+            <Text style={styles.headerTitle}>Community Details</Text>
+            <View style={{ width: 24 }} />
           </View>
           <View style={styles.centerContainer}>
-            <Text style={styles.errorText}>
-              {error || "Event not found"}
-            </Text>
+            <Text style={styles.errorText}>Community not found</Text>
             <TouchableOpacity 
               style={styles.backButton}
               onPress={() => router.back()}
@@ -134,19 +107,6 @@ export default function EventDetail() {
     );
   }
 
-  // Parse dates
-  const startDate = new Date(event.start_at);
-  const endDate = new Date(event.end_at);
-  const formattedDate = startDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const formattedTime = startDate.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
   return (
     <LinearGradient colors={gradientColors} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
@@ -157,22 +117,22 @@ export default function EventDetail() {
               <TouchableOpacity onPress={() => router.back()}>
                 <ArrowLeft color="white" size={24} />
               </TouchableOpacity>
-              <Text style={styles.headerTitle}>Event Details</Text>
+              <Text style={styles.headerTitle}>Community</Text>
               <View style={{ width: 24 }} />
             </View>
           </BlurView>
 
           {/* Hero Image */}
           <View style={styles.imageContainer}>
-            {event.cover_image ? (
+            {community.profile_image ? (
               <Image
-                source={{ uri: event.cover_image }}
+                source={{ uri: community.profile_image }}
                 style={styles.heroImage}
                 resizeMode="cover"
               />
             ) : (
               <View style={[styles.heroImage, styles.placeholderImage]}>
-                <Text style={styles.placeholderText}>No Image</Text>
+                <Text style={styles.placeholderEmoji}>👥</Text>
               </View>
             )}
           </View>
@@ -180,7 +140,24 @@ export default function EventDetail() {
           {/* Content */}
           <View style={styles.contentContainer}>
             {/* Title */}
-            <Text style={styles.title}>{event.name}</Text>
+            <Text style={styles.title}>{community.name}</Text>
+
+            {/* Privacy Badge */}
+            <View style={styles.privacyBadge}>
+              {community.privacy_mode ? (
+                <>
+                  <Lock size={14} color="#f59e0b" />
+                  <Text style={styles.privacyText}>Private Community</Text>
+                </>
+              ) : (
+                <>
+                  <Globe size={14} color="#10b981" />
+                  <Text style={[styles.privacyText, { color: "#10b981" }]}>
+                    Public Community
+                  </Text>
+                </>
+              )}
+            </View>
 
             {/* CTA Buttons */}
             <View style={styles.buttonRow}>
@@ -189,10 +166,10 @@ export default function EventDetail() {
                   styles.joinButton,
                   joined && styles.joinedButton
                 ]}
-                onPress={handleJoinEvent}
+                onPress={handleJoinCommunity}
               >
                 <Text style={styles.joinButtonText}>
-                  {joined ? "✓ Joined" : "Join Event"}
+                  {joined ? "✓ Joined" : "Join Community"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.favoriteButton}>
@@ -200,86 +177,83 @@ export default function EventDetail() {
               </TouchableOpacity>
             </View>
 
-            {/* Details Section */}
-            <View style={styles.detailsSection}>
-              {/* Date & Time */}
-              <View style={styles.detailRow}>
-                <Calendar color="white" size={20} />
-                <View style={styles.detailTextContainer}>
-                  <Text style={styles.detailLabel}>Date & Time</Text>
-                  <Text style={styles.detailValue}>
-                    {formattedDate} at {formattedTime}
-                  </Text>
-                </View>
-              </View>
+            {/* Quick Actions */}
+            {joined && (
+              <TouchableOpacity 
+                style={styles.chatButton}
+                onPress={() => router.push(`/chat/${community.id}?name=${community.name}`)}
+              >
+                <MessageCircle size={18} color="#fff" />
+                <Text style={styles.chatButtonText}>Open Group Chat</Text>
+              </TouchableOpacity>
+            )}
 
-              {/* Location */}
-              {event.location_text && (
-                <View style={styles.detailRow}>
-                  <MapPin color="white" size={20} />
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Location</Text>
-                    <Text style={styles.detailValue}>{event.location_text}</Text>
-                    {event.location_instructions && (
-                      <Text style={styles.detailSubtext}>
-                        {event.location_instructions}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* Capacity */}
-              {event.capacity && (
-                <View style={styles.detailRow}>
-                  <Users color="white" size={20} />
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Capacity</Text>
-                    <Text style={styles.detailValue}>
-                      {event.capacity} attendees max
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Price */}
-              {event.is_paid && (
-                <View style={styles.detailRow}>
-                  <Text style={styles.priceLabel}>$</Text>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Cost</Text>
-                    <Text style={styles.detailValue}>
-                      SGD ${event.price?.toFixed(2) || "0.00"}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* About Event */}
-            {event.description_md && (
+            {/* Topics */}
+            {community.topics && community.topics.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About Event</Text>
+                <Text style={styles.sectionTitle}>Topics</Text>
+                <View style={styles.topicsContainer}>
+                  {community.topics.map((topic, idx) => (
+                    <View key={idx} style={styles.topicPill}>
+                      <Text style={styles.topicText}>{topic}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* About */}
+            {community.description && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>About</Text>
                 <Text style={styles.descriptionText}>
-                  {event.description_md}
+                  {community.description}
                 </Text>
               </View>
             )}
 
-            {/* Approval Notice */}
-            {event.require_approval && (
-              <View style={styles.approvalNotice}>
-                <Text style={styles.approvalText}>
-                  ⓘ Host approval required to attend this event
-                </Text>
+            {/* Community Rules */}
+            {community.rules && community.rules.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Community Rules</Text>
+                <View style={styles.rulesContainer}>
+                  {community.rules.map((rule, idx) => (
+                    <View key={idx} style={styles.ruleRow}>
+                      <Text style={styles.ruleNumber}>{idx + 1}.</Text>
+                      <Text style={styles.ruleText}>{rule}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
 
-            {/* Visibility Badge */}
-            <View style={styles.visibilityBadge}>
-              <Text style={styles.visibilityText}>
-                {event.visibility === "public" ? "🌐 Public Event" : "🔒 Private Event"}
-              </Text>
+            {/* FAQ */}
+            {community.faq && community.faq.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+                {community.faq.map((item, idx) => (
+                  <View key={idx} style={styles.faqItem}>
+                    <Text style={styles.faqQuestion}>Q: {item.question}</Text>
+                    <Text style={styles.faqAnswer}>A: {item.answer}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Meta Info */}
+            <View style={styles.metaSection}>
+              <View style={styles.metaRow}>
+                <Users size={16} color="#999" />
+                <Text style={styles.metaText}>
+                  Created {new Date(community.created_at || "").toLocaleDateString("en-US", {
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </Text>
+              </View>
+              {community.slug && (
+                <Text style={styles.slugText}>@{community.slug}</Text>
+              )}
             </View>
 
             <View style={{ height: 40 }} />
@@ -339,7 +313,7 @@ const styles = StyleSheet.create({
   },
   heroImage: {
     width: "100%",
-    height: 240,
+    height: 200,
     borderRadius: 12,
   },
   placeholderImage: {
@@ -347,9 +321,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  placeholderText: {
-    color: "#666",
-    fontSize: 16,
+  placeholderEmoji: {
+    fontSize: 64,
   },
   contentContainer: {
     paddingHorizontal: 20,
@@ -358,12 +331,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 28,
     fontWeight: "700",
+    marginBottom: 12,
+  },
+  privacyBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0f0f0f",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
     marginBottom: 16,
+    gap: 6,
+  },
+  privacyText: {
+    color: "#f59e0b",
+    fontSize: 12,
+    fontWeight: "600",
   },
   buttonRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   joinButton: {
     flex: 1,
@@ -384,48 +373,27 @@ const styles = StyleSheet.create({
   favoriteButton: {
     width: 50,
     height: 50,
-    backgroundColor: "#fff/10",
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#fff/20",
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  detailsSection: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  detailRow: {
+  chatButton: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 16,
-    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#7c3aed",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginBottom: 24,
+    gap: 8,
   },
-  detailTextContainer: {
-    flex: 1,
-  },
-  detailLabel: {
-    color: "#999",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  detailValue: {
+  chatButtonText: {
     color: "#fff",
-    fontSize: 14,
     fontWeight: "600",
-    marginTop: 4,
-  },
-  detailSubtext: {
-    color: "#777",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  priceLabel: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 15,
   },
   section: {
     marginBottom: 24,
@@ -436,34 +404,83 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 12,
   },
+  topicsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  topicPill: {
+    backgroundColor: "#4f46e5",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  topicText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
   descriptionText: {
     color: "#ccc",
     fontSize: 14,
     lineHeight: 20,
   },
-  approvalNotice: {
-    backgroundColor: "#2d1b0f",
-    borderLeftWidth: 4,
-    borderLeftColor: "#f59e0b",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 16,
+  rulesContainer: {
+    backgroundColor: "#0f0f0f",
+    borderRadius: 12,
+    padding: 16,
   },
-  approvalText: {
-    color: "#fca5a5",
+  ruleRow: {
+    flexDirection: "row",
+    marginBottom: 12,
+    gap: 8,
+  },
+  ruleNumber: {
+    color: "#4f46e5",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  ruleText: {
+    flex: 1,
+    color: "#ccc",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  faqItem: {
+    backgroundColor: "#0f0f0f",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  faqQuestion: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  faqAnswer: {
+    color: "#999",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  metaSection: {
+    backgroundColor: "#0f0f0f",
+    borderRadius: 12,
+    padding: 16,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  metaText: {
+    color: "#999",
     fontSize: 13,
   },
-  visibilityBadge: {
-    backgroundColor: "#0f0f0f",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  visibilityText: {
+  slugText: {
     color: "#4f46e5",
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "600",
   },
 });

@@ -1,14 +1,9 @@
-import React from "react";
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  Dimensions,
-} from "react-native";
+import React, { useEffect } from "react";
+import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/lib/authContext";
 
 const hero =
   "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80";
@@ -16,6 +11,15 @@ const hero =
 export default function WelcomeScreen() {
   const router = useRouter();
   const { height } = Dimensions.get("window");
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (user) {
+        router.replace("/home");
+      }
+    }
+  }, [isLoading, user]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
@@ -76,9 +80,7 @@ export default function WelcomeScreen() {
               borderColor: "rgba(255,255,255,0.15)",
             }}
           >
-            <Text className="text-white font-semibold text-base">
-              Sign Up
-            </Text>
+            <Text className="text-white font-semibold text-base">Sign Up</Text>
           </TouchableOpacity>
         </View>
       </View>

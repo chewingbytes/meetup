@@ -21,7 +21,7 @@ function HorizontalCarousel<T>({
   const { width } = Dimensions.get("window");
   const cardWidth = width * 0.9; // bigger, image-first
   return (
-    <View className="mb-8">
+    <View className="">
       <View className="flex-row w-full px-5 gap-x-1.5 items-center mb-6">
         <Text className="text-white text-2xl font-semibold">{heading}</Text>
         <ArrowDownRight color="grey" size={18} />

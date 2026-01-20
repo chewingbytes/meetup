@@ -1,25 +1,28 @@
 import { useEffect } from "react";
 import { useEventStore } from "@/lib/stores/eventStore";
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/authContext";
 
 /**
  * CUSTOM HOOK: useEvents
- * 
+ *
  * Automatically fetches events on first mount and provides store state.
  * Smart caching: only fetches if data is empty or cache expires.
- * 
+ *
  * USAGE:
  * ```tsx
  * const { events, isLoading, refresh } = useEvents();
- * 
+ *
  * // To manually refresh:
  * const handlePullToRefresh = async () => {
  *   await refresh();
  * };
  * ```
- * 
+ *
  * PARAMETERS:
  * - autoFetch (default: true): Automatically fetch on mount
- * 
+ *
  * RETURNS:
  * - events: Array of EventProps
  * - isLoading: boolean indicating if fetch is in progress
@@ -28,7 +31,8 @@ import { useEventStore } from "@/lib/stores/eventStore";
  * - refresh: async function to manually refresh events (force=true)
  */
 export const useEvents = (autoFetch = true) => {
-  const { events, isLoading, isRefreshing, error, fetchEvents } = useEventStore();
+  const { events, isLoading, isRefreshing, error, fetchEvents } =
+    useEventStore();
 
   useEffect(() => {
     if (autoFetch) {

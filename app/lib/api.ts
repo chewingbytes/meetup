@@ -66,6 +66,16 @@ export const createCommunity = (body: any) =>
     method: "POST",
     body: body instanceof FormData ? body : JSON.stringify(body),
   });
+export const joinCommunity = (user_id: string, community_id: string) =>
+  request("/communities/join", {
+    method: "POST",
+    body: JSON.stringify({ user_id, community_id }),
+  });
+export const leaveCommunity = (user_id: string, community_id: string) =>
+  request("/communities/leave", {
+    method: "POST",
+    body: JSON.stringify({ user_id, community_id }),
+  });
 
 // Topics
 export const getTopics = () => request("/topics");
@@ -77,6 +87,17 @@ export const createEvent = (body: any) =>
   request("/events", {
     method: "POST",
     body: body instanceof FormData ? body : JSON.stringify(body),
+  });
+
+export const joinEvent = (user_id: string, event_id: string) =>
+  request("/events/join", {
+    method: "POST",
+    body: JSON.stringify({ user_id, event_id }),
+  });
+export const leaveEvent = (user_id: string, event_id: string) =>
+  request("/events/leave", {
+    method: "POST",
+    body: JSON.stringify({ user_id, event_id }),
   });
 
 // Notifications
@@ -103,9 +124,13 @@ export default {
   getCommunities,
   getCommunity,
   createCommunity,
+  joinCommunity,
+  leaveCommunity,
   getTopics,
   getEvents,
   getEvent,
+  joinEvent,
+  leaveEvent,
   createEvent,
   getNotifications,
   markNotificationRead,
