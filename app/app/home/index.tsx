@@ -15,27 +15,21 @@ import { Plus, Bell, User } from "lucide-react-native";
 
 import { useRouter } from "expo-router";
 import {
-  Image,
-  ScrollView,
+  View,
   Text,
   TouchableOpacity,
-  View,
-  FlatList,
-  Dimensions,
   ActivityIndicator,
+  SafeAreaView as RNSafeAreaView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { sampleEvents } from "@/data/event";
-import { usersCommunities } from "@/data/communities";
-import { EventProps, CommunityProps } from "@/utils/types";
+import CommunitySidebar from "@/components/community-sidebar";
+import CommunityContent from "@/components/community-content";
 
-import chunkArray from "@/scripts/chunkArray";
-import { useEffect, useState } from "react";
-import { useEvents } from "@/hooks/useEvents";
-import { useCommunities } from "@/hooks/useCommunities";
-import { useAuth } from "@/lib/authContext";
 import { useAuthRedirect } from "@/lib/useAuthRedirect";
+import { useCommunities } from "@/hooks/useCommunities";
+import { useState, useEffect } from "react";
+import { CommunityProps } from "@/utils/types";
 
 const PALETTE = {
   background: "#000000",
@@ -44,15 +38,9 @@ const PALETTE = {
 export default function HomeScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
-  const { user, isCheckingAuth } = useAuthRedirect("/login");
+  const { user, isCheckingAuth } = useAuthRedirect("/");
 
-  // Use Zustand stores with custom hooks
-  const {
-    events,
-    isLoading: eventsLoading,
-    isRefreshing: eventsRefreshing,
-    refresh: refreshEvents,
-  } = useEvents();
+  // Fetch communities
   const {
     communities,
     isLoading: communitiesLoading,
@@ -60,19 +48,24 @@ export default function HomeScreen() {
     refresh: refreshCommunities,
   } = useCommunities();
 
-  const shouldShowSkeleton = (eventsLoading || communitiesLoading) && !isCheckingAuth;
-  const isRefreshing = eventsRefreshing || communitiesRefreshing;
+  // Track selected community
+  const [selectedCommunity, setSelectedCommunity] =
+    useState<CommunityProps | null>(null);
 
-  const openChat = (groupId: string, groupName: string) => {
-    router.push(`/chat/${groupId}?name=${groupName}` as any);
-  };
+  // Auto-select first community when communities load
+  useEffect(() => {
+    if (communities.length > 0 && !selectedCommunity) {
+      setSelectedCommunity(communities[0]);
+    }
+  }, [communities]);
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
-    await Promise.all([refreshEvents(), refreshCommunities()]);
+    await Promise.all([refreshCommunities()]);
   };
 
-  // Show loading spinner while checking auth
+  const shouldShowSkeleton = communitiesLoading && !isCheckingAuth;
+
   if (isCheckingAuth) {
     return (
       <SafeAreaView
@@ -95,10 +88,13 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: PALETTE.background }}
+      style={{
+        flex: 1,
+        backgroundColor: PALETTE.background,
+      }}
       edges={["top"]}
     >
-      <Header
+      {/* <Header
         title="Welcome"
         actions={[
           {
@@ -110,6 +106,7 @@ export default function HomeScreen() {
           { icon: Bell, link: "/notifications" },
         ]}
       />
+
       {menuOpen && (
         <View
           style={{
@@ -149,51 +146,57 @@ export default function HomeScreen() {
             <Text style={{ color: "#fff", fontSize: 16 }}>Create event</Text>
           </TouchableOpacity>
         </View>
-      )}
+      )} */}
 
-      <ScrollView
-        refreshControl={
-          <PullToRefresh
-            isRefreshing={isRefreshing}
-            onRefresh={handleRefresh}
-          />
-        }
+      <View
+        style={{
+          flex: 1,
+          marginBottom: 75,
+          flexDirection: "row",
+        }}
       >
-        <View className="container">
-          {/* ✅ Show skeleton ONLY while loading data (auth is done) */}
-          {shouldShowSkeleton ? (
-            <>
-              <SkeletonCarousel />
-              <SkeletonVerticalList />
-            </>
-          ) : (
-            <>
-            
-            </>
-            // <>
-            //   <HorizontalCarousel<EventProps>
-            //     heading="Your Events"
-            //     chunks={chunkArray(events, 3)}
-            //     cardComponent={EventCard}
-            //     dataKey="event"
-            //     onItemPress={(event) =>
-            //       router.push(`/events/${event.id}` as any)
-            //     }
-            //   />
+        {shouldShowSkeleton ? (
+          <View style={{ flex: 1 }}>
+            <SkeletonCarousel />
+            <SkeletonVerticalList />
+          </View>
+        ) : (
+          <>
+            {/* Left Sidebar */}
+            <CommunitySidebar
+              communities={communities}
+              selectedCommunityId={selectedCommunity?.id || null}
+              onSelectCommunity={setSelectedCommunity}
+              onAddCommunity={() => {
+                console.log("➕ Add community pressed");
+                router.push("/browse-communities");
+              }}
+            />
 
-            //   <VerticalList<CommunityProps>
-            //     heading="Your Communities"
-            //     items={communities}
-            //     cardComponent={CommunityCard}
-            //     dataKey="community"
-            //     onItemPress={(community) => {
-            //       router.push(`/community/${community.id}` as any);
-            //     }}
-            //   />
-            // </>
-          )}
-        </View>
-      </ScrollView>
+            {/* Main Content */}
+            <View style={{ flex: 1 }}>
+              {communitiesLoading && !selectedCommunity ? (
+                <View
+                  style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <ActivityIndicator size="large" color="#4f46e5" />
+                  <Text style={{ color: "#fff", marginTop: 12 }}>
+                    Loading community...
+                  </Text>
+                </View>
+              ) : (
+                <CommunityContent community={selectedCommunity} />
+              )}
+            </View>
+          </>
+        )}
+      </View>
+
+      {/* Mobile Nav - Fixed at Bottom */}
       <MobileNav active="home" />
     </SafeAreaView>
   );
