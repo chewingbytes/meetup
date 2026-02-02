@@ -6,6 +6,6 @@
   display: flex;
   flex-direction: column; /* because gap-y means vertical gap */
   row-gap: 2.5rem; /* gap-y-10 = 2.5rem */
-  margin-top: 5rem; /* mt-20 = 5rem */
+  margin-top: 3rem; /* mt-20 = 5rem */
   margin-bottom: 7rem; /* mb-28 = 7rem */
 }

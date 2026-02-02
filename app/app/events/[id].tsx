@@ -1,4 +1,4 @@
-import { joinEvent, leaveEvent } from "@/lib/api";
+import { joinEvent, leaveEvent, checkEventMembership, createEventTestimonial } from "@/lib/api";
 import {
   View,
   Text,
@@ -7,6 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,6 +24,9 @@ import {
   Heart,
   ShieldCheck,
   EyeOff,
+  UserPlus,
+  X,
+  Star,
 } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useMemo, useState } from "react";
@@ -32,18 +40,54 @@ export default function EventDetail() {
   const router = useRouter();
   const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
   const { user, isCheckingAuth } = useAuthRedirect("/login");
+  const [joined, setJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false);
+  const [testimonialRating, setTestimonialRating] = useState(5);
+  const [testimonialText, setTestimonialText] = useState('');
+  const [isSubmittingTestimonial, setIsSubmittingTestimonial] = useState(false);
 
   const { eventDetails, fetchEventById, isLoading } = useEventStore();
   const event = id
     ? (eventDetails[id as string] as EventProps | undefined)
     : null;
 
-  // Fetch if missing
+  // Fetch event if missing and check membership
   useEffect(() => {
-    if (!event && id) {
-      fetchEventById(id as string);
+    let mounted = true;
+
+    async function loadEvent() {
+      if (!id || !user) {
+        setIsLoading?.(false);
+        return;
+      }
+
+      try {
+        console.log("📡 Fetching event with ID:", id);
+        await fetchEventById(id as string);
+        if (mounted) {
+          console.log("✅ Event loaded");
+          
+          try {
+            const membershipCheck = await checkEventMembership(user.id, id as string);
+            setJoined(membershipCheck?.isMember || false);
+            console.log("✅ Event membership status:", membershipCheck?.isMember ? "Joined" : "Not joined");
+          } catch (err) {
+            console.error("❌ Failed to check event membership:", err);
+            setJoined(false);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Failed to load event:", err);
+      }
     }
-  }, [id, event, fetchEventById]);
+
+    loadEvent();
+    return () => {
+      mounted = false;
+    };
+  }, [id, user, fetchEventById]);
 
   // Static gradients by “interest” or fallback
   useEffect(() => {
@@ -84,6 +128,36 @@ export default function EventDetail() {
     }
     return "Free";
   }, [event]);
+
+  const isPastEvent = useMemo(() => {
+    if (!event?.end_at) return false;
+    return new Date(event.end_at) < new Date();
+  }, [event?.end_at]);
+
+  const handleSubmitTestimonial = async () => {
+    if (!testimonialText.trim()) {
+      Alert.alert('Error', 'Please write a testimonial');
+      return;
+    }
+
+    try {
+      setIsSubmittingTestimonial(true);
+      await createEventTestimonial({
+        user_id: user?.id,
+        event_id: event?.id,
+        rating: testimonialRating,
+        text: testimonialText,
+      });
+      setShowTestimonialModal(false);
+      setTestimonialText('');
+      setTestimonialRating(5);
+      Alert.alert('Success', 'Thank you for your testimonial!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to submit testimonial');
+    } finally {
+      setIsSubmittingTestimonial(false);
+    }
+  };
 
   // Loading state
   if (isLoading && !event) {
@@ -225,16 +299,105 @@ export default function EventDetail() {
 
             {/* CTAs */}
             <View style={{ flexDirection: "row", gap: 12, marginBottom: 24 }}>
-              <TouchableOpacity
-                style={styles.primaryBtn}
-                onPress={() => joinEvent(String(user?.id), event.id)}
+              {joined && !isPastEvent ? (
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { opacity: isLeaving ? 0.6 : 1 }]}
+                  onPress={async () => {
+                    if (!user || !event) {
+                      console.error("❌ Missing user or event");
+                      Alert.alert("Error", "User or event not found");
+                      return;
+                    }
+                    console.log("🔵 Attempting to leave event:", { userId: user.id, eventId: event.id });
+                    try {
+                      setIsLeaving(true);
+                      console.log("🔵 Calling leaveEvent API...");
+                      const result = await leaveEvent(user.id, event.id);
+                      console.log("✅ API Response:", result);
+                      setJoined(false);
+                      console.log("✅ Left event successfully");
+                      Alert.alert("Success", "You have left this event");
+                    } catch (err: any) {
+                      console.error("❌ Failed to leave event:", {
+                        message: err.message,
+                        status: err.status,
+                        body: err.body,
+                        error: err,
+                      });
+                      Alert.alert("Error", err.message || "Failed to leave event");
+                    } finally {
+                      setIsLeaving(false);
+                    }
+                  }}
+                  disabled={isLeaving}
+                >
+                  {isLeaving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Leave Event</Text>
+                  )}
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.primaryBtn, { opacity: isJoining ? 0.6 : 1 }]}
+                  onPress={async () => {
+                    if (!user || !event) {
+                      Alert.alert("Error", "User or event not found");
+                      return;
+                    }
+                    try {
+                      setIsJoining(true);
+                      await joinEvent(user.id, event.id);
+                      setJoined(true);
+                      console.log("✅ Joined event successfully");
+                    } catch (err: any) {
+                      Alert.alert("Error", err.message || "Failed to join event");
+                      console.error("❌ Failed to join event:", err);
+                    } finally {
+                      setIsJoining(false);
+                    }
+                  }}
+                  disabled={isJoining}
+                >
+                  {isJoining ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Join Event</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                style={styles.ghostBtn}
+                onPress={() => router.push(`/events/participants?id=${event.id}`)}
               >
-                <Text style={styles.primaryBtnText}>Join Event</Text>
+                <Users color="white" size={20} />
               </TouchableOpacity>
               <TouchableOpacity style={styles.ghostBtn}>
                 <Heart color="white" size={20} />
               </TouchableOpacity>
             </View>
+
+            {/* Add Testimonial Button for Past Events */}
+            {isPastEvent && joined && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#f59e0b',
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  marginBottom: 24,
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                }}
+                onPress={() => setShowTestimonialModal(true)}
+              >
+                <Star size={18} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>
+                  Share Your Experience
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* About */}
             {event.description ? (
@@ -263,6 +426,135 @@ export default function EventDetail() {
             ) : null}
           </View>
         </ScrollView>
+
+        {/* Testimonial Modal */}
+        <Modal visible={showTestimonialModal} transparent animationType="fade">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                justifyContent: 'flex-end',
+              }}
+              onPress={() => setShowTestimonialModal(false)}
+            >
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  style={{
+                    backgroundColor: '#111',
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
+                    maxHeight: '100%',
+                  }}
+                  contentContainerStyle={{
+                    padding: 20,
+                  }}
+                >
+                  {/* Header */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>
+                      Share Your Experience
+                    </Text>
+                    <TouchableOpacity onPress={() => setShowTestimonialModal(false)}>
+                      <X size={24} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Event Name */}
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: '#888', fontSize: 12, marginBottom: 4 }}>Event</Text>
+                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{event?.name}</Text>
+                  </View>
+
+                  {/* Rating */}
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 12 }}>
+                      Rating
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <TouchableOpacity key={i} onPress={() => setTestimonialRating(i)}>
+                          <Text style={{ fontSize: 32 }}>{i <= testimonialRating ? '⭐' : '☆'}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Text */}
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
+                      Your Experience
+                    </Text>
+                    <TextInput
+                      value={testimonialText}
+                      onChangeText={setTestimonialText}
+                      placeholder="How was this event? Share your thoughts..."
+                      placeholderTextColor="#666"
+                      multiline
+                      numberOfLines={6}
+                      style={{
+                        backgroundColor: '#18181b',
+                        borderRadius: 12,
+                        paddingHorizontal: 12,
+                        paddingVertical: 12,
+                        color: '#fff',
+                        fontSize: 14,
+                        borderWidth: 1,
+                        borderColor: '#27272a',
+                        textAlignVertical: 'top',
+                        minHeight: 120,
+                      }}
+                    />
+                  </View>
+
+                  {/* Actions */}
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity
+                      onPress={() => setShowTestimonialModal(false)}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#18181b',
+                        borderRadius: 12,
+                        paddingVertical: 14,
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: '#27272a',
+                      }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSubmitTestimonial}
+                      disabled={isSubmittingTestimonial}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 12,
+                        paddingVertical: 14,
+                        alignItems: 'center',
+                        opacity: isSubmittingTestimonial ? 0.7 : 1,
+                      }}
+                    >
+                      {isSubmittingTestimonial ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Share</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </Modal>
       </SafeAreaView>
     </LinearGradient>
   );

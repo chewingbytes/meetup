@@ -1,36 +1,57 @@
 import * as React from "react";
-import { Text, View, ViewProps, TextProps } from "react-native";
+import { Text, View, ViewProps } from "react-native";
 
 interface BadgeProps extends ViewProps {
   variant?: "default" | "secondary" | "destructive" | "outline";
-  className?: string;
   children: React.ReactNode;
 }
 
-export function Badge({ variant = "default", className = "", children, ...props }: BadgeProps) {
-  let variantStyles = "";
-
-  switch (variant) {
-    case "secondary":
-      variantStyles = "bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200";
-      break;
-    case "destructive":
-      variantStyles = "bg-red-600 text-white";
-      break;
-    case "outline":
-      variantStyles = "border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200";
-      break;
-    case "default":
-    default:
-      variantStyles = "bg-blue-600 text-white";
-  }
+export function Badge({ variant = "default", children, style, ...props }: BadgeProps) {
+  const variantStyles = {
+    default: {
+      backgroundColor: "#4f46e5",
+      borderColor: "transparent",
+    },
+    secondary: {
+      backgroundColor: "#18181b",
+      borderColor: "#27272a",
+    },
+    destructive: {
+      backgroundColor: "#ef4444",
+      borderColor: "transparent",
+    },
+    outline: {
+      backgroundColor: "transparent",
+      borderColor: "#888",
+    },
+  }[variant];
 
   return (
     <View
-      className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 w-fit shrink-0 gap-1 overflow-hidden ${variantStyles} ${className}`}
+      style={[
+        {
+          backgroundColor: variantStyles.backgroundColor,
+          borderColor: variantStyles.borderColor,
+          borderWidth: 1,
+          borderRadius: 999,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        style,
+      ]}
       {...props}
     >
-      <Text className="text-xs font-medium">{children}</Text>
+      <Text
+        style={{
+          color: "#fff",
+          fontSize: 12,
+          fontWeight: "600",
+        }}
+      >
+        {children}
+      </Text>
     </View>
   );
 }

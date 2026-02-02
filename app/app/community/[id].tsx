@@ -1,4 +1,4 @@
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -14,24 +14,29 @@ import { useEffect, useState } from "react";
 import { BlurView } from "expo-blur";
 import { useCommunityStore } from "@/lib/stores/communityStore";
 import { CommunityProps } from "@/utils/types";
+import { useAuth } from "@/lib/authContext";
+import { joinCommunity, leaveCommunity, checkMembership } from "@/lib/api";
 
 export default function CommunityDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
+  const { user } = useAuth();
+  const [gradientColors, setGradientColors] = useState<[string, string, string]>(["#000000", "#333333", "#000000"]);
   const [joined, setJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   // Use Zustand store to fetch community
   const { communityDetails, fetchCommunityById } = useCommunityStore();
   const community = id ? communityDetails[id as string] : null;
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch community if not in cache
+  // Fetch community if not in cache and check membership
   useEffect(() => {
     let mounted = true;
 
     async function loadCommunity() {
-      if (!id) {
+      if (!id || !user) {
         setIsLoading(false);
         return;
       }
@@ -41,8 +46,16 @@ export default function CommunityDetail() {
         await fetchCommunityById(id as string);
         if (mounted) {
           console.log("✅ Community loaded");
-          // Set gradient based on community topics or default
           setGradientColors(["#0c0c0c", "#1a1a1a", "#2d2d2d"]);
+          
+          try {
+            const membershipCheck = await checkMembership(user.id, id as string);
+            setJoined(membershipCheck?.isMember || false);
+            console.log("✅ Membership status:", membershipCheck?.isMember ? "Member" : "Not a member");
+          } catch (err) {
+            console.error("❌ Failed to check membership:", err);
+            setJoined(false);
+          }
         }
       } catch (err) {
         console.error("❌ Failed to load community:", err);
@@ -55,17 +68,70 @@ export default function CommunityDetail() {
     return () => {
       mounted = false;
     };
-  }, [id, fetchCommunityById]);
+  }, [id, user, fetchCommunityById]);
 
   const handleJoinCommunity = async () => {
-    try {
-      setJoined(true);
-      // TODO: Call API to join community
-      console.log("🎉 Joined community:", community?.id);
-    } catch (err) {
-      console.error("Failed to join community:", err);
-      setJoined(false);
+    if (!user || !community) {
+      Alert.alert("Error", "User or community not found");
+      return;
     }
+
+    try {
+      setIsJoining(true);
+      await joinCommunity(user.id, community.id);
+      setJoined(true);
+      console.log("🎉 Successfully joined community:", community.id);
+      Alert.alert("Success", "You have joined this community!");
+    } catch (err: any) {
+      console.error("❌ Failed to join community:", err);
+      Alert.alert("Error", err.message || "Failed to join community");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleLeaveCommunity = async () => {
+    if (!user || !community) {
+      console.error("❌ Missing user or community");
+      Alert.alert("Error", "User or community not found");
+      return;
+    }
+
+    console.log("🔵 Attempting to leave community:", { userId: user.id, communityId: community.id });
+
+    Alert.alert(
+      "Leave Community",
+      "Are you sure you want to leave this community?",
+      [
+        { text: "Cancel", onPress: () => {}, style: "cancel" },
+        {
+          text: "Leave",
+          onPress: async () => {
+            try {
+              setIsLeaving(true);
+              console.log("🔵 Calling leaveCommunity API...");
+              const result = await leaveCommunity(user.id, community.id);
+              console.log("✅ API Response:", result);
+              setJoined(false);
+              console.log("✅ Left community:", community.id);
+              Alert.alert("Success", "You have left this community");
+              router.back();
+            } catch (err: any) {
+              console.error("❌ Failed to leave community:", {
+                message: err.message,
+                status: err.status,
+                body: err.body,
+                error: err,
+              });
+              Alert.alert("Error", err.message || "Failed to leave community");
+            } finally {
+              setIsLeaving(false);
+            }
+          },
+          style: "destructive",
+        },
+      ]
+    );
   };
 
   // Loading state
@@ -160,22 +226,37 @@ export default function CommunityDetail() {
             </View>
 
             {/* CTA Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={[
-                  styles.joinButton,
-                  joined && styles.joinedButton
-                ]}
-                onPress={handleJoinCommunity}
-              >
-                <Text style={styles.joinButtonText}>
-                  {joined ? "✓ Joined" : "Join Community"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.favoriteButton}>
-                <Heart color="white" size={20} />
-              </TouchableOpacity>
-            </View>
+            {!joined ? (
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={styles.joinButton}
+                  onPress={handleJoinCommunity}
+                  disabled={isJoining}
+                >
+                  {isJoining ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.joinButtonText}>Join Community</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.favoriteButton}>
+                  <Heart color="white" size={20} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={[styles.joinButton, styles.joinedButton]}
+                  onPress={() => {}}
+                  disabled
+                >
+                  <Text style={styles.joinButtonText}>✓ Member</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.favoriteButton}>
+                  <Heart color="white" size={20} />
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Quick Actions */}
             {joined && (

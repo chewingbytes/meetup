@@ -1,4 +1,3 @@
-import MobileNav from "@/components/mobile-nav";
 import React from "react";
 import { FlatList, Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 

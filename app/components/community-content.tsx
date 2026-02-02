@@ -7,12 +7,18 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
-import { Lock, Globe, Hash, Send, ChevronRight, X } from "lucide-react-native";
+import { Lock, Globe, Hash, Send, ChevronRight, X, Plus, LogOut } from "lucide-react-native";
 import { CommunityProps, EventProps } from "@/utils/types";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEvents } from "@/hooks/useEvents";
 import EventCard from "@/components/event-card";
+import ChatDrawer from "@/components/chat-drawer";
+import { useRouter } from "expo-router";
+import { useAuth } from "@/lib/authContext";
+import { leaveCommunity } from "@/lib/api";
 
 interface CommunityContentProps {
   community: CommunityProps | null;
@@ -28,7 +34,11 @@ const mockMessages = [
 export default function CommunityContent({ community }: CommunityContentProps) {
   const drawerWidth = 320;
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [isLeavingCommunity, setIsLeavingCommunity] = useState(false);
   const slide = useRef(new Animated.Value(drawerWidth)).current;
+  const router = useRouter();
+  const { user } = useAuth();
 
   // Events
   const {
@@ -61,6 +71,40 @@ export default function CommunityContent({ community }: CommunityContentProps) {
       useNativeDriver: true,
     }).start();
   }, [drawerOpen, slide]);
+
+  const handleLeaveCommunity = async () => {
+    if (!user || !community) {
+      Alert.alert("Error", "User or community not found");
+      return;
+    }
+
+    Alert.alert(
+      "Leave Community",
+      "Are you sure you want to leave this community?",
+      [
+        { text: "Cancel", onPress: () => {}, style: "cancel" },
+        {
+          text: "Leave",
+          onPress: async () => {
+            try {
+              setIsLeavingCommunity(true);
+              await leaveCommunity(user.id, community.id);
+              console.log("✅ Left community:", community.id);
+              Alert.alert("Success", "You have left this community");
+              setDrawerOpen(false);
+              router.push("/home");
+            } catch (err: any) {
+              console.error("❌ Failed to leave community:", err);
+              Alert.alert("Error", err.message || "Failed to leave community");
+            } finally {
+              setIsLeavingCommunity(false);
+            }
+          },
+          style: "destructive",
+        },
+      ]
+    );
+  };
 
   if (!community) {
     return (
@@ -128,29 +172,26 @@ export default function CommunityContent({ community }: CommunityContentProps) {
               <Text className="text-white font-bold text-lg">general</Text>
             </View>
 
-            {/* <View className="">
-              {mockMessages.map((msg) => (
-                <View key={msg.id} className="mb-3">
-                  <View className="flex-row items-baseline gap-2">
-                    <Text className="text-white font-semibold text-sm">
-                      {msg.user}
-                    </Text>
-                    <Text className="text-white/40 text-xs">{msg.time}</Text>
-                  </View>
-                  <Text className="text-white/70 text-sm mt-1">{msg.text}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View className="flex-row items-center gap-2 px-4 py-3 border-2 rounded-xl border-indigo-800">
-              <Text className="text-white/50 flex-1">Message #general</Text>
-              <TouchableOpacity>
-                <Send size={18} color="#4f46e5" />
-              </TouchableOpacity>
-            </View> */}
+            <TouchableOpacity
+              onPress={() => setChatDrawerOpen(true)}
+              style={{
+                backgroundColor: "#4f46e5",
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Send size={16} color="#fff" />
+              <Text className="text-white font-semibold text-sm">
+                Open Chat
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Calendar placeholder */}
           <View className="px-6 pb-12">
             <Text className="text-white font-bold text-lg mb-3">
               Community Calendar
@@ -162,11 +203,41 @@ export default function CommunityContent({ community }: CommunityContentProps) {
             </View>
           </View>
 
-          {/* Upcoming Events */}
           <View className="px-6 pb-12">
-            <Text className="text-white font-bold text-lg mb-3">
-              Upcoming Events
-            </Text>
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-white font-bold text-lg">
+                Upcoming Events
+              </Text>
+
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!community?.id) return;
+                    router.push({
+                      pathname: "/create-event",
+                      params: {
+                        communityId: community.id,
+                        communityName: community.name,
+                      },
+                    });
+                  }}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: "#4f46e5",
+                  }}
+                >
+                  <Plus size={16} color="#fff" />
+                  <Text
+                    className="text-white font-semibold text-sm"
+                    style={{ marginLeft: 8 }}
+                  >
+                    Add Event
+                  </Text>
+                </TouchableOpacity>
+              </View>
             {eventsLoading && upcomingEvents.length === 0 ? (
               <Text className="text-white/50 text-sm">Loading events…</Text>
             ) : upcomingEvents.length === 0 ? (
@@ -175,7 +246,11 @@ export default function CommunityContent({ community }: CommunityContentProps) {
               </Text>
             ) : (
               upcomingEvents.map((ev) => (
-                <EventCard key={ev.id} event={ev} onPress={() => {}} />
+                <EventCard 
+                  key={ev.id} 
+                  event={ev} 
+                  onPress={() => router.push(`/events/${ev.id}` as any)} 
+                />
               ))
             )}
           </View>
@@ -293,9 +368,44 @@ export default function CommunityContent({ community }: CommunityContentProps) {
             </View>
           )}
 
+          {/* Leave Community Button */}
+          <TouchableOpacity 
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderRadius: 8,
+              backgroundColor: "#ef4444",
+              marginBottom: 32,
+              justifyContent: "center",
+              gap: 8,
+            }}
+            onPress={handleLeaveCommunity}
+            disabled={isLeavingCommunity}
+          >
+            {isLeavingCommunity ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <LogOut size={16} color="#fff" />
+                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
+                  Leave Community
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
           <View style={{ height: 32 }} />
         </ScrollView>
       </Animated.View>
+
+      <ChatDrawer
+        channelId={community?.id}
+        channelName="general"
+        isOpen={chatDrawerOpen}
+        onClose={() => setChatDrawerOpen(false)}
+      />
     </View>
   );
 }

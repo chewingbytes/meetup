@@ -1,55 +1,55 @@
 import React from "react";
-import { Text, TouchableOpacity } from "react-native";
-import { tv, type VariantProps } from "tailwind-variants";
+import { Text, TouchableOpacity, StyleSheet } from "react-native";
 
-const buttonStyles = tv({
-  base: "flex flex-row items-center justify-center rounded-md active:opacity-80",
-  variants: {
-    variant: {
-      default: "bg-primary",
-      destructive: "bg-red-600",
-      outline: "border border-gray-300",
-      secondary: "bg-secondary",
-      ghost: "",
-      link: "",
-    },
-    size: {
-      default: "h-10 px-4",
-      sm: "h-8 px-3",
-      lg: "h-12 px-6",
-      icon: "h-10 w-10",
-    },
-  },
-  defaultVariants: {
-    variant: "default",
-    size: "default",
-  },
-});
-
-type ButtonProps = {
+interface ButtonProps {
   children: React.ReactNode;
-  className?: string;
-  variant?: VariantProps<typeof buttonStyles>["variant"];
-  size?: VariantProps<typeof buttonStyles>["size"];
   onPress?: () => void;
   disabled?: boolean;
-};
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  style?: any;
+}
 
 export const Button = ({
   children,
-  className,
-  variant,
-  size,
   onPress,
-  disabled,
+  disabled = false,
+  variant = 'default',
+  size = 'default',
+  style,
 }: ButtonProps) => {
+  const baseStyle = {
+    paddingHorizontal: size === 'sm' ? 12 : size === 'lg' ? 24 : 16,
+    paddingVertical: size === 'sm' ? 8 : size === 'lg' ? 16 : 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: disabled ? 0.5 : 1,
+  };
+
+  const variantStyle = {
+    default: { backgroundColor: '#4f46e5' },
+    destructive: { backgroundColor: '#ef4444' },
+    outline: { borderWidth: 2, borderColor: '#888', backgroundColor: 'transparent' },
+    secondary: { backgroundColor: '#18181b', borderWidth: 1, borderColor: '#27272a' },
+    ghost: { backgroundColor: 'transparent' },
+  }[variant];
+
   return (
     <TouchableOpacity
       disabled={disabled}
       onPress={onPress}
-      className={buttonStyles({ variant, size, className })}
+      style={[baseStyle, variantStyle, style]}
     >
-      <Text className="text-white font-medium">{children}</Text>
+      <Text
+        style={{
+          color: variant === 'outline' ? '#fff' : '#fff',
+          fontWeight: '700',
+          fontSize: size === 'sm' ? 12 : size === 'lg' ? 16 : 14,
+        }}
+      >
+        {children}
+      </Text>
     </TouchableOpacity>
   );
 };

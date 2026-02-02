@@ -10,7 +10,7 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { BlurView } from "expo-blur"; // add this
 
 interface MobileNavProps {
-  active: "home" | "explore" | "chat";
+  active: "home" | "explore" | "chat" | "profile";
 }
 
 export default function MobileNav({ active }: MobileNavProps) {
@@ -19,7 +19,7 @@ export default function MobileNav({ active }: MobileNavProps) {
   const navItems = [
     { id: "home", icon: Home, label: "Home", href: "/home" },
     { id: "explore", icon: Hash, label: "Discover", href: "/explore" },
-    { id: "chats", icon: MessageCircle, label: "Chat", href: "/inbox" },
+    { id: "profile", icon: User, label: "Profile", href: "/settings" },
   ];
 
   return (

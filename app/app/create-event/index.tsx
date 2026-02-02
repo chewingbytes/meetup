@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Alert } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, ActivityIndicator } from "react-native";
 import {
   View,
   Text,
@@ -11,24 +11,18 @@ import {
   Switch,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Markdown from "react-native-markdown-display";
 import { Check, X } from "lucide-react-native";
 
-import { Picker } from "@react-native-picker/picker"; // make sure to install
+import { getCommunities, createEvent as createEventApi } from "@/lib/api";
+import { useEventStore } from "@/lib/stores/eventStore";
+import { useAuth } from "@/lib/authContext";
 
-// inside your component
-
-// sample communities
-const SAMPLE_COMMUNITIES = [
-  "Hikers Club",
-  "Photography",
-  "Tech Enthusiasts",
-  "Book Lovers",
-];
+import { Picker } from "@react-native-picker/picker"; 
 
 const SINGAPORE_AREAS = [
   "Marina Bay",
@@ -43,6 +37,13 @@ const SINGAPORE_AREAS = [
 
 export default function CreateEvent() {
   const router = useRouter();
+  const { user } = useAuth();
+  const params = useLocalSearchParams<{ communityId?: string; communityName?: string }>();
+
+  const [communities, setCommunities] = useState<Array<{ id: string; name: string }>>([]);
+  const [communitiesLoading, setCommunitiesLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // cover + basic
   const [cover, setCover] = useState<string | null>(null);
@@ -82,6 +83,49 @@ export default function CreateEvent() {
 
   // misc
   const [error, setError] = useState<string | null>(null);
+
+  // Fetch communities from backend
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCommunities = async () => {
+      setCommunitiesLoading(true);
+      setFetchError(null);
+
+      try {
+        const data = await getCommunities();
+        if (!isMounted) return;
+
+        const list: Array<{ id: string; name: string }> = Array.isArray(data)
+          ? data
+          : data?.communities || [];
+        setCommunities(list);
+
+        if (params.communityId) {
+          const matched = list.find((c) => c.id === params.communityId);
+          if (matched) {
+            setSelectedCommunity(matched.id);
+          } else if (params.communityName) {
+            Alert.alert(
+              "Community not found",
+              `We couldn't find ${params.communityName}. Please pick a community.`
+            );
+          }
+        }
+      } catch (e: any) {
+        if (!isMounted) return;
+        setFetchError(e?.message || "Failed to load communities");
+      } finally {
+        if (isMounted) setCommunitiesLoading(false);
+      }
+    };
+
+    loadCommunities();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [params.communityId, params.communityName]);
 
   async function pickCover() {
     const r = await ImagePicker.launchImageLibraryAsync({
@@ -154,9 +198,8 @@ export default function CreateEvent() {
         .filter(Boolean)
         .join(", ");
       setLocationChoice("current");
-      setChosenLocation(
-        addr || `${pos.coords.latitude}, ${pos.coords.longitude}`
-      );
+      const fallbackCoords = pos.coords.latitude + ", " + pos.coords.longitude;
+      setChosenLocation(addr || fallbackCoords);
     } catch (e) {
       setError("Could not fetch current location.");
     }
@@ -187,6 +230,8 @@ export default function CreateEvent() {
 
   function canSubmit() {
     // required: name >= 3 chars, start & end set and start <= end, chosenLocation, description >= 10 chars
+    if (!selectedCommunity) return false;
+    if (!communities.find((c) => c.id === selectedCommunity)) return false;
     if (name.trim().length < 3) return false;
     if (!start || !end) return false;
     if (start > end) return false;
@@ -203,28 +248,44 @@ export default function CreateEvent() {
       return;
     }
     setError(null);
-    const event = {
-      id: `e-${Date.now()}`,
+
+    const selected = communities.find((c) => c.id === selectedCommunity);
+    if (!selected) {
+      Alert.alert("Community required", "Please select a valid community.");
+      return;
+    }
+
+    const payload: any = {
+      communityId: selected.id,
+      organizerId: user?.id || null,
       name: name.trim(),
-      cover,
-      start: start!.toISOString(),
-      end: end!.toISOString(),
-      location: chosenLocation,
-      locationInstructions: locationInstructions.trim() || undefined,
-      description,
-      ticketing: {
-        requireApproval,
-        isPaid,
-        price: isPaid ? Number(price) : 0,
-      },
-      options: {
-        visibility: isPublic ? "public" : "private",
-        capacity: unlimited ? "unlimited" : Number(capacity),
-      },
-      dateCreated: new Date().toISOString(),
+      cover_url: cover || undefined,
+      start_at: start?.toISOString(),
+      end_at: end?.toISOString(),
+      location_text: chosenLocation,
+      location_instructions: locationInstructions.trim() || undefined,
+      description: description,
+      require_approval: requireApproval,
+      is_paid: isPaid,
+      price: isPaid ? Number(price) : 0,
+      visibility: isPublic ? "public" : "private",
+      capacity: unlimited ? null : Number(capacity) || null,
     };
-    console.log("🎫 Event created", event);
-    router.push("/");
+
+    setIsSubmitting(true);
+    createEventApi(payload)
+      .then(async () => {
+        // Refresh the event store to show the new event immediately
+        const { fetchEvents } = useEventStore.getState();
+        await fetchEvents(true); // Force refresh
+        
+        Alert.alert("Event created", "Your event has been created successfully.");
+        router.push("/home");
+      })
+      .catch((e: any) => {
+        setError(e?.message || "Failed to create event.");
+      })
+      .finally(() => setIsSubmitting(false));
   }
 
   return (
@@ -239,14 +300,41 @@ export default function CreateEvent() {
 
         <TouchableOpacity
           onPress={handleCreate}
-          disabled={!canSubmit()}
-          style={{ opacity: canSubmit() ? 1 : 0.5 }}
+          disabled={!canSubmit() || isSubmitting}
+          style={{ opacity: !canSubmit() || isSubmitting ? 0.5 : 1 }}
         >
-          <Check size={26} color={canSubmit() ? "#4f46e5" : "#666"} />
+          <Check
+            size={26}
+            color={!canSubmit() || isSubmitting ? "#666" : "#4f46e5"}
+          />
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Quick Template Option */}
+        <TouchableOpacity
+          onPress={() => router.push('/create-event/advanced')}
+          style={{
+            backgroundColor: '#4f46e5',
+            padding: 16,
+            borderRadius: 14,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              ✨ Use a Template
+            </Text>
+            <Text style={{ color: '#e0e7ff', fontSize: 12, marginTop: 4 }}>
+              Create events faster with pre-made templates
+            </Text>
+          </View>
+          <Text style={{ color: '#fff', fontSize: 20 }}>→</Text>
+        </TouchableOpacity>
+
         {/* COVER */}
         <TouchableOpacity style={styles.coverContainer} onPress={pickCover}>
           {cover ? (
@@ -261,19 +349,33 @@ export default function CreateEvent() {
         </TouchableOpacity>
 
         {/* COMMUNITY DROPDOWN */}
-        <Text style={styles.label}>Select community</Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>Select community</Text>
+          {communitiesLoading && (
+            <ActivityIndicator size="small" color="#4f46e5" />
+          )}
+        </View>
         <View style={styles.input}>
           <Picker
+            enabled={!communitiesLoading}
             selectedValue={selectedCommunity}
             onValueChange={(itemValue) => setSelectedCommunity(itemValue)}
             dropdownIconColor="#fff" // iOS-friendly
           >
-            <Picker.Item label="Choose a community..." value={null} />
-            {SAMPLE_COMMUNITIES.map((c) => (
-              <Picker.Item key={c} label={c} value={c} />
+            <Picker.Item
+              label={
+                communitiesLoading
+                  ? "Loading communities..."
+                  : "Choose a community..."
+              }
+              value={null}
+            />
+            {communities.map((c) => (
+              <Picker.Item key={c.id} label={c.name} value={c.id} />
             ))}
           </Picker>
         </View>
+        {fetchError && <Text style={styles.error}>{fetchError}</Text>}
 
         {/* NAME */}
         <Text style={styles.label}>Event name</Text>

@@ -7,6 +7,12 @@ import notificationsRouter from "./src/routes/notifications.ts";
 import profileRouter from "./src/routes/profile.ts";
 import friendsRouter from "./src/routes/friends.ts";
 import authRouter from "./src/routes/auth.ts";
+import testimonialsRouter from "./src/routes/testimonials.ts";
+import eventTemplatesRouter from "./src/routes/event-templates.ts";
+import subccommunitiesRouter from "./src/routes/subcommunities.ts";
+import interestsRouter from "./src/routes/interests.ts";
+import invitationsRouter from "./src/routes/invitations.ts";
+import eventTestimonialsRouter from "./src/routes/event-testimonials.ts";
 // import cors from "cors";
 
 dotenv.config();
@@ -42,6 +48,12 @@ app.use("/api/profile", profileRouter);
 app.use("/api/users", profileRouter); // users/:id handled in profile router
 app.use("/api/friends", friendsRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/testimonials", testimonialsRouter);
+app.use("/api/event-templates", eventTemplatesRouter);
+app.use("/api/subcommunities", subccommunitiesRouter);
+app.use("/api/interests", interestsRouter);
+app.use("/api/invitations", invitationsRouter);
+app.use("/api/event-testimonials", eventTestimonialsRouter);
 
 app.get("/", (req, res) => res.json({ ok: true }));
 

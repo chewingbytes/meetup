@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { AuthProvider } from "@/lib/authContext";
 import "../global.css";
 

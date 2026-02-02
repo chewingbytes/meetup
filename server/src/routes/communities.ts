@@ -66,6 +66,108 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get user's communities - MUST be before /:id route
+router.get("/my-communities", async (req, res) => {
+  try {
+    const { user_id } = req.query;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id is required" });
+    }
+
+    // Get community IDs user is a member of
+    const { data: memberships, error: memberError } = await supabase
+      .from("user_communities")
+      .select("community_id")
+      .eq("user_id", user_id);
+
+    if (memberError) throw memberError;
+
+    if (!memberships || memberships.length === 0) {
+      return res.json([]);
+    }
+
+    const communityIds = memberships.map((m: any) => m.community_id);
+
+    // Fetch full community details
+    const { data: communities, error: commError } = await supabase
+      .from("communities")
+      .select("*")
+      .in("id", communityIds)
+      .order("created_at", { ascending: false });
+
+    if (commError) throw commError;
+
+    // Enrich with topics, rules, faqs
+    const enriched = await Promise.all(
+      (communities || []).map(async (c: any) => {
+        const { data: ctopics } = await supabase
+          .from("community_topics")
+          .select("topic_id")
+          .eq("community_id", c.id);
+        const topicIds = (ctopics || []).map((t: any) => t.topic_id);
+        const { data: topics } = await supabase
+          .from("topics")
+          .select("name")
+          .in("id", topicIds);
+        const { data: rules } = await supabase
+          .from("community_rules")
+          .select("rule_text,position")
+          .eq("community_id", c.id)
+          .order("position");
+        const { data: faq } = await supabase
+          .from("community_faqs")
+          .select("question,answer")
+          .eq("community_id", c.id);
+        return {
+          ...c,
+          topics: topics?.map((t: any) => t.name) || [],
+          rules: rules?.map((r: any) => r.rule_text) || [],
+          faq: faq || [],
+        };
+      })
+    );
+
+    res.json(enriched);
+  } catch (err: any) {
+    console.error("❌ Error fetching user communities:", err);
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to fetch user communities" });
+  }
+});
+
+// Check membership - MUST be before /:id route
+router.get("/check-membership", async (req, res) => {
+  try {
+    const { user_id, community_id } = req.query;
+
+    if (!user_id || !community_id) {
+      return res
+        .status(400)
+        .json({ message: "user_id and community_id are required" });
+    }
+
+    const { data, error } = await supabase
+      .from("user_communities")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("community_id", community_id)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    res.json({ isMember: !!data });
+  } catch (err: any) {
+    console.error("❌ Error checking membership:", err);
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to check membership" });
+  }
+});
+
 router.get("/:id", async (req, res) => {
   try {
     const id = req.params.id;

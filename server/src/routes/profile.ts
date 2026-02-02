@@ -56,6 +56,13 @@ router.patch("/", upload.single("avatar"), async (req, res) => {
       avatar_url,
     };
 
+    // Add personality fields if provided
+    if (payload.personality_type) updatePayload.personality_type = payload.personality_type;
+    if (payload.social_preference) updatePayload.social_preference = payload.social_preference;
+    if (payload.interests) updatePayload.interests = payload.interests;
+    if (payload.school) updatePayload.school = payload.school;
+    if (payload.year_of_study) updatePayload.year_of_study = payload.year_of_study;
+
     const { data: updated, error } = await supabase.from("profiles").update(updatePayload).eq("id", userId).select().single();
     if (error) throw error;
 

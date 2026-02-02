@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import api from "@/lib/api";
+import * as api from "@/lib/api";
 import { CommunityProps } from "@/utils/types";
 
 interface CommunityStoreState {
@@ -12,7 +12,7 @@ interface CommunityStoreState {
   isRefreshing: boolean;
 
   // Actions
-  fetchCommunities: (force?: boolean) => Promise<void>;
+  fetchCommunities: (force?: boolean, userId?: string) => Promise<void>;
   fetchCommunityById: (id: string, force?: boolean) => Promise<CommunityProps | null>;
   setCommunities: (communities: CommunityProps[]) => void;
   setCommunityDetails: (id: string, community: CommunityProps) => void;
@@ -55,8 +55,8 @@ export const useCommunityStore = create<CommunityStoreState>((set, get) => ({
   lastFetchTime: null,
   isRefreshing: false,
 
-  // Fetch all communities
-  fetchCommunities: async (force = false) => {
+  // Fetch all communities or user's communities
+  fetchCommunities: async (force = false, userId?: string) => {
     const state = get();
     
     // If we already have communities and it's not a forced refresh, don't fetch
@@ -66,7 +66,9 @@ export const useCommunityStore = create<CommunityStoreState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const data = await api.getCommunities();
+      const data = userId 
+        ? await api.getMyCommunities(userId)
+        : await api.getCommunities();
       if (Array.isArray(data)) {
         set({
           communities: data,

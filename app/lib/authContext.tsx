@@ -11,6 +11,12 @@ interface UserProfile {
   avatar_url: string;
   created_at: string;
   updated_at: string;
+  personality_type?: string | null;
+  social_preference?: string | null;
+  interests?: string[] | string | null;
+  school?: string | null;
+  year_of_study?: string | null;
+  personality_answers?: Record<string, string> | null;
 }
 
 interface UserSettings {
@@ -199,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Store onboarding data
         await AsyncStorage.setItem('onboarding_data', JSON.stringify(onboardingData));
 
-        // Create profile entry
+        // Create profile entry with personality data
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -208,6 +214,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             full_name: onboardingData.name,
             bio: '',
             avatar_url: '',
+            school: onboardingData.school,
+            year_of_study: onboardingData.year,
+            interests: onboardingData.selectedInterests,
+            personality_answers: onboardingData.personalityAnswers,
+            // Derive personality_type and social_preference from answers
+            personality_type: onboardingData.personalityAnswers?.social || null,
+            social_preference: onboardingData.personalityAnswers?.connect || null,
           });
 
         if (profileError) {

@@ -40,7 +40,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user, isCheckingAuth } = useAuthRedirect("/");
 
-  // Fetch communities
   const {
     communities,
     isLoading: communitiesLoading,
@@ -48,18 +47,15 @@ export default function HomeScreen() {
     refresh: refreshCommunities,
   } = useCommunities();
 
-  // Track selected community
   const [selectedCommunity, setSelectedCommunity] =
     useState<CommunityProps | null>(null);
 
-  // Auto-select first community when communities load
   useEffect(() => {
     if (communities.length > 0 && !selectedCommunity) {
       setSelectedCommunity(communities[0]);
     }
   }, [communities]);
 
-  // Handle pull-to-refresh
   const handleRefresh = async () => {
     await Promise.all([refreshCommunities()]);
   };

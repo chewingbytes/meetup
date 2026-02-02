@@ -1,6 +1,7 @@
 // ...new file...
 // const API_BASE = "http://localhost:4000/api";
-const API_BASE = "http://172.20.10.2:4000/api";
+// const API_BASE = "http://172.20.10.4:4000/api";
+const API_BASE = "http://192.168.1.122:4000/api";
 const AUTH_BASE = `${API_BASE}/auth`;
 
 async function request(path: string, options: RequestInit = {}) {
@@ -10,7 +11,6 @@ async function request(path: string, options: RequestInit = {}) {
     ...options,
   };
 
-  // Don't set content-type for FormData
   if (
     opts.body &&
     !(opts.body instanceof FormData) &&
@@ -59,6 +59,7 @@ export const auth = {
 
 // Communities
 export const getCommunities = () => request("/communities");
+export const getMyCommunities = (user_id: string) => request(`/communities/my-communities?user_id=${user_id}`);
 export const getCommunity = (id: string) => request(`/communities/${id}`);
 export const createCommunity = (body: any) =>
   // support FormData (image) or JSON
@@ -76,12 +77,17 @@ export const leaveCommunity = (user_id: string, community_id: string) =>
     method: "POST",
     body: JSON.stringify({ user_id, community_id }),
   });
+export const checkMembership = (user_id: string, community_id: string) =>
+  request(`/communities/check-membership?user_id=${user_id}&community_id=${community_id}`);
 
 // Topics
 export const getTopics = () => request("/topics");
+export const getCommunitiesByTopic = (topicId: number) =>
+  request(`/topics/${topicId}/communities`);
 
 // Events
 export const getEvents = () => request("/events");
+export const getMyEvents = (user_id: string) => request(`/events/my-events?user_id=${user_id}`);
 export const getEvent = (id: string) => request(`/events/${id}`);
 export const createEvent = (body: any) =>
   request("/events", {
@@ -99,6 +105,8 @@ export const leaveEvent = (user_id: string, event_id: string) =>
     method: "POST",
     body: JSON.stringify({ user_id, event_id }),
   });
+export const checkEventMembership = (user_id: string, event_id: string) =>
+  request(`/events/check-membership?user_id=${user_id}&event_id=${event_id}`);
 
 // Notifications
 export const getNotifications = () => request("/notifications");
@@ -119,18 +127,122 @@ export const respondFriend = (id: string, action: "accept" | "decline") =>
     body: JSON.stringify({ action }),
   });
 
+// Testimonials
+export const getTestimonials = (event_id?: string, community_id?: string) =>
+  request(`/testimonials?${event_id ? `event_id=${event_id}` : `community_id=${community_id}`}`);
+export const getUserTestimonials = (user_id: string) =>
+  request(`/testimonials/user/${user_id}`);
+export const createTestimonial = (body: any) =>
+  request("/event-testimonials", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const updateTestimonial = (id: string, body: any) =>
+  request(`/testimonials/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+export const deleteTestimonial = (id: string) =>
+  request(`/testimonials/${id}`, { method: "DELETE" });
+
+// Event Templates
+export const getEventTemplates = (community_id: string) =>
+  request(`/event-templates/community/${community_id}`);
+export const createEventTemplate = (body: any) =>
+  request("/event-templates", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const updateEventTemplate = (id: string, body: any) =>
+  request(`/event-templates/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+export const deleteEventTemplate = (id: string) =>
+  request(`/event-templates/${id}`, { method: "DELETE" });
+
+// Subcommunities
+export const getSubcommunities = (community_id: string) =>
+  request(`/subcommunities/community/${community_id}`);
+export const createSubcommunity = (body: any) =>
+  request("/subcommunities", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const updateSubcommunity = (id: string, body: any) =>
+  request(`/subcommunities/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+export const deleteSubcommunity = (id: string) =>
+  request(`/subcommunities/${id}`, { method: "DELETE" });
+
+// Interests
+export const saveUserInterests = (user_id: string, interests: string[]) =>
+  request("/interests", {
+    method: "POST",
+    body: JSON.stringify({ user_id, interests }),
+  });
+export const getUserInterests = (user_id: string) =>
+  request(`/interests/user/${user_id}`);
+export const calculateInterestMatch = (user_id: string, event_id: string) =>
+  request("/interests/match-score", {
+    method: "POST",
+    body: JSON.stringify({ user_id, event_id }),
+  });
+
+// Event Testimonials
+export const getEventTestimonials = (event_id: string) =>
+  request(`/event-testimonials/event/${event_id}`);
+export const getUserEventTestimonials = (user_id: string) =>
+  request(`/event-testimonials/user/${user_id}`);
+export const createEventTestimonial = (body: any) =>
+  request("/event-testimonials", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const updateEventTestimonial = (id: string, body: any) =>
+  request(`/event-testimonials/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+export const deleteEventTestimonial = (id: string) =>
+  request(`/event-testimonials/${id}`, { method: "DELETE" });
+export const getEventTestimonialStats = (event_id: string) =>
+  request(`/event-testimonials/event/${event_id}/stats`);
+
+// Invitations
+export const sendEventInvitation = (event_id: string, inviter_id: string, invitee_id: string) =>
+  request("/invitations/send", {
+    method: "POST",
+    body: JSON.stringify({ event_id, inviter_id, invitee_id }),
+  });
+export const getPendingInvitations = (user_id: string) =>
+  request(`/invitations/pending/${user_id}`);
+export const acceptInvitation = (invitation_id: string, user_id: string) =>
+  request(`/invitations/accept/${invitation_id}`, {
+    method: "POST",
+    body: JSON.stringify({ user_id }),
+  });
+export const declineInvitation = (invitation_id: string) =>
+  request(`/invitations/decline/${invitation_id}`, { method: "POST" });
+
 export default {
   auth,
   getCommunities,
+  getMyCommunities,
   getCommunity,
   createCommunity,
   joinCommunity,
   leaveCommunity,
+  checkMembership,
   getTopics,
   getEvents,
+  getMyEvents,
   getEvent,
   joinEvent,
   leaveEvent,
+  checkEventMembership,
   createEvent,
   getNotifications,
   markNotificationRead,
@@ -138,4 +250,24 @@ export default {
   updateProfile,
   getFriendRequests,
   respondFriend,
+  getTestimonials,
+  getUserTestimonials,
+  createTestimonial,
+  updateTestimonial,
+  deleteTestimonial,
+  getEventTemplates,
+  createEventTemplate,
+  updateEventTemplate,
+  deleteEventTemplate,
+  getSubcommunities,
+  createSubcommunity,
+  updateSubcommunity,
+  deleteSubcommunity,
+  saveUserInterests,
+  getUserInterests,
+  calculateInterestMatch,
+  sendEventInvitation,
+  getPendingInvitations,
+  acceptInvitation,
+  declineInvitation,
 };

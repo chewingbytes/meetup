@@ -61,6 +61,21 @@ export default function OnboardingScreen() {
       q: "How do you connect?",
       opts: ["Deep 1-to-1", "Group hangs", "Shared hobbies", "Shy but warm up"],
     },
+    {
+      id: "planning",
+      q: "How do you prefer to plan?",
+      opts: ["Spontaneous", "Structured plan", "Flexible mix"],
+    },
+    {
+      id: "stress",
+      q: "How do you handle stress?",
+      opts: ["Talk it out", "Need alone time", "Exercise", "Creative outlet"],
+    },
+    {
+      id: "learning",
+      q: "Learning style preference?",
+      opts: ["Visual learner", "Hands-on", "Reading/Writing", "Listening"],
+    },
   ];
   const [personalityAnswers, setPersonalityAnswers] = useState<
     Record<string, string>
@@ -271,7 +286,13 @@ export default function OnboardingScreen() {
             </View>
 
             <TouchableOpacity
-              onPress={() => setStep(2)}
+              onPress={() => {
+                // Redirect to interest ranking screen with selected interests
+                router.push({
+                  pathname: "/onboarding/interest-ranking",
+                  params: { interests: JSON.stringify(selectedInterests) }
+                });
+              }}
               disabled={selectedInterests.length === 0}
             >
               <LinearGradient
@@ -289,7 +310,7 @@ export default function OnboardingScreen() {
                   borderRadius: 999,
                 }}
               >
-                <Text className="text-white font-bold text-base">Next</Text>
+                <Text className="text-white font-bold text-base">Next: Rank Your Interests</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

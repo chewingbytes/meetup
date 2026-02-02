@@ -1,59 +1,116 @@
 import * as React from "react";
-import { View, ViewProps } from "react-native";
+import { View, ViewProps, StyleSheet } from "react-native";
 
-interface CardProps extends ViewProps {
-  className?: string;
-}
+interface CardProps extends ViewProps {}
 
-function Card({ className = "", ...props }: CardProps) {
+function Card({ style, ...props }: CardProps) {
   return (
     <View
-      className={`bg-white dark:bg-gray-800 text-black dark:text-white flex flex-col gap-6 rounded-xl border border-gray-200 dark:border-gray-700 py-6 shadow-sm ${className}`}
+      style={[
+        {
+          backgroundColor: "#18181b",
+          borderWidth: 1,
+          borderColor: "#27272a",
+          borderRadius: 14,
+          padding: 16,
+          gap: 12,
+        },
+        style,
+      ]}
       {...props}
     />
   );
 }
 
-function CardHeader({ className = "", ...props }: CardProps) {
+function CardHeader({ style, ...props }: CardProps) {
   return (
     <View
-      className={`flex flex-col gap-2 px-6 ${className}`}
+      style={[
+        {
+          gap: 8,
+        },
+        style,
+      ]}
       {...props}
     />
   );
 }
 
-function CardTitle({ className = "", ...props }: CardProps) {
-  return (
-    <View className={`font-semibold text-base ${className}`} {...props} />
-  );
-}
-
-function CardDescription({ className = "", ...props }: CardProps) {
+function CardTitle({ style, ...props }: CardProps) {
   return (
     <View
-      className={`text-gray-500 dark:text-gray-400 text-sm ${className}`}
+      style={[
+        {
+          fontSize: 18,
+          fontWeight: "700",
+          color: "#fff",
+        },
+        style,
+      ]}
       {...props}
     />
   );
 }
 
-function CardAction({ className = "", ...props }: CardProps) {
+function CardDescription({ style, ...props }: CardProps) {
   return (
     <View
-      className={`self-start justify-end ${className}`}
+      style={[
+        {
+          fontSize: 14,
+          color: "#a1a1aa",
+        },
+        style,
+      ]}
       {...props}
     />
   );
 }
 
-function CardContent({ className = "", ...props }: CardProps) {
-  return <View className={`px-6 ${className}`} {...props} />;
+function CardAction({ style, ...props }: CardProps) {
+  return (
+    <View
+      style={[
+        {
+          justifyContent: "flex-end",
+        },
+        style,
+      ]}
+      {...props}
+    />
+  );
 }
 
-function CardFooter({ className = "", ...props }: CardProps) {
+function CardContent({ style, ...props }: CardProps) {
   return (
-    <View className={`flex flex-row items-center px-6 pt-6 ${className}`} {...props} />
+    <View
+      style={[
+        {
+          paddingVertical: 8,
+        },
+        style,
+      ]}
+      {...props}
+    />
+  );
+}
+
+function CardFooter({ style, ...props }: CardProps) {
+  return (
+    <View
+      style={[
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 12,
+          paddingTop: 12,
+          borderTopWidth: 1,
+          borderTopColor: "#27272a",
+        },
+        style,
+      ]}
+      {...props}
+    />
   );
 }
 

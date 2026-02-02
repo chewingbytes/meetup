@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useCommunityStore } from "@/lib/stores/communityStore";
+import { useAuth } from "@/lib/authContext";
 
 /**
  * CUSTOM HOOK: useCommunities
@@ -10,6 +11,8 @@ import { useCommunityStore } from "@/lib/stores/communityStore";
  * USAGE:
  * ```tsx
  * const { communities, isLoading, refresh } = useCommunities();
+ * // Or fetch only user's communities:
+ * const { communities, isLoading, refresh } = useCommunities(true, true);
  * 
  * // To manually refresh:
  * const handlePullToRefresh = async () => {
@@ -19,6 +22,7 @@ import { useCommunityStore } from "@/lib/stores/communityStore";
  * 
  * PARAMETERS:
  * - autoFetch (default: true): Automatically fetch on mount
+ * - myCommunitiesOnly (default: true): Fetch only user's joined communities
  * 
  * RETURNS:
  * - communities: Array of CommunityProps
@@ -27,7 +31,7 @@ import { useCommunityStore } from "@/lib/stores/communityStore";
  * - error: Error message if fetch failed
  * - refresh: async function to manually refresh communities (force=true)
  */
-export const useCommunities = (autoFetch = true) => {
+export const useCommunities = (autoFetch = true, myCommunitiesOnly = true) => {
   const {
     communities,
     isLoading,
@@ -35,19 +39,23 @@ export const useCommunities = (autoFetch = true) => {
     error,
     fetchCommunities,
   } = useCommunityStore();
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && user) {
       // Fetch communities on component mount (only if cache is empty)
-      fetchCommunities();
+      const userId = myCommunitiesOnly ? user.id : undefined;
+      fetchCommunities(false, userId);
     }
-  }, [autoFetch, fetchCommunities]);
+  }, [autoFetch, myCommunitiesOnly, user, fetchCommunities]);
 
   const refresh = async () => {
+    if (!user) return;
     // Set refreshing state for UI feedback
     useCommunityStore.setState({ isRefreshing: true });
     try {
-      await fetchCommunities(true); // Force refresh
+      const userId = myCommunitiesOnly ? user.id : undefined;
+      await fetchCommunities(true, userId); // Force refresh
     } finally {
       useCommunityStore.setState({ isRefreshing: false });
     }
