@@ -8,8 +8,6 @@ module.exports = {
     // Do the same with `components`, `hooks`, `styles`, or any other top-level directories
   ],
   presets: [require("nativewind/preset")],
-  theme: {
-    extend: {},
-  },
+  theme: {},
   plugins: [],
 };

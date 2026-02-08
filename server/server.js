@@ -4,6 +4,7 @@ import topicsRouter from "./src/routes/topics.ts";
 import communitiesRouter from "./src/routes/communities.ts";
 import eventsRouter from "./src/routes/events.ts";
 import notificationsRouter from "./src/routes/notifications.ts";
+import pushTokensRouter from "./src/routes/push-tokens.ts";
 import profileRouter from "./src/routes/profile.ts";
 import friendsRouter from "./src/routes/friends.ts";
 import authRouter from "./src/routes/auth.ts";
@@ -44,6 +45,7 @@ app.use("/api/topics", topicsRouter);
 app.use("/api/communities", communitiesRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/notifications", notificationsRouter);
+app.use("/api/push-tokens", pushTokensRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/users", profileRouter); // users/:id handled in profile router
 app.use("/api/friends", friendsRouter);

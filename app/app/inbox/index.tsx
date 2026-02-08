@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Plus, Bell, User } from "lucide-react-native";
 
 const PALETTE = {
-  background: "#000000",
+  background: "#09090b",
 };
 
 const chats = [

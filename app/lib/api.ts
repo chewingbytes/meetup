@@ -113,6 +113,13 @@ export const getNotifications = () => request("/notifications");
 export const markNotificationRead = (id: string) =>
   request(`/notifications/${id}/read`, { method: "POST" });
 
+// Push Tokens
+export const savePushToken = (body: any) =>
+  request("/push-tokens", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 // Profile
 export const getProfile = (id?: string) =>
   request(id ? `/users/${id}` : `/profile`);

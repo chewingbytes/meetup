@@ -146,7 +146,7 @@ export default function OnboardingScreen() {
   const progress = ((step + 1) / totalSteps) * 100;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         {/* Header */}
         <View className="px-5 pt-4 pb-6">

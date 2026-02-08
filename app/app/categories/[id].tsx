@@ -82,7 +82,7 @@ const categoryData = {
 export default function CategoryDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
+  const [gradientColors, setGradientColors] = useState(["#09090b", "#333333"]);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   // Get communities from Zustand store
@@ -112,7 +112,7 @@ export default function CategoryDetail() {
 
   if (!category) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#000000" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
         <View className="flex-1 justify-center items-center">
           <Text className="text-white text-xl">Category not found</Text>
         </View>

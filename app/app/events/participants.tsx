@@ -53,7 +53,7 @@ export default function EventParticipantsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>

@@ -23,7 +23,7 @@ export default function CommunitySidebar({
   onAddCommunity,
 }: CommunitySidebarProps) {
   return (
-    <View className="w-24 bg-zinc-950 flex-col items-center py-4 gap-y-3">
+    <View className="w-24 bg-[#09090b] flex-col items-center py-4 gap-y-3">
       {/* Communities Stack */}
       <ScrollView
         scrollEnabled={communities.length > 6}

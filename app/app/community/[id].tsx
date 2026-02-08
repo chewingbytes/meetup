@@ -21,7 +21,7 @@ export default function CommunityDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth();
-  const [gradientColors, setGradientColors] = useState<[string, string, string]>(["#000000", "#333333", "#000000"]);
+  const [gradientColors, setGradientColors] = useState<[string, string, string]>(["#09090b", "#333333", "#09090b"]);
   const [joined, setJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -137,7 +137,7 @@ export default function CommunityDetail() {
   // Loading state
   if (isLoading) {
     return (
-      <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#fff" />
@@ -150,7 +150,7 @@ export default function CommunityDetail() {
   // Error state
   if (!community) {
     return (
-      <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
@@ -290,6 +290,27 @@ export default function CommunityDetail() {
                 <Text style={styles.descriptionText}>
                   {community.description}
                 </Text>
+              </View>
+            )}
+
+            {user && community.owner_id === user.id && (
+              <View style={styles.section}>
+                <TouchableOpacity 
+                  style={styles.createTemplateButton}
+                  onPress={() => router.push({
+                    pathname: '/community/create-template',
+                    params: { community_id: community.id }
+                  })}
+                >
+                  <Text style={styles.createTemplateIcon}>✨</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.createTemplateTitle}>Create Event Template</Text>
+                    <Text style={styles.createTemplateDescription}>
+                      Make it easier for community members to create events
+                    </Text>
+                  </View>
+                  <Text style={styles.createTemplateArrow}>→</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -563,5 +584,34 @@ const styles = StyleSheet.create({
     color: "#4f46e5",
     fontSize: 13,
     fontWeight: "600",
+  },
+  createTemplateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(79, 70, 229, 0.15)",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#4f46e5",
+    gap: 12,
+  },
+  createTemplateIcon: {
+    fontSize: 28,
+  },
+  createTemplateTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  createTemplateDescription: {
+    color: "#a0a0a0",
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  createTemplateArrow: {
+    color: "#4f46e5",
+    fontSize: 18,
+    fontWeight: "700",
   },
 });

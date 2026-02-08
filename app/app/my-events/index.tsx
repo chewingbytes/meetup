@@ -54,7 +54,7 @@ export default function MyEventsScreen() {
   );
 
   return (
-    <LinearGradient colors={["#000000", "#1a1a1a"]} style={{ flex: 1 }}>
+    <LinearGradient colors={["#09090b", "#1a1a1a"]} style={{ flex: 1 }}>
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         {/* Header */}
         <View style={styles.header}>

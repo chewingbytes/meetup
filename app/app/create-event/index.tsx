@@ -313,7 +313,10 @@ export default function CreateEvent() {
       <ScrollView contentContainerStyle={styles.content}>
         {/* Quick Template Option */}
         <TouchableOpacity
-          onPress={() => router.push('/create-event/advanced')}
+          onPress={() => router.push({
+            pathname: '/create-event/advanced',
+            params: selectedCommunity ? { community_id: selectedCommunity } : {}
+          })}
           style={{
             backgroundColor: '#4f46e5',
             padding: 16,
@@ -651,7 +654,7 @@ export default function CreateEvent() {
 
 /* ========== styles ========== */
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+  root: { flex: 1, backgroundColor: "transparent" },
   header: {
     paddingTop: 60,
     paddingBottom: 12,

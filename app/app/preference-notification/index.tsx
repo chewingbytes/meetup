@@ -37,7 +37,7 @@ export default function PreferencesNotifications() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+  root: { flex: 1, backgroundColor: "transparent" },
   simpleHeader: {
     paddingHorizontal: 20,
     flexDirection: "row",

@@ -32,7 +32,7 @@ import { useState, useEffect } from "react";
 import { CommunityProps } from "@/utils/types";
 
 const PALETTE = {
-  background: "#000000",
+  background: "#09090b",
 };
 
 export default function HomeScreen() {
@@ -86,7 +86,6 @@ export default function HomeScreen() {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: PALETTE.background,
       }}
       edges={["top"]}
     >

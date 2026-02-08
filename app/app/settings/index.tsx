@@ -447,7 +447,7 @@ export default function ProfileIndex() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#000" },
+  root: { flex: 1 },
   simpleHeader: {
     paddingHorizontal: 20,
     flexDirection: "row",
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#000",
+    backgroundColor: "#09090b",
     zIndex: 50,
   },
 

@@ -22,7 +22,7 @@ export default function WelcomeScreen() {
   }, [isLoading, user]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
       <View style={{ flex: 1 }}>
         {/* Hero image */}
         <View style={{ flex: 1, overflow: "hidden" }}>

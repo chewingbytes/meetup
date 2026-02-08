@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from './supabase';
 import { useAuth } from './authContext';
+import { useChatNotificationStore } from '@/lib/stores/chatNotificationStore';
+import { notifyNewMessage } from '@/lib/notifications';
 
 export interface Message {
   id: string;
@@ -26,11 +28,13 @@ export interface Channel {
 }
 
 export const useChat = (channelId: string | null) => {
-  const { user } = useAuth();
+  const { user, userSettings } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const incrementUnread = useChatNotificationStore((s) => s.incrementUnread);
+  const activeChannelId = useChatNotificationStore((s) => s.activeChannelId);
 
   // Fetch initial messages
   useEffect(() => {
@@ -76,6 +80,21 @@ export const useChat = (channelId: string | null) => {
         (payload) => {
           const newMessage = payload.new as Message;
           setMessages((prev) => [...prev, newMessage]);
+
+          if (
+            user &&
+            newMessage.user_id !== user.id &&
+            activeChannelId !== channelId
+          ) {
+            incrementUnread(channelId);
+            if (userSettings?.push_notifications !== false) {
+              notifyNewMessage(
+                `New message in #${newMessage.channel_id}`,
+                `${newMessage.username}: ${newMessage.text}`,
+                { channelId }
+              );
+            }
+          }
         }
       )
       .subscribe();

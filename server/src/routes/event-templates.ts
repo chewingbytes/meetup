@@ -3,6 +3,27 @@ import { supabase } from "../../db/supabaseClient.js";
 
 const router = express.Router();
 
+// GET templates (optionally filter by community_id)
+router.get("/", async (req, res) => {
+  try {
+    const { community_id } = req.query as { community_id?: string };
+
+    let query = supabase.from("event_templates").select("*");
+
+    if (community_id) {
+      query = query.eq("community_id", community_id);
+    }
+
+    const { data, error } = await query.order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ message: err.message || "Failed to fetch templates" });
+  }
+});
+
 // CREATE event template
 router.post("/", async (req, res) => {
   try {

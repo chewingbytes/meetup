@@ -9,7 +9,8 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: "none"
+          animation: "none",
+          contentStyle: { backgroundColor: "#09090b" }
         }}
       />
     </AuthProvider>

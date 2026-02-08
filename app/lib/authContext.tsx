@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
+import { registerForPushNotificationsAsync } from '@/lib/notifications';
+import { savePushToken } from '@/lib/api';
 
 interface UserProfile {
   id: string;
@@ -132,6 +135,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const registerPush = async () => {
+      if (!user) return;
+      try {
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          await savePushToken({
+            user_id: user.id,
+            token,
+            platform: Platform.OS,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to register push notifications:', err);
+      }
+    };
+
+    registerPush();
+  }, [user]);
 
   // Internal fetch methods that accept userId
   const fetchUserProfileInternal = async (userId: string) => {

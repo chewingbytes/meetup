@@ -26,7 +26,7 @@ import {
 import { useAuth } from "@/lib/authContext";
 
 const PALETTE = {
-  background: "#000000",
+  background: "#09090b",
 };
 
 export default function ExploreScreen() {
@@ -75,17 +75,14 @@ export default function ExploreScreen() {
         acc[location].push(event);
         return acc;
       },
-      {} as Record<string, EventProps[]>
+      {} as Record<string, EventProps[]>,
     );
 
   // Get unique locations for carousel
   const locationEvents = Object.values(eventsByLocation).flat().slice(0, 10);
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: PALETTE.background }}
-      edges={["top"]}
-    >
+    <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
       {/* <Header
         title="Explore"
         actions={[
@@ -113,29 +110,25 @@ export default function ExploreScreen() {
             <SkeletonVerticalList />
           </>
         ) : (
-            <View className="container">
-              <HorizontalCarousel<EventProps>
-                heading="Popular Events"
-                chunks={popularEventChunks}
-                cardComponent={EventCard}
-                dataKey="event"
-                onItemPress={(event) =>
-                  router.push(`/events/${event.id}` as any)
-                }
-              />
+          <View className="container">
+            <HorizontalCarousel<EventProps>
+              heading="Popular Events"
+              chunks={popularEventChunks}
+              cardComponent={EventCard}
+              dataKey="event"
+              onItemPress={(event) => router.push(`/events/${event.id}` as any)}
+            />
 
-              {/* <BrowseByCommunity communities={communities} /> */}
+            {/* <BrowseByCommunity communities={communities} /> */}
 
-              <SingleRowCarousel<EventProps>
-                heading="By Locations"
-                data={locationEvents}
-                cardComponent={ImageCard}
-                dataKey="card"
-                onItemPress={(event) =>
-                  router.push(`/events/${event.id}` as any)
-                }
-              />
-            </View>
+            <SingleRowCarousel<EventProps>
+              heading="By Locations"
+              data={locationEvents}
+              cardComponent={ImageCard}
+              dataKey="card"
+              onItemPress={(event) => router.push(`/events/${event.id}` as any)}
+            />
+          </View>
         )}
       </ScrollView>
       <MobileNav active="explore" />

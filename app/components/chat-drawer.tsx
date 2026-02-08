@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Send, X, Users } from 'lucide-react-native';
 import { useChat } from '@/lib/useChat';
+import { useChatNotificationStore } from '@/lib/stores/chatNotificationStore';
 
 interface ChatDrawerProps {
   channelId: string | null;
@@ -30,6 +31,8 @@ export default function ChatDrawer({
   const slide = useRef(new Animated.Value(drawerWidth)).current;
   const [messageText, setMessageText] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const markRead = useChatNotificationStore((s) => s.markRead);
+  const setActiveChannel = useChatNotificationStore((s) => s.setActiveChannel);
 
   const { messages, onlineUsers, sendMessage, isLoading, error } =
     useChat(channelId);
@@ -41,6 +44,16 @@ export default function ChatDrawer({
       useNativeDriver: true,
     }).start();
   }, [isOpen, slide]);
+
+  useEffect(() => {
+    if (!channelId) return;
+    if (isOpen) {
+      setActiveChannel(channelId);
+      markRead(channelId);
+    } else {
+      setActiveChannel(null);
+    }
+  }, [isOpen, channelId, markRead, setActiveChannel]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !channelId) return;

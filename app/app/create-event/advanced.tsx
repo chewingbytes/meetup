@@ -53,14 +53,22 @@ export default function CreateEventScreen() {
 
   useEffect(() => {
     loadTemplates();
-  }, []);
+  }, [community_id]);
 
   const loadTemplates = async () => {
+    if (!community_id) {
+      console.log('❌ No community_id provided');
+      setLoading(false);
+      return;
+    }
+    
+    console.log('📡 Loading templates for community:', community_id);
     try {
       const data = await getEventTemplates(community_id);
+      console.log('✅ Templates loaded:', data);
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error loading templates:', error);
+      console.error('❌ Error loading templates:', error);
     } finally {
       setLoading(false);
     }
@@ -112,14 +120,14 @@ export default function CreateEventScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#4f46e5" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
@@ -164,6 +172,27 @@ export default function CreateEventScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+            )}
+
+            {/* No Templates Available Message */}
+            {templates.length === 0 && (
+              <View style={{
+                backgroundColor: '#1a1a1f',
+                borderRadius: 16,
+                padding: 24,
+                marginBottom: 20,
+                borderWidth: 1,
+                borderColor: '#27272a',
+                alignItems: 'center',
+              }}>
+                <Text style={{ fontSize: 48, marginBottom: 12 }}>📋</Text>
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+                  No Templates Available
+                </Text>
+                <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                  Contact the community admin to create event templates, or start creating events from scratch.
+                </Text>
               </View>
             )}
 

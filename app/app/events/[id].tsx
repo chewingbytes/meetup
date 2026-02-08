@@ -38,7 +38,7 @@ import { useAuthRedirect } from "@/lib/useAuthRedirect";
 export default function EventDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const [gradientColors, setGradientColors] = useState(["#000000", "#333333"]);
+  const [gradientColors, setGradientColors] = useState(["#09090b", "#333333"]);
   const { user, isCheckingAuth } = useAuthRedirect("/login");
   const [joined, setJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -104,7 +104,7 @@ export default function EventDetail() {
       event.name?.toLowerCase() ||
       "default";
     const matched = Object.entries(gradients).find(([k]) => key.includes(k));
-    setGradientColors(matched ? matched[1] : ["#000000", "#333333"]);
+    setGradientColors(matched ? matched[1] : ["#09090b", "#333333"]);
   }, [event]);
 
   const formattedStart = useMemo(() => {
@@ -162,7 +162,7 @@ export default function EventDetail() {
   // Loading state
   if (isLoading && !event) {
     return (
-      <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
           <View style={styles.centerContainer}>
             <ActivityIndicator size="large" color="#fff" />
@@ -176,7 +176,7 @@ export default function EventDetail() {
   // Not found
   if (!event) {
     return (
-      <LinearGradient colors={["#000000", "#333333"]} style={{ flex: 1 }}>
+      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>

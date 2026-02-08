@@ -326,7 +326,7 @@ export default function CreateCommunity() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
 
   header: {

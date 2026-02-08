@@ -114,10 +114,10 @@ export default function BrowseCommunitiesScreen() {
   if (searchQuery.trim()) {
     return (
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: "#000000" }}
+        style={{ flex: 1, backgroundColor: "transparent" }}
         edges={["top"]}
       >
-        <LinearGradient colors={["#000000", "#1a1a1a"]} style={{ flex: 1 }}>
+        <LinearGradient colors={["#09090b", "#1a1a1a"]} style={{ flex: 1 }}>
           {/* Header */}
           <View className="px-6 py-4 flex-row items-center gap-3">
             <TouchableOpacity onPress={() => router.back()}>
@@ -193,10 +193,10 @@ export default function BrowseCommunitiesScreen() {
 
     return (
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: "#000000" }}
+        style={{ flex: 1, backgroundColor: "transparent" }}
         edges={["top"]}
       >
-        <LinearGradient colors={["#000000", "#1a1a1a"]} style={{ flex: 1 }}>
+        <LinearGradient colors={["#09090b", "#1a1a1a"]} style={{ flex: 1 }}>
           {/* Header */}
           <View className="px-6 py-4 flex-row items-center gap-3">
             <TouchableOpacity onPress={() => setSelectedTopicId(null)}>
@@ -270,11 +270,11 @@ export default function BrowseCommunitiesScreen() {
 
   // Main browse view with categories
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#000000" }}
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: "transparent" }}
       edges={["top"]}
     >
-      <LinearGradient colors={["#000000", "#1a1a1a"]} style={{ flex: 1 }}>
+        <LinearGradient colors={["#09090b", "#1a1a1a"]} style={{ flex: 1 }}>
         {/* Header */}
         <View className="px-6 py-4 flex-row items-center gap-3">
           <TouchableOpacity onPress={() => router.back()}>

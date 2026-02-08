@@ -7,10 +7,22 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  StyleSheet,
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { Lock, Globe, Hash, Send, ChevronRight, X, Plus, LogOut } from "lucide-react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Lock,
+  Globe,
+  Hash,
+  Send,
+  ChevronRight,
+  X,
+  Plus,
+  LogOut,
+} from "lucide-react-native";
+import { Calendar } from "react-native-calendars";
 import { CommunityProps, EventProps } from "@/utils/types";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEvents } from "@/hooks/useEvents";
@@ -19,6 +31,9 @@ import ChatDrawer from "@/components/chat-drawer";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/authContext";
 import { leaveCommunity } from "@/lib/api";
+import { PullToRefresh } from "./pull-to-refresh";
+import { useCommunities } from "@/hooks/useCommunities";
+import { useChatNotificationStore } from "@/lib/stores/chatNotificationStore";
 
 interface CommunityContentProps {
   community: CommunityProps | null;
@@ -39,6 +54,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
   const slide = useRef(new Animated.Value(drawerWidth)).current;
   const router = useRouter();
   const { user } = useAuth();
+  const unreadByChannel = useChatNotificationStore((s) => s.unreadByChannel);
 
   // Events
   const {
@@ -47,6 +63,12 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     isRefreshing: eventsRefreshing,
     refresh: refreshEvents,
   } = useEvents();
+  const {
+    communities,
+    isLoading: communitiesLoading,
+    isRefreshing: communitiesRefreshing,
+    refresh: refreshCommunities,
+  } = useCommunities();
 
   const upcomingEvents: EventProps[] = useMemo(() => {
     if (!community) return [];
@@ -54,14 +76,64 @@ export default function CommunityContent({ community }: CommunityContentProps) {
       .filter(
         (ev) =>
           ev.community_id === community.id &&
-          (!ev.start_at || new Date(ev.start_at) >= new Date())
+          (!ev.start_at || new Date(ev.start_at) >= new Date()),
       )
       .sort(
         (a, b) =>
           new Date(a.start_at || 0).getTime() -
-          new Date(b.start_at || 0).getTime()
+          new Date(b.start_at || 0).getTime(),
       );
   }, [events, community]);
+
+  const [selectedDate, setSelectedDate] = useState<string>(
+    new Date().toISOString().split("T")[0],
+  );
+  const isRefreshing = eventsRefreshing || communitiesRefreshing;
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    new Date().toISOString().slice(0, 7),
+  );
+
+  const handleRefresh = async () => {
+    await Promise.all([refreshEvents(), refreshCommunities()]);
+  };
+
+  const eventsByDate = useMemo(() => {
+    const map: Record<string, EventProps[]> = {};
+    upcomingEvents.forEach((ev) => {
+      if (!ev.start_at) return;
+      const dateKey = ev.start_at.includes("T")
+        ? ev.start_at.split("T")[0]
+        : new Date(ev.start_at).toISOString().split("T")[0];
+      if (!map[dateKey]) map[dateKey] = [];
+      map[dateKey].push(ev);
+    });
+    return map;
+  }, [upcomingEvents]);
+
+  const markedDates = useMemo(() => {
+    const marks: Record<string, any> = {};
+    Object.keys(eventsByDate).forEach((date) => {
+      marks[date] = {
+        marked: true,
+        dotColor: "#4f46e5",
+      };
+    });
+    if (selectedDate) {
+      marks[selectedDate] = {
+        ...(marks[selectedDate] || {}),
+        selected: true,
+        selectedColor: "#4f46e5",
+      };
+    }
+    return marks;
+  }, [eventsByDate, selectedDate]);
+
+  const hasEventsInMonth = useMemo(() => {
+    if (!selectedMonth) return false;
+    return Object.keys(eventsByDate).some((date) =>
+      date.startsWith(selectedMonth),
+    );
+  }, [eventsByDate, selectedMonth]);
 
   // Drawer animation
   useEffect(() => {
@@ -102,14 +174,14 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           },
           style: "destructive",
         },
-      ]
+      ],
     );
   };
 
   if (!community) {
     return (
       <LinearGradient
-        colors={["#000000", "#1a1a1a"]}
+        colors={["#09090b", "#1a1a1a"]}
         className="flex-1 items-center justify-center"
       >
         <Text className="text-white/50 text-lg">No communities joined</Text>
@@ -120,25 +192,25 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     );
   }
 
+  const unreadCount = community?.id ? unreadByChannel[community.id] || 0 : 0;
+
   return (
     <View style={{ flex: 1 }}>
-      <LinearGradient
-        colors={["#000000", "#1a1a1a"]}
+      <View
         className="flex-1 flex-col"
-        style={{ flex: 1 }}
+        style={{ flex: 1, borderTopLeftRadius: 20, overflow: "hidden", backgroundColor: "#1c1c1e" }}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header with image */}
-          {community.profile_image && (
-            <Image
-              source={{ uri: community.profile_image }}
-              className="w-full h-40"
-              resizeMode="cover"
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <PullToRefresh
+              isRefreshing={isRefreshing}
+              onRefresh={handleRefresh}
             />
-          )}
-
+          }
+        >
           {/* Top bar with name + drawer toggle */}
-          <View className="px-6 pt-6 items-start flex-col-reverse gap-1">
+          <View className="px-6 pt-7 items-start flex-col-reverse gap-1">
             <View className="">
               <TouchableOpacity
                 onPress={() => setDrawerOpen(true)}
@@ -166,42 +238,20 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           </View>
 
           {/* Chat Section */}
-          <View className="px-6 py-12">
+          <TouchableOpacity
+            className="px-6 py-12"
+            onPress={() => setChatDrawerOpen(true)}
+          >
             <View className="flex-row items-center gap-2 mb-4">
               <Hash size={20} color="#fff" />
               <Text className="text-white font-bold text-lg">general</Text>
+              {unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+                </View>
+              )}
             </View>
-
-            <TouchableOpacity
-              onPress={() => setChatDrawerOpen(true)}
-              style={{
-                backgroundColor: "#4f46e5",
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-                borderRadius: 8,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-              }}
-            >
-              <Send size={16} color="#fff" />
-              <Text className="text-white font-semibold text-sm">
-                Open Chat
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View className="px-6 pb-12">
-            <Text className="text-white font-bold text-lg mb-3">
-              Community Calendar
-            </Text>
-            <View className="bg-zinc-900/50 rounded-xl p-4 border border-zinc-800">
-              <Text className="text-white/60 text-sm">
-                Calendar view coming soon
-              </Text>
-            </View>
-          </View>
+          </TouchableOpacity>
 
           <View className="px-6 pb-12">
             <View className="flex-row justify-between items-center mb-3">
@@ -209,13 +259,14 @@ export default function CommunityContent({ community }: CommunityContentProps) {
                 Upcoming Events
               </Text>
 
+              {user && (
                 <TouchableOpacity
                   onPress={() => {
                     if (!community?.id) return;
                     router.push({
-                      pathname: "/create-event",
+                      pathname: "/create-event/advanced",
                       params: {
-                        communityId: community.id,
+                        community_id: community.id,
                         communityName: community.name,
                       },
                     });
@@ -237,7 +288,8 @@ export default function CommunityContent({ community }: CommunityContentProps) {
                     Add Event
                   </Text>
                 </TouchableOpacity>
-              </View>
+              )}
+            </View>
             {eventsLoading && upcomingEvents.length === 0 ? (
               <Text className="text-white/50 text-sm">Loading events…</Text>
             ) : upcomingEvents.length === 0 ? (
@@ -245,17 +297,64 @@ export default function CommunityContent({ community }: CommunityContentProps) {
                 No upcoming events for this community.
               </Text>
             ) : (
-              upcomingEvents.map((ev) => (
-                <EventCard 
-                  key={ev.id} 
-                  event={ev} 
-                  onPress={() => router.push(`/events/${ev.id}` as any)} 
+              <View style={styles.calendarCard}>
+                <Calendar
+                  onDayPress={(day) => setSelectedDate(day.dateString)}
+                  onMonthChange={(month) => {
+                    const monthKey = `${month.year}-${String(month.month).padStart(2, "0")}`;
+                    setSelectedMonth(monthKey);
+                    const monthStart = `${monthKey}-01`;
+                    setSelectedDate(monthStart);
+                  }}
+                  markedDates={markedDates}
+                  theme={{
+                    backgroundColor: "#0f0f13",
+                    calendarBackground: "#0f0f13",
+                    textSectionTitleColor: "#a1a1aa",
+                    selectedDayBackgroundColor: "#4f46e5",
+                    selectedDayTextColor: "#fff",
+                    todayTextColor: "#c4b5fd",
+                    dayTextColor: "#e4e4e7",
+                    textDisabledColor: "#52525b",
+                    monthTextColor: "#fff",
+                    arrowColor: "#a1a1aa",
+                  }}
+                  style={{ borderRadius: 12, overflow: "hidden" }}
                 />
-              ))
+
+                <View style={styles.dateEventList}>
+                  {!hasEventsInMonth ? (
+                    <Text style={styles.noEventsText}>
+                      No events scheduled for this month.
+                    </Text>
+                  ) : (
+                    <>
+                      <Text style={styles.dateHeader}>
+                        Events on {selectedDate}
+                      </Text>
+                      {(eventsByDate[selectedDate] || []).length === 0 ? (
+                        <Text style={styles.noEventsText}>
+                          No events scheduled for this date.
+                        </Text>
+                      ) : (
+                        (eventsByDate[selectedDate] || []).map((ev) => (
+                          <EventCard
+                            key={ev.id}
+                            event={ev}
+                            onPress={() =>
+                              router.push(`/events/${ev.id}` as any)
+                            }
+                          />
+                        ))
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
             )}
           </View>
         </ScrollView>
-      </LinearGradient>
+      </View>
 
       {/* Info Drawer */}
       <Animated.View
@@ -290,12 +389,53 @@ export default function CommunityContent({ community }: CommunityContentProps) {
         </View>
 
         <ScrollView style={{ paddingHorizontal: 16 }}>
+          <View style={styles.drawerCommunityHeader}>
+            {community.profile_image ? (
+              <Image
+                source={{ uri: community.profile_image }}
+                style={styles.drawerCommunityImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.drawerCommunityPlaceholder}>
+                <Text style={styles.drawerCommunityInitial}>
+                  {community.name?.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+          </View>
+
           {community.description && (
             <View className="mb-4">
               <Text className="text-white font-semibold mb-1">About</Text>
               <Text className="text-white/70 text-sm">
                 {community.description}
               </Text>
+            </View>
+          )}
+
+          {user && community.owner_id === user.id && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.createTemplateButton}
+                onPress={() =>
+                  router.push({
+                    pathname: "/community/create-template",
+                    params: { community_id: community.id },
+                  })
+                }
+              >
+                <Text style={styles.createTemplateIcon}>✨</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.createTemplateTitle}>
+                    Create Event Template
+                  </Text>
+                  <Text style={styles.createTemplateDescription}>
+                    Make it easier for community members to create events
+                  </Text>
+                </View>
+                <Text style={styles.createTemplateArrow}>→</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -352,7 +492,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
             <Text className="text-white text-base font-semibold">
               {new Date(community.created_at || "").toLocaleDateString(
                 "en-US",
-                { month: "short", year: "numeric" }
+                { month: "short", year: "numeric" },
               )}
             </Text>
           </View>
@@ -369,7 +509,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           )}
 
           {/* Leave Community Button */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={{
               flexDirection: "row",
               alignItems: "center",
@@ -389,7 +529,9 @@ export default function CommunityContent({ community }: CommunityContentProps) {
             ) : (
               <>
                 <LogOut size={16} color="#fff" />
-                <Text style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}>
+                <Text
+                  style={{ color: "#fff", fontWeight: "600", fontSize: 14 }}
+                >
                   Leave Community
                 </Text>
               </>
@@ -409,3 +551,96 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  section: {
+    marginBottom: 24,
+  },
+  drawerCommunityHeader: {
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  drawerCommunityImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    borderColor: "#27272a",
+  },
+  drawerCommunityPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#4f46e5",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#27272a",
+  },
+  drawerCommunityInitial: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  calendarCard: {
+    backgroundColor: "#0f0f13",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#27272a",
+  },
+  dateEventList: {
+    marginTop: 16,
+  },
+  dateHeader: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 10,
+  },
+  noEventsText: {
+    color: "#a1a1aa",
+    fontSize: 12,
+  },
+  unreadBadge: {
+    backgroundColor: "#ef4444",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  unreadBadgeText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  createTemplateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(79, 70, 229, 0.15)",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#4f46e5",
+    gap: 12,
+  },
+  createTemplateIcon: {
+    fontSize: 28,
+  },
+  createTemplateTitle: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  createTemplateDescription: {
+    color: "#a0a0a0",
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  createTemplateArrow: {
+    color: "#4f46e5",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+});
