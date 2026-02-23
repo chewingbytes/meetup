@@ -6,25 +6,63 @@ const router = express.Router();
 // POST /api/auth/signup { email, password, username? }
 router.post("/signup", async (req, res) => {
   try {
-    const { email, password, username } = req.body;
+
+    console.log("TRIGGERING SIGNUP ROUTE WITH BODY:", req.body);
+    const { email, password, username, image_url, bio, interests } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "Missing email or password" });
 
-    // create user
     const { data: userData, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
     });
-    if (error) throw error;
+    if (error) {
+      console.log("ERROR:", error);
+      throw error;
+    }
 
-    // create profile row
-    await supabase
+    const userId = (userData as any)?.user?.id || (userData as any)?.id;
+    const userEmail =
+      (userData as any)?.user?.email || (userData as any)?.email || email;
+    if (!userId) throw new Error("User creation failed");
+
+    const profilePayload: any = {
+      id: userId,
+      username: username || null,
+      full_name: null,
+    };
+
+    if (image_url) profilePayload.avatar_url = image_url;
+    if (bio) profilePayload.bio = bio;
+    if (Array.isArray(interests)) profilePayload.interests = interests;
+
+    const { error: profileError } = await supabase
       .from("profiles")
-      .insert({ id: userData.id, username: username || null, full_name: null })
-      .ignore();
+      .insert(profilePayload);
 
-    res.status(201).json({ id: userData.id, email: userData.email });
+    if (profileError) {
+      console.error("Error creating profile:", profileError);
+      throw new Error(`Profile creation failed: ${profileError.message}`);
+    }
+
+    const userSettingsPayload: any = {
+      user_id: userId,
+      push_notifications: true,
+      email_notifications: true,
+      appearance: "system",
+    }
+
+    console.log("User settings payload:", userSettingsPayload);
+
+    const { error: settingsError } = await supabase.from("user_settings").insert(userSettingsPayload);
+
+    if (settingsError) {
+      console.error("Error creating user settings:", settingsError);
+      throw new Error(`User settings creation failed: ${settingsError.message}`);
+    }
+
+    res.status(201).json({ id: userId, email: userEmail });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ message: err.message || "Signup failed" });
