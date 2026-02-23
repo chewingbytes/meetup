@@ -1,43 +1,32 @@
-import React, { useEffect, useState } from "react";
 import MobileNav from "@/components/mobile-nav";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Modal, Dimensions } from "react-native";
-
-const { width } = Dimensions.get("window");
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Switch,
-} from "react-native";
+import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
+import { useAuth } from "@/lib/authContext";
 import { useRouter } from "expo-router";
 import {
-  ChevronLeft,
-  User,
-  Pencil,
-  Settings,
-  CreditCard,
-  Bell,
-  Moon,
-  Phone,
-  Star,
-  Share2,
-  LogOut,
-  Calendar,
+    Bell,
+    Camera,
+    LogOut,
+    Pencil,
+    Save,
+    User,
+    X,
 } from "lucide-react-native";
-import ListRow from "@/components/list-row";
-import { useAuth } from "@/lib/authContext";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import React, { useEffect, useState } from "react";
+import {
+    Alert,
+    Image,
+    ScrollView,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ProfileIndex() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const {
     userProfile,
     userSettings,
@@ -46,10 +35,10 @@ export default function ProfileIndex() {
     session,
     updateUserProfile,
   } = useAuth();
+
   const [isUpdating, setIsUpdating] = useState(false);
-  const [edit, setEdit] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
     if (!session) {
@@ -59,95 +48,36 @@ export default function ProfileIndex() {
 
   useEffect(() => {
     if (userProfile) {
+      console.log("USERPROFILE:", userProfile);
       setForm({
-        full_name: userProfile.full_name || "",
+        username: userProfile.username || "",
         bio: userProfile.bio || "",
-        personality_type: userProfile.personality_type || "",
-        social_preference: userProfile.social_preference || "",
+        school: userProfile.school || "",
+        year_of_study: userProfile.year_of_study || "",
         interests: Array.isArray(userProfile.interests)
           ? userProfile.interests.join(", ")
           : userProfile.interests || "",
-        school: userProfile.school || "",
-        year_of_study: userProfile.year_of_study || "",
       });
     }
   }, [userProfile]);
 
-  const handleToggleNotification = async (
-    type: "push_notifications" | "email_notifications"
-  ) => {
-    if (!userSettings) return;
-    try {
-      setIsUpdating(true);
-      const newValue = !userSettings[type];
-      await updateUserSettings({ [type]: newValue });
-    } catch (error) {
-      Alert.alert("Error", "Failed to update notification settings");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleChangeAppearance = async (appearance: string) => {
-    if (!userSettings) return;
-    try {
-      setIsUpdating(true);
-      await updateUserSettings({ appearance });
-    } catch (error) {
-      Alert.alert("Error", "Failed to update appearance");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleSignOut = () => {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/login");
-        },
-      },
-    ]);
-  };
-
-  const handleEdit = () => setEdit(true);
-  const handleCancel = () => {
-    setEdit(false);
-    if (userProfile) {
-      setForm({
-        full_name: userProfile.full_name || "",
-        bio: userProfile.bio || "",
-        personality_type: userProfile.personality_type || "",
-        social_preference: userProfile.social_preference || "",
-        interests: Array.isArray(userProfile.interests)
-          ? userProfile.interests.join(", ")
-          : userProfile.interests || "",
-        school: userProfile.school || "",
-        year_of_study: userProfile.year_of_study || "",
-      });
-    }
-  };
   const handleSave = async () => {
     setIsUpdating(true);
     try {
       await updateUserProfile({
-        full_name: form.full_name,
+        username: form.username,
         bio: form.bio,
-        personality_type: form.personality_type,
-        social_preference: form.social_preference,
-        interests: form.interests
-          .split(",")
-          .map((s: string) => s.trim())
-          .filter(Boolean),
         school: form.school,
         year_of_study: form.year_of_study,
+        interests: form.interests
+          ? form.interests
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean)
+          : [],
       });
-      setEdit(false);
-      Alert.alert("Profile updated");
+      setIsEditing(false);
+      Alert.alert("Success", "ID Card Updated!");
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Failed to update profile");
     } finally {
@@ -155,562 +85,373 @@ export default function ProfileIndex() {
     }
   };
 
-  if (!userProfile || !userSettings) {
+  const handleLogout = () => {
+    Alert.alert("Sign out", "Abandon your post?", [
+      { text: "Stay", style: "cancel" },
+      {
+        text: "Leave",
+        style: "destructive",
+        onPress: async () => {
+          await signOut();
+          router.replace("/");
+        },
+      },
+    ]);
+  };
+
+  const toggleNotification = async () => {
+    if (!userSettings) return;
+    try {
+      await updateUserSettings({
+        push_notifications: !userSettings.push_notifications,
+      });
+    } catch (e) {}
+  };
+
+  const needsQuiz =
+    !userProfile?.personality_answers || !userProfile?.personality_type;
+
+  const goToQuiz = () => {
+    router.push("/settings/personality-quiz" as any);
+  };
+
+  if (!userProfile) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <ActivityIndicator size="large" color="#FF8FA3" />
-        </View>
-      </SafeAreaView>
+      <View className="flex-1 bg-neo-bg items-center justify-center">
+        <NeoLoader />
+      </View>
+      //   <TouchableOpacity
+      //     onPress={handleLogout}
+      //     className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+      //   >
+      //     <LogOut size={20} color="#000" strokeWidth={3} />
+      //     <Text className="font-black text-lg uppercase">Log Out</Text>
+      //   </TouchableOpacity>
     );
   }
 
+  const displayName =
+    userProfile.full_name?.trim() || userProfile.username || "Unnamed";
+  const displaySchool = userProfile.school?.trim() || "Not provided";
+  const displayYear =
+    userProfile.year_of_study?.toString().trim() || "Not provided";
+  const displayBio = userProfile.bio?.trim() || "No bio yet.";
+  const interestList = Array.isArray(userProfile.interests)
+    ? userProfile.interests.filter(Boolean)
+    : [];
+  const displayInterests = interestList.length
+    ? interestList.join(", ")
+    : "No interests added.";
+
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Profile card */}
-        <View style={styles.profileCard}>
-          <Image
-            source={{
-              uri:
-                userProfile.avatar_url ||
-                "https://picsum.photos/seed/me/200/200",
-            }}
-            style={styles.avatar}
-          />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.name}>
-              {userProfile.full_name || userProfile.username}
-            </Text>
-            <Text style={styles.email}>{session?.user?.email}</Text>
-            {userProfile.bio && (
-              <Text style={styles.bio}>{userProfile.bio}</Text>
-            )}
-          </View>
+    <View style={{ flex: 1, backgroundColor: "#FFFDF5" }}>
+      {/* Sticky Header */}
+      <View
+        style={{ paddingTop: insets.top, zIndex: 50 }}
+        className="absolute top-0 left-0 right-0 bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
+      >
+        <View className="flex-row items-center justify-between mt-4">
+          <Text className="text-5xl font-black uppercase tracking-tighter">
+            My ID
+          </Text>
 
-          {/* Removed top edit button */}
-        </View>
-
-        <Text style={styles.sectionTitle}>Profile Information</Text>
-        <View style={styles.infoBox}>
-          <TouchableOpacity style={styles.profileEditFab} onPress={handleEdit}>
-            <Pencil size={18} color="#fff" />
-          </TouchableOpacity>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}></Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Full Name</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.full_name || "Not set"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Bio</Text>
-            <Text style={styles.infoValue}>{userProfile.bio || "Not set"}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Personality</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.personality_type || "Not set"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Social Preference</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.social_preference || "Not set"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>School</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.school || "Not set"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Year</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.year_of_study || "Not set"}
-            </Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Member Since</Text>
-            <Text style={styles.infoValue}>
-              {userProfile.created_at
-                ? new Date(userProfile.created_at).toLocaleDateString()
-                : "N/A"}
-            </Text>
-          </View>
-        </View>
-
-        <Modal
-          visible={edit}
-          animationType="fade"
-          transparent
-          onRequestClose={handleCancel}
-        >
-          <View style={styles.modalBackdrop}>
-            <View style={styles.modalCard}>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
+          {isEditing ? (
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => setIsEditing(false)}
+                className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
               >
-                {[
-                  { key: "full_name", label: "Full Name" },
-                  { key: "bio", label: "Bio" },
-                  { key: "personality_type", label: "Personality Type" },
-                  { key: "social_preference", label: "Social Preference" },
-                  { key: "interests", label: "Interests (comma separated)" },
-                  { key: "school", label: "School" },
-                  { key: "year_of_study", label: "Year of Study" },
-                ].map((item, index) => (
-                  <View key={item.key} style={styles.modalSlide}>
-                    <Text style={styles.modalTitle}>{item.label}</Text>
+                <X size={20} color="#000" strokeWidth={3} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={isUpdating}
+                className="bg-green-500 border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
+              >
+                {isUpdating ? (
+                  <NeoButtonLoader color="#000" />
+                ) : (
+                  <Save size={20} color="#000" strokeWidth={3} />
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setIsEditing(true)}
+              className="border-2 bg-white border-black p-2 shadow-[2px_2px_0px_0px_#000] rotate-2"
+            >
+              <Pencil size={20} color="#000" strokeWidth={3} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
 
-                    <Input
-                      value={form[item.key]}
-                      onChangeText={(v) =>
-                        setForm((f: any) => ({ ...f, [item.key]: v }))
-                      }
-                      style={styles.modalInput}
-                      placeholder={`Enter ${item.label}`}
-                      multiline={item.key === "bio"}
-                    />
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 100,
+          paddingBottom: 180,
+          paddingHorizontal: 20,
+        }}
+      >
+        {/* ID Card */}
+        <View className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] relative mb-8">
+          {/* Hole Punch Visual */}
+          <View className="absolute -top-6 left-[45%] w-8 h-8 bg-neo-bg rounded-full border-4 border-black z-10" />
 
-                    <Text style={styles.modalIndicator}>{index + 1} / 7</Text>
-                  </View>
-                ))}
-              </ScrollView>
+          <View className="border-b-4 border-black pb-4 mb-4 flex-row justify-between items-end">
+            <Text className="text-3xl font-black uppercase text-neo-blue tracking-widest">
+              STUDENT
+            </Text>
+            <Text className="font-bold text-xs uppercase opacity-50">
+              Valid thru 2026
+            </Text>
+          </View>
 
-              <View style={styles.modalActions}>
-                <Button
-                  onPress={handleCancel}
-                  variant="ghost"
-                  disabled={isUpdating}
-                  style={styles.cancelBtn}
-                >
-                  Cancel
-                </Button>
+          <View className="flex-row gap-6 mb-6">
+            <View
+              className="w-24 h-32 bg-gray-200 border-2 border-black relative"
+              style={{ overflow: "visible" }}
+            >
+              {userProfile.avatar_url ? (
+                <Image
+                  source={{ uri: userProfile.avatar_url }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="flex-1 items-center justify-center">
+                  <User size={40} color="#000" />
+                </View>
+              )}
+              {isEditing && (
+                <View className="absolute inset-0 bg-black/30 items-center justify-center">
+                  <Camera size={24} color="#fff" />
+                </View>
+              )}
+              {/* Personality badge */}
+              <View
+                className="absolute -top-4 -right-4 bg-[#FF6B6B] border-3 border-black px-2 py-1 rotate-12 shadow-[4px_4px_0px_0px_#000]"
+                style={{ zIndex: 99 }}
+              >
+                <Text className="font-black text-[10px] uppercase tracking-tight text-white">
+                  {userProfile.personality_type || "Take Quiz"}
+                </Text>
+              </View>
+              <View className="absolute bottom-0 w-full bg-neo-yellow border-t-2 border-black py-1">
+                <Text className="text-[8px] font-black text-center uppercase">
+                  Verified
+                </Text>
+              </View>
+            </View>
 
-                <Button
-                  onPress={handleSave}
-                  disabled={isUpdating}
-                  style={styles.saveBtn}
-                >
-                  Save
-                </Button>
+            <View className="flex-1 gap-3">
+              <View>
+                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  Name
+                </Text>
+                {isEditing ? (
+                  <TextInput
+                    value={form.username}
+                    onChangeText={(t) => setForm({ ...form, username: t })}
+                    className="border-b-2 border-black font-black text-xl py-0"
+                  />
+                ) : (
+                  <Text className="text-xl font-black uppercase leading-5">
+                    {displayName}
+                  </Text>
+                )}
+              </View>
+              <View>
+                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  School
+                </Text>
+                {isEditing ? (
+                  <TextInput
+                    value={form.school}
+                    onChangeText={(t) => setForm({ ...form, school: t })}
+                    className="border-b-2 border-black font-bold text-base py-0"
+                  />
+                ) : (
+                  <Text className="text-base font-bold uppercase leading-5">
+                    {displaySchool}
+                  </Text>
+                )}
+              </View>
+              <View>
+                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  Year
+                </Text>
+                {isEditing ? (
+                  <TextInput
+                    value={form.year_of_study}
+                    onChangeText={(t) => setForm({ ...form, year_of_study: t })}
+                    className="border-b-2 border-black font-bold text-base py-0"
+                  />
+                ) : (
+                  <Text className="text-base font-bold uppercase leading-5">
+                    {displayYear}
+                  </Text>
+                )}
               </View>
             </View>
           </View>
-        </Modal>
 
-        {/* Account */}
-        <Text style={styles.sectionTitle}>Account</Text>
-        <ListRow
-          icon={Calendar}
-          title="My Events"
-          subtitle="See all your events"
-          onPress={() => router.push("/my-events")}
-        />
-        <ListRow
-          icon={Star}
-          title="My Testimonials"
-          subtitle="Manage reviews & feedback"
-          onPress={() => router.push("/settings/testimonials")}
-        />
-        <ListRow
-          icon={User}
-          title="Account settings"
-          subtitle="Privacy, password"
-          onPress={() => router.push("/account")}
-        />
-        <ListRow
-          icon={CreditCard}
-          title="Payment"
-          subtitle="Manage cards, payouts"
-          onPress={() => router.push("/payment-settings")}
-        />
-
-        {/* Preferences */}
-        <Text style={styles.sectionTitle}>Preferences</Text>
-
-        {/* Notifications */}
-        <View style={styles.preferenceRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.preferenceTitle}>Push Notifications</Text>
-            <Text style={styles.preferenceSubtitle}>Get push alerts</Text>
+          {/* Bio Section */}
+          <View className="bg-neo-bg border-2 border-black p-2 relative">
+            <Text className="absolute -top-3 left-2 bg-black text-white px-1 text-[10px] font-bold uppercase">
+              Notes
+            </Text>
+            {isEditing ? (
+              <TextInput
+                value={form.bio}
+                onChangeText={(t) => setForm({ ...form, bio: t })}
+                multiline
+                className="font-medium text-sm pt-2"
+              />
+            ) : (
+              <Text className="font-medium text-sm text-black pt-1">
+                {displayBio}
+              </Text>
+            )}
           </View>
-          <Switch
-            value={userSettings.push_notifications}
-            onValueChange={() => handleToggleNotification("push_notifications")}
-            disabled={isUpdating}
-            trackColor={{ false: "#444", true: "#FF8FA3" }}
-            thumbColor={userSettings.push_notifications ? "#fff" : "#888"}
-          />
+
+          {/* Interests */}
+          <View className="bg-white border-2 border-black p-3 mt-4 shadow-[4px_4px_0px_0px_#000]">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-black uppercase">Interests</Text>
+              <Text className="text-[10px] font-bold uppercase text-gray-500">
+                {interestList.length} saved
+              </Text>
+            </View>
+            {isEditing ? (
+              <TextInput
+                value={form.interests}
+                onChangeText={(t) => setForm({ ...form, interests: t })}
+                placeholder="e.g. Art, Food, Tech"
+                className="border-b-2 border-black font-medium text-sm py-1"
+              />
+            ) : interestList.length ? (
+              <View className="flex-row flex-wrap gap-2">
+                {interestList.map((tag) => (
+                  <View
+                    key={tag}
+                    className="px-3 py-1 border-2 border-black bg-[#E0F2FE]"
+                  >
+                    <Text className="font-bold text-xs uppercase">{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="font-medium text-sm text-gray-600">
+                {displayInterests}
+              </Text>
+            )}
+          </View>
+
+          {/* Footer Barcode */}
+          <View className="mt-4 pt-2 border-t-2 border-dashed border-black items-center">
+            <View
+              className="h-8 w-full bg-black mask-image-linear-gradient"
+              style={{ opacity: 0.8 }}
+            />
+            <Text className="text-[8px] font-mono tracking-[4px] mt-1">
+              {session?.user?.id.substring(0, 12).toUpperCase()}
+            </Text>
+          </View>
         </View>
 
-        <View
-          style={[
-            styles.preferenceRow,
-            { borderTopWidth: 1, borderTopColor: "#222", paddingTop: 12 },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.preferenceTitle}>Email Notifications</Text>
-            <Text style={styles.preferenceSubtitle}>Get email updates</Text>
-          </View>
-          <Switch
-            value={userSettings.email_notifications}
-            onValueChange={() =>
-              handleToggleNotification("email_notifications")
-            }
-            disabled={isUpdating}
-            trackColor={{ false: "#444", true: "#FF8FA3" }}
-            thumbColor={userSettings.email_notifications ? "#fff" : "#888"}
-          />
-        </View>
+        {/* My Stuff Section */}
+        <View className="mb-8">
+          <Text className="text-2xl font-black uppercase mb-4">Archives</Text>
 
-        {/* Appearance */}
-        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Appearance</Text>
-        <View style={styles.appearanceContainer}>
-          {["light", "dark", "auto"].map((mode) => (
+          <View className="flex-row flex-wrap gap-4">
             <TouchableOpacity
-              key={mode}
-              onPress={() => handleChangeAppearance(mode)}
-              style={[
-                styles.appearanceOption,
-                userSettings.appearance === mode &&
-                  styles.appearanceOptionActive,
-              ]}
-              disabled={isUpdating}
+              onPress={() => router.push("/my-events")}
+              className="flex-1 bg-[#FFD93D] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none min-w-[45%]"
             >
-              <Text
-                style={[
-                  styles.appearanceOptionText,
-                  userSettings.appearance === mode &&
-                    styles.appearanceOptionTextActive,
-                ]}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              <Text className="font-black text-lg uppercase mb-1">
+                My Events
+              </Text>
+              <Text className="font-bold text-xs uppercase bg-white px-1">
+                42 Records
               </Text>
             </TouchableOpacity>
-          ))}
+
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert("Coming Soon", "Testimonials module loading...")
+              }
+              className="flex-1 bg-[#C4B5FD] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none min-w-[45%]"
+            >
+              <Text className="font-black text-lg uppercase mb-1">
+                Testimonials
+              </Text>
+              <Text className="font-bold text-xs uppercase bg-white px-1">
+                5 Stars
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Resources */}
-        <Text style={styles.sectionTitle}>Resources</Text>
-        <ListRow
-          icon={Phone}
-          title="Contact support"
-          subtitle="Get help"
-          onPress={() => router.push("/contact-support")}
-        />
-        <ListRow
-          icon={Star}
-          title="Rate in App Store"
-          subtitle="Leave a review"
-          onPress={() => router.push("/rate-appstore")}
-        />
-        <ListRow
-          icon={Share2}
-          title="App socials"
-          subtitle="Follow us"
-          onPress={() => router.push("/socials")}
-        />
+        {/* Settings Control Panel */}
+        <View>
+          <Text className="text-2xl font-black uppercase mb-4">
+            Control Panel
+          </Text>
+          {needsQuiz && (
+            <TouchableOpacity
+              onPress={goToQuiz}
+              className="bg-[#FF6B6B] border-4 border-black p-4 flex-row items-center justify-between shadow-[6px_6px_0px_0px_#000] active:translate-y-1 active:shadow-none mb-4"
+            >
+              <View className="flex-1 pr-3">
+                <Text className="font-black text-lg uppercase">
+                  Complete Vibe Quiz
+                </Text>
+                <Text className="font-bold text-xs uppercase text-black/70">
+                  Unlock personality type and social preference.
+                </Text>
+              </View>
+              <View className="bg-white border-2 border-black px-3 py-2">
+                <Text className="font-black text-sm uppercase">Start</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
-        {/* Sign out */}
-        <TouchableOpacity style={styles.signOut} onPress={handleSignOut}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <LogOut size={18} color="#ff6b6b" />
-            <Text style={styles.signOutText}>Sign out</Text>
+          <View className="bg-white border-2 border-black p-4 mb-4 shadow-[4px_4px_0px_0px_#000]">
+            <View className="flex-row items-center justify-between mb-4">
+              <View className="flex-row items-center gap-3">
+                <View className="bg-neo-violet p-2 border-2 border-black">
+                  <Bell size={20} color="#fff" />
+                </View>
+                <Text className="font-bold text-lg uppercase">
+                  Notifications
+                </Text>
+              </View>
+              <Switch
+                value={userSettings?.push_notifications ?? false}
+                onValueChange={toggleNotification}
+                trackColor={{ false: "#eee", true: "#000" }}
+                thumbColor={userSettings?.push_notifications ? "#fff" : "#000"}
+              />
+            </View>
+            <View className="h-2 bg-gray-100 w-full mb-2">
+              <View className="h-full bg-neo-green" style={{ width: "75%" }} />
+            </View>
+            <Text className="text-xs font-bold uppercase text-gray-400">
+              System Status: Nominal
+            </Text>
           </View>
-        </TouchableOpacity>
 
-        <View style={{ height: 90 }} />
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+          >
+            <LogOut size={20} color="#000" strokeWidth={3} />
+            <Text className="font-black text-lg uppercase">Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       <MobileNav active="profile" />
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  simpleHeader: {
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  centerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  container: { padding: 20 },
-  profileCard: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  avatar: { width: 72, height: 72, borderRadius: 14, backgroundColor: "#222" },
-  name: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  email: { color: "#888", marginTop: 4 },
-  bio: { color: "#aaa", marginTop: 2, fontSize: 12 },
-  profileEditFab: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "#4f46e5",
-    borderRadius: 20,
-    padding: 8,
-    zIndex: 2,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  sectionTitle: {
-    color: "#999",
-    marginTop: 18,
-    marginBottom: 12,
-    fontWeight: "600",
-    fontSize: 12,
-  },
-  infoBox: {
-    backgroundColor: "#18181b",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderColor: "#23232a",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  infoLabel: {
-    color: "#888",
-    fontSize: 14,
-  },
-  infoValue: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  inputEdit: {
-    color: "#fff",
-    backgroundColor: "#23232a",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-    minWidth: 120,
-    borderWidth: 1,
-    borderColor: "#333",
-    marginLeft: 8,
-    flex: 1,
-  },
-  editActionBar: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
-    marginTop: 18,
-  },
-  saveBtn: {
-    backgroundColor: "#4f46e5",
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    marginRight: 4,
-  },
-  cancelBtn: {
-    backgroundColor: "#23232a",
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-  },
-  preferenceRow: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 12,
-  },
-  preferenceTitle: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  preferenceSubtitle: {
-    color: "#888",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  appearanceContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 18,
-  },
-  appearanceOption: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: "#0f0f0f",
-    borderRadius: 8,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  appearanceOptionActive: {
-    borderColor: "#FF8FA3",
-  },
-  appearanceOptionText: {
-    color: "#888",
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  appearanceOptionTextActive: {
-    color: "#fff",
-  },
-  signOut: {
-    marginTop: 18,
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "#0b0b0b",
-    alignItems: "flex-start",
-  },
-  signOutText: { color: "#ff6b6b", fontWeight: "700" },
-  divider: {
-    height: 1,
-    backgroundColor: "#222",
-    marginVertical: 10,
-  },
-
-  carouselOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#09090b",
-    zIndex: 50,
-  },
-
-  slide: {
-    width: Dimensions.get("window").width,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-
-  slideTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 24,
-  },
-
-  carouselInput: {
-    width: "100%",
-    backgroundColor: "#18181b",
-    borderRadius: 14,
-    padding: 18,
-    fontSize: 16,
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-
-  slideIndicator: {
-    marginTop: 20,
-    color: "#666",
-  },
-
-  carouselActions: {
-    position: "absolute",
-    bottom: 40,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-
-  modalCard: {
-    width: "100%",
-    maxHeight: "90%",
-    backgroundColor: "#111",
-    borderRadius: 20,
-    paddingVertical: 40,
-    overflow: "hidden",
-  },
-
-  modalSlide: {
-    width: Dimensions.get("window").width - 40,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-
-  modalTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 20,
-  },
-
-  modalInput: {
-    width: "100%",
-    backgroundColor: "#18181b",
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 16,
-    color: "#fff",
-    borderWidth: 1,
-    borderColor: "#333",
-  },
-
-  modalIndicator: {
-    marginTop: 16,
-    color: "#666",
-  },
-
-  modalActions: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginTop: 20,
-  },
-});

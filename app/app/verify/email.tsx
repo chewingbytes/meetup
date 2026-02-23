@@ -7,8 +7,8 @@ import {
   View,
   ScrollView,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
+import { NeoButtonLoader } from '@/components/ui/neo-loader';
 // import { useAuth } from '@/lib/authContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -197,7 +197,7 @@ export default function EmailVerify() {
             }}
           >
             {isLoading ? (
-              <ActivityIndicator color={PALETTE.white} />
+              <NeoButtonLoader color={PALETTE.white} />
             ) : (
               <Text
                 style={{

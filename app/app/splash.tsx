@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
+import { NeoLoader } from "@/components/ui/neo-loader";
 import { useAuth } from "@/lib/authContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -54,7 +55,7 @@ export default function Splash() {
 
       {isLoading && (
         <View style={{ position: "absolute", bottom: 60 }}>
-          <ActivityIndicator size="large" color={PALETTE.white} />
+          <NeoLoader />
         </View>
       )}
 

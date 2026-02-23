@@ -2,6 +2,7 @@
 // const API_BASE = "http://localhost:4000/api";
 // const API_BASE = "http://172.20.10.4:4000/api";
 const API_BASE = "http://192.168.1.122:4000/api";
+// const API_BASE = "http://172.20.10.4:4000/api";
 const AUTH_BASE = `${API_BASE}/auth`;
 
 async function request(path: string, options: RequestInit = {}) {
@@ -33,7 +34,7 @@ async function request(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const err = new Error(
-      (json && json.message) || res.statusText || "Request failed"
+      (json && json.message) || res.statusText || "Request failed",
     );
     (err as any).status = res.status;
     (err as any).body = json;
@@ -49,17 +50,32 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
-  signUp: (email: string, password: string, username?: string) =>
+  signUp: (
+    email: string,
+    password: string,
+    username: string,
+    avatarUrl: string | null,
+    bio: string,
+    selectedInterests: string[],
+  ) =>
     request(`${AUTH_BASE}/signup`, {
       method: "POST",
-      body: JSON.stringify({ email, password, username }),
+      body: JSON.stringify({
+        email,
+        password,
+        username,
+        image_url: avatarUrl,
+        bio,
+        interests: selectedInterests,
+      }),
     }),
   signOut: () => request(`${AUTH_BASE}/signout`, { method: "POST" }),
 };
 
 // Communities
 export const getCommunities = () => request("/communities");
-export const getMyCommunities = (user_id: string) => request(`/communities/my-communities?user_id=${user_id}`);
+export const getMyCommunities = (user_id: string) =>
+  request(`/communities/my-communities?user_id=${user_id}`);
 export const getCommunity = (id: string) => request(`/communities/${id}`);
 export const createCommunity = (body: any) =>
   // support FormData (image) or JSON
@@ -78,7 +94,9 @@ export const leaveCommunity = (user_id: string, community_id: string) =>
     body: JSON.stringify({ user_id, community_id }),
   });
 export const checkMembership = (user_id: string, community_id: string) =>
-  request(`/communities/check-membership?user_id=${user_id}&community_id=${community_id}`);
+  request(
+    `/communities/check-membership?user_id=${user_id}&community_id=${community_id}`,
+  );
 
 // Topics
 export const getTopics = () => request("/topics");
@@ -87,7 +105,8 @@ export const getCommunitiesByTopic = (topicId: number) =>
 
 // Events
 export const getEvents = () => request("/events");
-export const getMyEvents = (user_id: string) => request(`/events/my-events?user_id=${user_id}`);
+export const getMyEvents = (user_id: string) =>
+  request(`/events/my-events?user_id=${user_id}`);
 export const getEvent = (id: string) => request(`/events/${id}`);
 export const createEvent = (body: any) =>
   request("/events", {
@@ -136,7 +155,9 @@ export const respondFriend = (id: string, action: "accept" | "decline") =>
 
 // Testimonials
 export const getTestimonials = (event_id?: string, community_id?: string) =>
-  request(`/testimonials?${event_id ? `event_id=${event_id}` : `community_id=${community_id}`}`);
+  request(
+    `/testimonials?${event_id ? `event_id=${event_id}` : `community_id=${community_id}`}`,
+  );
 export const getUserTestimonials = (user_id: string) =>
   request(`/testimonials/user/${user_id}`);
 export const createTestimonial = (body: any) =>
@@ -219,7 +240,11 @@ export const getEventTestimonialStats = (event_id: string) =>
   request(`/event-testimonials/event/${event_id}/stats`);
 
 // Invitations
-export const sendEventInvitation = (event_id: string, inviter_id: string, invitee_id: string) =>
+export const sendEventInvitation = (
+  event_id: string,
+  inviter_id: string,
+  invitee_id: string,
+) =>
   request("/invitations/send", {
     method: "POST",
     body: JSON.stringify({ event_id, inviter_id, invitee_id }),

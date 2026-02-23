@@ -124,7 +124,8 @@ export default function ExploreScreen() {
  * Shows: Fetching and caching individual items
  */
 
-import { ScrollView, Text, ActivityIndicator } from "react-native";
+import { ScrollView, Text } from "react-native";
+import { NeoLoader } from "@/components/ui/neo-loader";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { useEventStore } from "@/lib/stores/eventStore";
@@ -154,7 +155,7 @@ export default function EventDetailScreen() {
 
   const event = eventDetails[id as string];
 
-  if (loading) return <ActivityIndicator size="large" color="#fff" />;
+  if (loading) return <NeoLoader />;
   if (!event) return <Text>Event not found</Text>;
 
   return (

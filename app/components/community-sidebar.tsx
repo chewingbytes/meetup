@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   Text,
+  Dimensions,
 } from "react-native";
 import { Plus } from "lucide-react-native";
 import { CommunityProps } from "@/utils/types";
@@ -23,21 +24,22 @@ export default function CommunitySidebar({
   onAddCommunity,
 }: CommunitySidebarProps) {
   return (
-    <View className="w-24 bg-[#09090b] flex-col items-center py-4 gap-y-3">
+    <View className="w-20 bg-neo-bg flex-col items-center py-4 gap-y-4 border-r-4 border-black h-min-max">
       {/* Communities Stack */}
       <ScrollView
-        scrollEnabled={communities.length > 6}
         showsVerticalScrollIndicator={false}
-        className="flex-1"
+        className="flex-1 w-full px-2"
+        contentContainerStyle={{ alignItems: "center", gap: 16 }}
       >
         {communities.map((community) => (
           <TouchableOpacity
             key={community.id}
+            activeOpacity={1}
             onPress={() => onSelectCommunity(community)}
-            className={`w-16 h-16 rounded-full mb-3 items-center justify-center overflow-hidden border-2 ${
+            className={`w-14 h-14 bg-white border-4 border-black items-center justify-center overflow-hidden transition-all active:translate-y-[2px] active:shadow-none shadow-[4px_4px_0px_0px_#000] ${
               selectedCommunityId === community.id
-                ? "border-indigo-500"
-                : "border-zinc-800"
+                ? "bg-neo-yellow -rotate-2"
+                : "rotate-1"
             }`}
           >
             {community.profile_image ? (
@@ -47,25 +49,24 @@ export default function CommunitySidebar({
                 resizeMode="cover"
               />
             ) : (
-              <View className="w-full h-full bg-indigo-600 items-center justify-center">
-                <Text className="text-white text-xl font-bold">
-                  {community.name?.charAt(0).toUpperCase()}
+              <View className="w-full h-full items-center justify-center bg-neo-violet">
+                <Text className="text-black text-xl font-black uppercase">
+                  {community.name?.charAt(0)}
                 </Text>
               </View>
             )}
           </TouchableOpacity>
         ))}
-      </ScrollView>
 
-      {/* Add Community Button */}
-      <View className="border-t border-zinc-800 pt-3">
+        {/* Add Community Button */}
         <TouchableOpacity
           onPress={onAddCommunity}
-          className="w-16 h-16 rounded-full bg-zinc-800 items-center justify-center hover:bg-zinc-700"
+          activeOpacity={1}
+          className="w-14 h-14 bg-neo-red border-4 border-black items-center justify-center mt-4 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
         >
-          <Plus size={28} color="#fff" />
+          <Plus size={28} color="#000" strokeWidth={4} />
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }

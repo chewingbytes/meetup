@@ -1,13 +1,36 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    // Ensure this points to your source code
     "./app/**/*.{js,tsx,ts,jsx}",
     "./components/**/*.{js,tsx,ts,jsx}",
-    // If you use a `src` directory, add: './src/**/*.{js,tsx,ts,jsx}'
-    // Do the same with `components`, `hooks`, `styles`, or any other top-level directories
   ],
   presets: [require("nativewind/preset")],
-  theme: {},
+  theme: {
+    extend: {
+      colors: {
+        neo: {
+          bg: "#FFFDF5",
+          white: "#FFFFFF",
+          black: "#000000",
+          red: "#FF6B6B",
+          yellow: "#FFD93D",
+          violet: "#C4B5FD",
+          green: "#6EE7B7",
+          blue: "#93C5FD",
+          pink: "#F472B6",
+          accent: "#FF6B6B",
+          purple: "#A78BFA",
+          "green-light": "#D1FAE5",
+        }
+      },
+      fontFamily: {
+        space: ["SpaceGrotesk_400Regular"],
+        "space-bold": ["SpaceGrotesk_700Bold"],
+      },
+      borderWidth: {
+        '3': '3px',
+      }
+    },
+  },
   plugins: [],
 };

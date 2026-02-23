@@ -1,28 +1,17 @@
 import { useEffect, useState } from "react";
-import { Alert, ActivityIndicator } from "react-native";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Platform,
-} from "react-native";
+import { Alert, View, Text, TouchableOpacity, TextInput, Image, ScrollView, Platform, Switch } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { NeoButtonLoader } from '@/components/ui/neo-loader';
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Markdown from "react-native-markdown-display";
-import { Check, X } from "lucide-react-native";
+import { Check, X, MapPin, Calendar, Clock, DollarSign, Users, ChevronDown, Upload } from "lucide-react-native";
+import { Picker } from "@react-native-picker/picker"; 
 
 import { getCommunities, createEvent as createEventApi } from "@/lib/api";
 import { useEventStore } from "@/lib/stores/eventStore";
 import { useAuth } from "@/lib/authContext";
-
-import { Picker } from "@react-native-picker/picker"; 
 
 const SINGAPORE_AREAS = [
   "Marina Bay",
@@ -47,10 +36,9 @@ export default function CreateEvent() {
 
   // cover + basic
   const [cover, setCover] = useState<string | null>(null);
-  const [selectedCommunity, setSelectedCommunity] = useState<string | null>(
-    null
-  );
+  const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
   const [name, setName] = useState("");
+  
   // date/time
   const [start, setStart] = useState<Date | null>(null);
   const [end, setEnd] = useState<Date | null>(null);
@@ -60,9 +48,7 @@ export default function CreateEvent() {
   }>({ field: null, mode: "date" });
 
   // location
-  const [locationChoice, setLocationChoice] = useState<
-    "none" | "current" | "choose" | "manual"
-  >("none");
+  const [locationChoice, setLocationChoice] = useState<"none" | "current" | "choose" | "manual">("none");
   const [chosenLocation, setChosenLocation] = useState<string>("");
   const [manualLocation, setManualLocation] = useState("");
   const [locationInstructions, setLocationInstructions] = useState("");
@@ -87,30 +73,17 @@ export default function CreateEvent() {
   // Fetch communities from backend
   useEffect(() => {
     let isMounted = true;
-
     const loadCommunities = async () => {
       setCommunitiesLoading(true);
       setFetchError(null);
-
       try {
         const data = await getCommunities();
         if (!isMounted) return;
-
-        const list: Array<{ id: string; name: string }> = Array.isArray(data)
-          ? data
-          : data?.communities || [];
+        const list: Array<{ id: string; name: string }> = Array.isArray(data) ? data : data?.communities || [];
         setCommunities(list);
-
         if (params.communityId) {
           const matched = list.find((c) => c.id === params.communityId);
-          if (matched) {
-            setSelectedCommunity(matched.id);
-          } else if (params.communityName) {
-            Alert.alert(
-              "Community not found",
-              `We couldn't find ${params.communityName}. Please pick a community.`
-            );
-          }
+          if (matched) setSelectedCommunity(matched.id);
         }
       } catch (e: any) {
         if (!isMounted) return;
@@ -119,12 +92,8 @@ export default function CreateEvent() {
         if (isMounted) setCommunitiesLoading(false);
       }
     };
-
     loadCommunities();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [params.communityId, params.communityName]);
 
   async function pickCover() {
@@ -132,26 +101,14 @@ export default function CreateEvent() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
     });
-    if (!r.canceled) {
-      setCover(r.assets[0].uri);
-    }
+    if (!r.canceled) setCover(r.assets[0].uri);
   }
 
   function hasUnsavedChanges() {
     return (
-      cover !== null ||
-      name.trim() !== "" ||
-      start !== null ||
-      end !== null ||
-      chosenLocation !== "" ||
-      description.trim() !== "" ||
-      locationInstructions.trim() !== "" ||
-      requireApproval ||
-      isPaid ||
-      price !== "0" ||
-      !isPublic ||
-      !unlimited ||
-      capacity.trim() !== ""
+      cover !== null || name.trim() !== "" || start !== null || end !== null ||
+      chosenLocation !== "" || description.trim() !== "" ||
+      price !== "0" || capacity.trim() !== ""
     );
   }
 
@@ -160,17 +117,12 @@ export default function CreateEvent() {
       router.back();
       return;
     }
-
     Alert.alert(
-      "Discard changes?",
-      "All unsaved changes will be lost if you leave this page.",
+      "DISCARD?",
+      "Unsaved changes will be lost.",
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Discard",
-          style: "destructive",
-          onPress: () => router.back(),
-        },
+        { text: "Discard", style: "destructive", onPress: () => router.back() },
       ]
     );
   }
@@ -188,32 +140,12 @@ export default function CreateEvent() {
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
       });
-      const addr = [
-        place.name,
-        place.street,
-        place.subregion,
-        place.city,
-        place.region,
-      ]
-        .filter(Boolean)
-        .join(", ");
+      const addr = [place.name, place.street, place.subregion, place.city].filter(Boolean).join(", ");
       setLocationChoice("current");
-      const fallbackCoords = pos.coords.latitude + ", " + pos.coords.longitude;
-      setChosenLocation(addr || fallbackCoords);
+      setChosenLocation(addr || `${pos.coords.latitude}, ${pos.coords.longitude}`);
     } catch (e) {
-      setError("Could not fetch current location.");
+      setError("Could not fetch location.");
     }
-  }
-
-  function chooseArea(area: string) {
-    setLocationChoice("choose");
-    setChosenLocation(area);
-  }
-
-  function manualSetLocation(text: string) {
-    setLocationChoice("manual");
-    setManualLocation(text);
-    setChosenLocation(text);
   }
 
   function showDateTime(field: "start" | "end", mode: "date" | "time") {
@@ -229,9 +161,7 @@ export default function CreateEvent() {
   }
 
   function canSubmit() {
-    // required: name >= 3 chars, start & end set and start <= end, chosenLocation, description >= 10 chars
     if (!selectedCommunity) return false;
-    if (!communities.find((c) => c.id === selectedCommunity)) return false;
     if (name.trim().length < 3) return false;
     if (!start || !end) return false;
     if (start > end) return false;
@@ -244,16 +174,12 @@ export default function CreateEvent() {
 
   function handleCreate() {
     if (!canSubmit()) {
-      setError("Please fill required fields correctly.");
+      setError("Please fill all required fields.");
       return;
     }
     setError(null);
-
     const selected = communities.find((c) => c.id === selectedCommunity);
-    if (!selected) {
-      Alert.alert("Community required", "Please select a valid community.");
-      return;
-    }
+    if (!selected) return;
 
     const payload: any = {
       communityId: selected.id,
@@ -275,487 +201,264 @@ export default function CreateEvent() {
     setIsSubmitting(true);
     createEventApi(payload)
       .then(async () => {
-        // Refresh the event store to show the new event immediately
         const { fetchEvents } = useEventStore.getState();
-        await fetchEvents(true); // Force refresh
-        
-        Alert.alert("Event created", "Your event has been created successfully.");
+        await fetchEvents(true);
+        Alert.alert("SUCCESS", "Event created!");
         router.push("/home");
       })
-      .catch((e: any) => {
-        setError(e?.message || "Failed to create event.");
-      })
+      .catch((e: any) => setError(e?.message || "Failed to create event."))
       .finally(() => setIsSubmitting(false));
   }
 
   return (
-    <View style={styles.root}>
+    <View className="flex-1 bg-neo-bg">
       {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleExit}>
-          <X size={26} color="#fff" />
+      <View className="bg-neo-yellow border-b-4 border-black px-4 pt-12 pb-4 flex-row items-center justify-between z-10">
+        <TouchableOpacity onPress={handleExit} className="bg-neo-red border-2 border-black p-2 active:translate-y-1 shadow-[2px_2px_0px_0px_#000]">
+          <X size={24} color="#000" strokeWidth={3} />
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Create event</Text>
-
+        <Text className="text-xl font-black uppercase text-black tracking-widest hidden sm:flex">Create Event</Text>
         <TouchableOpacity
           onPress={handleCreate}
           disabled={!canSubmit() || isSubmitting}
-          style={{ opacity: !canSubmit() || isSubmitting ? 0.5 : 1 }}
+          className={`border-2 border-black p-2 active:translate-y-1 shadow-[2px_2px_0px_0px_#000] ${(!canSubmit() || isSubmitting) ? 'bg-gray-300 opacity-50' : 'bg-neo-bg'}`}
         >
-          <Check
-            size={26}
-            color={!canSubmit() || isSubmitting ? "#666" : "#4f46e5"}
-          />
+          <Check size={24} color="#000" strokeWidth={3} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Quick Template Option */}
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        
+        {/* TEMPLATE BANNER */}
         <TouchableOpacity
-          onPress={() => router.push({
-            pathname: '/create-event/advanced',
-            params: selectedCommunity ? { community_id: selectedCommunity } : {}
-          })}
-          style={{
-            backgroundColor: '#4f46e5',
-            padding: 16,
-            borderRadius: 14,
-            marginBottom: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
+          onPress={() => router.push({ pathname: '/create-event/advanced', params: selectedCommunity ? { community_id: selectedCommunity } : {} })}
+          className="bg-black border-4 border-black p-4 mb-6 shadow-[4px_4px_0px_0px_#888] active:translate-y-1 active:shadow-none flex-row items-center justify-between"
         >
           <View>
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-              ✨ Use a Template
-            </Text>
-            <Text style={{ color: '#e0e7ff', fontSize: 12, marginTop: 4 }}>
-              Create events faster with pre-made templates
-            </Text>
+            <Text className="text-white font-black uppercase text-lg">✨ Use a Template</Text>
+            <Text className="text-gray-300 font-bold text-xs">Fast-track your event creation</Text>
           </View>
-          <Text style={{ color: '#fff', fontSize: 20 }}>→</Text>
+          <Text className="text-white text-2xl">→</Text>
         </TouchableOpacity>
 
-        {/* COVER */}
-        <TouchableOpacity style={styles.coverContainer} onPress={pickCover}>
+        {/* COVER IMAGE */}
+        <TouchableOpacity onPress={pickCover} className="mb-8 w-full h-48 bg-white border-4 border-black border-dashed items-center justify-center shadow-[4px_4px_0px_0px_#000] active:bg-neo-bg">
           {cover ? (
-            <Image source={{ uri: cover }} style={styles.coverImage} />
+             <Image source={{ uri: cover }} className="w-full h-full" resizeMode="cover" />
           ) : (
-            <View style={styles.coverPlaceholder}>
-              <Text style={styles.coverPlaceholderText}>
-                Upload cover image
-              </Text>
-            </View>
+             <View className="items-center">
+                <Upload size={32} color="#000" strokeWidth={3} className="mb-2" />
+                <Text className="font-black uppercase text-gray-500">Upload Cover</Text>
+             </View>
           )}
         </TouchableOpacity>
 
-        {/* COMMUNITY DROPDOWN */}
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Select community</Text>
-          {communitiesLoading && (
-            <ActivityIndicator size="small" color="#4f46e5" />
-          )}
-        </View>
-        <View style={styles.input}>
-          <Picker
-            enabled={!communitiesLoading}
-            selectedValue={selectedCommunity}
-            onValueChange={(itemValue) => setSelectedCommunity(itemValue)}
-            dropdownIconColor="#fff" // iOS-friendly
-          >
-            <Picker.Item
-              label={
-                communitiesLoading
-                  ? "Loading communities..."
-                  : "Choose a community..."
-              }
-              value={null}
-            />
-            {communities.map((c) => (
-              <Picker.Item key={c.id} label={c.name} value={c.id} />
-            ))}
-          </Picker>
-        </View>
-        {fetchError && <Text style={styles.error}>{fetchError}</Text>}
+        {/* DETAILS SECTION */}
+        <View className="bg-white border-4 border-black p-4 mb-8 shadow-[8px_8px_0px_0px_#000]">
+           <Text className="font-black text-2xl uppercase mb-6 border-b-4 border-black pb-2 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+             Basics
+           </Text>
 
-        {/* NAME */}
-        <Text style={styles.label}>Event name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter event name"
-          placeholderTextColor="#777"
-          value={name}
-          onChangeText={setName}
-        />
-
-        {/* DATE/TIME */}
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.label}>Start</Text>
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => showDateTime("start", "date")}
-            >
-              <Text style={styles.inputText}>
-                {start ? start.toLocaleString() : "Select start date/time"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={styles.label}>End</Text>
-            <TouchableOpacity
-              style={styles.input}
-              onPress={() => showDateTime("end", "date")}
-            >
-              <Text style={styles.inputText}>
-                {end ? end.toLocaleString() : "Select end date/time"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {showPicker.field && (
-          <DateTimePicker
-            value={
-              showPicker.field === "start"
-                ? start || new Date()
-                : end || new Date()
-            }
-            mode={showPicker.mode}
-            display={Platform.OS === "ios" ? "inline" : "default"}
-            onChange={(e, val) => {
-              // For Android date/time flows: first pick date then time. Simplify: accept selected directly.
-              onChangeDateTime(e, val as Date | undefined);
-            }}
-          />
-        )}
-
-        {/* LOCATION */}
-        <Text style={styles.label}>Location</Text>
-        <View style={styles.locationRow}>
-          <TouchableOpacity
-            style={styles.smallButton}
-            onPress={useCurrentLocation}
-          >
-            <Text style={styles.smallButtonText}>Use current</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.smallButton}
-            onPress={() =>
-              setLocationChoice((s) => (s === "choose" ? "none" : "choose"))
-            }
-          >
-            <Text style={styles.smallButtonText}>Choose area</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.smallButton}
-            onPress={() =>
-              setLocationChoice((s) => (s === "manual" ? "none" : "manual"))
-            }
-          >
-            <Text style={styles.smallButtonText}>Enter manually</Text>
-          </TouchableOpacity>
-        </View>
-
-        {locationChoice === "choose" && (
-          <View style={styles.choices}>
-            {SINGAPORE_AREAS.map((a) => (
-              <TouchableOpacity
-                key={a}
-                onPress={() => chooseArea(a)}
-                style={styles.choice}
+           {/* COMMUNITY */}
+           <Text className="font-bold uppercase text-xs mb-2">Host Community</Text>
+           <View className="border-4 border-black bg-neo-bg mb-4">
+              <Picker
+                selectedValue={selectedCommunity}
+                onValueChange={(itemValue) => setSelectedCommunity(itemValue)}
+                style={{ height: 50, width: '100%' }}
               >
-                <Text style={styles.choiceText}>{a}</Text>
+                <Picker.Item label="Select Community..." value={null} color="#999" />
+                {communities.map((c) => (
+                  <Picker.Item key={c.id} label={c.name} value={c.id} color="#000" />
+                ))}
+              </Picker>
+           </View>
+
+           {/* NAME */}
+           <Text className="font-bold uppercase text-xs mb-2">Event Title</Text>
+           <TextInput
+              className="bg-white border-4 border-black p-4 font-bold text-lg text-black mb-4 focus:bg-neo-yellow focus:outline-none"
+              placeholder="e.g. Friday Night Coding"
+              placeholderTextColor="#999"
+              value={name}
+              onChangeText={setName}
+           />
+
+           {/* DATE/TIME */}
+           <View className="flex-row gap-4 mb-4">
+              <View className="flex-1">
+                 <Text className="font-bold uppercase text-xs mb-2">Start</Text>
+                 <TouchableOpacity onPress={() => showDateTime("start", "date")} className="bg-neo-bg border-4 border-black p-3 h-14 justify-center">
+                    <Text className="font-bold text-black">{start ? start.toLocaleDateString() : "Date"}</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity onPress={() => showDateTime("start", "time")} className="mt-2 bg-neo-bg border-4 border-black p-3 h-14 justify-center">
+                    <Text className="font-bold text-black">{start ? start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Time"}</Text>
+                 </TouchableOpacity>
+              </View>
+              <View className="flex-1">
+                 <Text className="font-bold uppercase text-xs mb-2">End</Text>
+                 <TouchableOpacity onPress={() => showDateTime("end", "date")} className="bg-neo-bg border-4 border-black p-3 h-14 justify-center">
+                    <Text className="font-bold text-black">{end ? end.toLocaleDateString() : "Date"}</Text>
+                 </TouchableOpacity>
+                 <TouchableOpacity onPress={() => showDateTime("end", "time")} className="mt-2 bg-neo-bg border-4 border-black p-3 h-14 justify-center">
+                    <Text className="font-bold text-black">{end ? end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Time"}</Text>
+                 </TouchableOpacity>
+              </View>
+           </View>
+
+           {showPicker.field && (
+              <DateTimePicker
+                value={showPicker.field === "start" ? (start || new Date()) : (end || new Date())}
+                mode={showPicker.mode}
+                display={Platform.OS === "ios" ? "inline" : "default"}
+                onChange={(e, val) => onChangeDateTime(e, val as Date | undefined)}
+              />
+           )}
+        </View>
+
+        {/* LOCATION SECTION */}
+        <View className="bg-white border-4 border-black p-4 mb-8 shadow-[8px_8px_0px_0px_#000] rotate-1">
+           <Text className="font-black text-2xl uppercase mb-6 border-b-4 border-black pb-2 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+             Location
+           </Text>
+           
+           <View className="flex-row gap-2 mb-4 flex-wrap">
+              <TouchableOpacity onPress={useCurrentLocation} className="bg-black border-2 border-black px-3 py-2 rounded-full active:bg-gray-800">
+                 <Text className="text-white font-bold text-xs uppercase">📍 Current</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        )}
+              <TouchableOpacity onPress={() => setLocationChoice("choose")} className="bg-white border-2 border-black px-3 py-2 rounded-full active:bg-neo-yellow">
+                 <Text className="text-black font-bold text-xs uppercase">List</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setLocationChoice("manual")} className="bg-white border-2 border-black px-3 py-2 rounded-full active:bg-neo-yellow">
+                 <Text className="text-black font-bold text-xs uppercase">Type</Text>
+              </TouchableOpacity>
+           </View>
 
-        {locationChoice === "manual" && (
-          <TextInput
-            style={styles.input}
-            placeholder="Type location"
-            placeholderTextColor="#777"
-            value={manualLocation}
-            onChangeText={manualSetLocation}
-          />
-        )}
+           {locationChoice === "choose" && (
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                 {SINGAPORE_AREAS.map(a => (
+                    <TouchableOpacity key={a} onPress={() => { setChosenLocation(a); setLocationChoice("none"); }} className="bg-neo-bg border-2 border-black px-2 py-1">
+                       <Text className="font-bold text-xs">{a}</Text>
+                    </TouchableOpacity>
+                 ))}
+              </View>
+           )}
 
-        {chosenLocation ? (
-          <View style={styles.chosen}>
-            <Text style={styles.chosenLabel}>Chosen location</Text>
-            <Text style={styles.chosenText}>{chosenLocation}</Text>
+           {locationChoice === "manual" && (
+              <TextInput
+                className="bg-white border-2 border-black p-2 font-bold mb-4"
+                placeholder="Type address..."
+                value={manualLocation}
+                onChangeText={(t) => { setManualLocation(t); setChosenLocation(t); }}
+              />
+           )}
 
-            <TextInput
-              style={styles.input}
-              placeholder="Optional: further instructions (how to find the spot)"
-              placeholderTextColor="#777"
+           {chosenLocation ? (
+              <View className="bg-neo-yellow border-2 border-black p-3 mb-4">
+                 <Text className="font-black uppercase text-xs mb-1">Selections:</Text>
+                 <Text className="font-bold text-lg leading-5">{chosenLocation}</Text>
+              </View>
+           ) : null}
+
+           <TextInput
+              className="bg-white border-4 border-black p-3 font-bold"
+              placeholder="Directions / Landmark details..."
               value={locationInstructions}
               onChangeText={setLocationInstructions}
-            />
-          </View>
-        ) : null}
-
-        {/* DESCRIPTION (Markdown) */}
-        <View style={{ marginTop: 8 }}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Description (markdown)</Text>
-            <TouchableOpacity onPress={() => setPreview((p) => !p)}>
-              <Text style={styles.previewToggle}>
-                {preview ? "Edit" : "Preview"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {!preview ? (
-            <TextInput
-              style={[styles.input, { height: 140 }]}
-              multiline
-              placeholder="Write in markdown. Use **bold**, *italic*, # headings, etc."
-              placeholderTextColor="#777"
-              value={description}
-              onChangeText={setDescription}
-            />
-          ) : (
-            <View style={[styles.input, { minHeight: 140 }]}>
-              <ScrollView>
-                <Markdown>{description || "_Nothing to preview_"}</Markdown>
-              </ScrollView>
-            </View>
-          )}
+           />
         </View>
 
-        {/* TICKETING */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Ticketing</Text>
-          <View style={styles.optionRow}>
-            <Text style={styles.optionLabel}>Require approval to join</Text>
-            <Switch
-              value={requireApproval}
-              onValueChange={setRequireApproval}
-            />
-          </View>
-
-          <View style={styles.optionRow}>
-            <Text style={styles.optionLabel}>Paid event</Text>
-            <Switch value={isPaid} onValueChange={setIsPaid} />
-          </View>
-
-          {isPaid && (
-            <TextInput
-              style={styles.input}
-              placeholder="Price (SGD)"
-              placeholderTextColor="#777"
-              keyboardType="numeric"
-              value={price}
-              onChangeText={setPrice}
-            />
-          )}
+        {/* DESCRIPTION SECTION */}
+        <View className="bg-white border-4 border-black p-4 mb-8 shadow-[8px_8px_0px_0px_#000]">
+           <View className="flex-row justify-between items-center mb-4 border-b-4 border-black pb-2 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+              <Text className="font-black text-2xl uppercase">Description</Text>
+              <TouchableOpacity onPress={() => setPreview(!preview)}>
+                 <Text className="font-black underline uppercase text-sm">{preview ? "Edit" : "Preview"}</Text>
+              </TouchableOpacity>
+           </View>
+           
+           {!preview ? (
+              <TextInput
+                className="bg-white border-4 border-black p-4 font-bold text-lg min-h-[200px] text-black focus:bg-neo-yellow focus:outline-none"
+                multiline
+                textAlignVertical="top"
+                placeholder="Markdown supported. # Heading, **bold**."
+                value={description}
+                onChangeText={setDescription}
+              />
+           ) : (
+              <View className="bg-neo-bg border-4 border-black p-4 min-h-[200px]">
+                 <Markdown style={{ body: {fontFamily: 'SpaceGrotesk_700Bold'} }}>{description}</Markdown>
+              </View>
+           )}
         </View>
 
-        {/* OPTIONS */}
-        <View style={styles.section}>
-          <Text style={styles.label}>Options</Text>
+        {/* SETTINGS SECTION */}
+        <View className="bg-white border-4 border-black p-4 mb-8 shadow-[8px_8px_0px_0px_#000] -rotate-1">
+           <Text className="font-black text-2xl uppercase mb-6 border-b-4 border-black pb-2 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+             Settings
+           </Text>
+           
+           {/* Approval */}
+           <View className="flex-row justify-between items-center mb-4 pb-4 border-b-2 border-gray-200">
+              <Text className="font-black uppercase">Require Approval</Text>
+              <Switch value={requireApproval} onValueChange={setRequireApproval} trackColor={{false: '#000', true: '#FFD93D'}} thumbColor={requireApproval ? '#000' : '#fff'} />
+           </View>
 
-          <View style={styles.optionRow}>
-            <Text style={styles.optionLabel}>Visibility</Text>
-            <View style={{ flexDirection: "row" }}>
-              <TouchableOpacity
-                onPress={() => setIsPublic(true)}
-                style={[styles.toggle, isPublic && styles.toggleActive]}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    isPublic && styles.toggleTextActive,
-                  ]}
-                >
-                  Public
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setIsPublic(false)}
-                style={[styles.toggle, !isPublic && styles.toggleActive]}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    !isPublic && styles.toggleTextActive,
-                  ]}
-                >
-                  Private
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            {/* Paid */}
+           <View className="flex-row justify-between items-center mb-4 pb-4 border-b-2 border-gray-200">
+              <Text className="font-black uppercase">Paid Event</Text>
+              <Switch value={isPaid} onValueChange={setIsPaid} trackColor={{false: '#000', true: '#FF6B6B'}} thumbColor={isPaid ? '#000' : '#fff'} />
+           </View>
+           {isPaid && (
+              <View className="flex-row items-center border-4 border-black p-2 mb-4 bg-neo-bg">
+                 <DollarSign size={20} color="#000" />
+                 <TextInput value={price} onChangeText={setPrice} keyboardType="numeric" className="flex-1 font-black text-lg ml-2" />
+              </View>
+           )}
+           
+           {/* Public */}
+           <View className="flex-row mb-4">
+             <TouchableOpacity onPress={() => setIsPublic(true)} className={`flex-1 border-2 border-black p-3 items-center ${isPublic ? 'bg-black' : 'bg-white'}`}>
+                <Text className={`font-black uppercase ${isPublic ? 'text-white' : 'text-black'}`}>Public</Text>
+             </TouchableOpacity>
+             <TouchableOpacity onPress={() => setIsPublic(false)} className={`flex-1 border-2 border-black p-3 items-center ${!isPublic ? 'bg-black' : 'bg-white'}`}>
+                <Text className={`font-black uppercase ${!isPublic ? 'text-white' : 'text-black'}`}>Private</Text>
+             </TouchableOpacity>
+           </View>
 
-          <View style={styles.optionRow}>
-            <Text style={styles.optionLabel}>Capacity</Text>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <TouchableOpacity
-                onPress={() => setUnlimited(true)}
-                style={[styles.toggle, unlimited && styles.toggleActive]}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    unlimited && styles.toggleTextActive,
-                  ]}
-                >
-                  Unlimited
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setUnlimited(false)}
-                style={[styles.toggle, !unlimited && styles.toggleActive]}
-              >
-                <Text
-                  style={[
-                    styles.toggleText,
-                    !unlimited && styles.toggleTextActive,
-                  ]}
-                >
-                  Set limit
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {!unlimited && (
-            <TextInput
-              style={styles.input}
-              placeholder="Max capacity"
-              placeholderTextColor="#777"
-              keyboardType="numeric"
-              value={capacity}
-              onChangeText={setCapacity}
-            />
-          )}
+           {/* Capacity */}
+           <View className="flex-row mb-4">
+             <TouchableOpacity onPress={() => setUnlimited(true)} className={`flex-1 border-2 border-black p-3 items-center ${unlimited ? 'bg-black' : 'bg-white'}`}>
+                <Text className={`font-black uppercase ${unlimited ? 'text-white' : 'text-black'}`}>Unlimited</Text>
+             </TouchableOpacity>
+             <TouchableOpacity onPress={() => setUnlimited(false)} className={`flex-1 border-2 border-black p-3 items-center ${!unlimited ? 'bg-black' : 'bg-white'}`}>
+                <Text className={`font-black uppercase ${!unlimited ? 'text-white' : 'text-black'}`}>Limit</Text>
+             </TouchableOpacity>
+           </View>
+           {!unlimited && (
+              <View className="flex-row items-center border-4 border-black p-2 mb-4 bg-neo-bg">
+                 <Users size={20} color="#000" />
+                 <TextInput value={capacity} onChangeText={setCapacity} keyboardType="numeric" placeholder="Max Attendees" className="flex-1 font-black text-lg ml-2" />
+              </View>
+           )}
         </View>
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && (
+            <View className="bg-neo-red border-4 border-black p-4 mb-4 shadow-[4px_4px_0px_0px_#000]">
+                <Text className="font-black uppercase text-black">⚠ {error}</Text>
+            </View>
+        )}
 
-        {/* <TouchableOpacity
-          style={[styles.primaryButton, { opacity: canSubmit() ? 1 : 0.6 }]}
-          disabled={!canSubmit()}
-          onPress={handleCreate}
+        <TouchableOpacity 
+            onPress={handleCreate} 
+            disabled={!canSubmit() || isSubmitting}
+            className={`p-5 border-4 border-black items-center shadow-[6px_6px_0px_0px_#000] active:translate-y-1 active:shadow-none bg-neo-accent ${(!canSubmit() || isSubmitting) ? 'bg-gray-400 opacity-50' : 'bg-neo-red'}`} 
         >
-          <Text style={styles.primaryButtonText}>Create event</Text>
-        </TouchableOpacity> */}
+             {isSubmitting ? <NeoButtonLoader /> : <Text className="font-black uppercase text-2xl text-white">🚀 Launch Event</Text>}
+        </TouchableOpacity>
+
       </ScrollView>
     </View>
   );
 }
-
-/* ========== styles ========== */
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "transparent" },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 12,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  content: { padding: 20, paddingBottom: 60 },
-  coverContainer: { alignItems: "center", marginBottom: 12 },
-  coverImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-    backgroundColor: "#222",
-  },
-  coverPlaceholder: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-    borderStyle: "dashed",
-    borderWidth: 1,
-    borderColor: "#333",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverPlaceholderText: { color: "#777" },
-  label: { color: "#bbb", marginBottom: 6, marginTop: 8 },
-  labelRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  previewToggle: { color: "#4f46e5", fontWeight: "600" },
-  input: {
-    backgroundColor: "#0f0f0f",
-    color: "#fff",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#1a1a1a",
-  },
-  inputText: { color: "#fff" },
-  row: { flexDirection: "row", alignItems: "center", marginTop: 6 },
-  locationRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  smallButton: {
-    backgroundColor: "#111",
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  smallButtonText: { color: "#fff" },
-  choices: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 },
-  choice: {
-    backgroundColor: "#222",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  choiceText: { color: "#fff" },
-  chosen: { marginTop: 6 },
-  chosenLabel: { color: "#888", fontSize: 12 },
-  chosenText: { color: "#fff", marginBottom: 8 },
-  section: { marginTop: 10 },
-  optionRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  optionLabel: { color: "#fff" },
-  toggle: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#111",
-    marginLeft: 8,
-  },
-  toggleActive: { backgroundColor: "#4f46e5" },
-  toggleText: { color: "#fff" },
-  toggleTextActive: { color: "#fff", fontWeight: "700" },
-  error: { color: "#ff6b6b", marginTop: 8 },
-  primaryButton: {
-    backgroundColor: "#4f46e5",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 14,
-  },
-  primaryButtonText: { color: "#fff", fontWeight: "700" },
-});

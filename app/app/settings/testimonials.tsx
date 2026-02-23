@@ -7,11 +7,11 @@ import {
   TextInput,
   Alert,
   Modal,
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { NeoLoader, NeoButtonLoader } from '@/components/ui/neo-loader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Star, X } from 'lucide-react-native';
@@ -119,7 +119,7 @@ export default function TestimonialsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <NeoLoader />
       </SafeAreaView>
     );
   }
@@ -326,7 +326,7 @@ export default function TestimonialsScreen() {
                     }}
                   >
                     {submitting ? (
-                      <ActivityIndicator color="#fff" />
+                      <NeoButtonLoader color="#fff" />
                     ) : (
                       <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
                         {editingId ? 'Update' : 'Share'}

@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  ActivityIndicator,
   Animated,
 } from 'react-native';
+import { NeoButtonLoader } from '@/components/ui/neo-loader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, GripVertical, Check } from 'lucide-react-native';
@@ -223,7 +223,7 @@ export default function InterestRankingScreen() {
           }}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <NeoButtonLoader color="#fff" />
           ) : (
             <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
               Save {selectedInterests.length} Interest{selectedInterests.length !== 1 ? 's' : ''}

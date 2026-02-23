@@ -6,9 +6,9 @@ import {
   ScrollView,
   Image,
   Alert,
-  ActivityIndicator,
   FlatList,
 } from 'react-native';
+import { NeoLoader } from '@/components/ui/neo-loader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, UserPlus } from 'lucide-react-native';
@@ -70,7 +70,7 @@ export default function EventParticipantsScreen() {
       <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingVertical: 16 }} showsVerticalScrollIndicator={false}>
         {loading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#4f46e5" />
+            <NeoLoader />
           </View>
         ) : participants.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 40 }}>

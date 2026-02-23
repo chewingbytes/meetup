@@ -1,6 +1,14 @@
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Share,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeft,
   Users,
@@ -8,62 +16,55 @@ import {
   MessageCircle,
   Lock,
   Globe,
+  Share2,
+  Plus,
+  Info,
 } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { BlurView } from "expo-blur";
 import { useCommunityStore } from "@/lib/stores/communityStore";
-import { CommunityProps } from "@/utils/types";
 import { useAuth } from "@/lib/authContext";
 import { joinCommunity, leaveCommunity, checkMembership } from "@/lib/api";
+import MobileNav from "@/components/mobile-nav";
+import { NeoLoader, NeoButtonLoader } from "@/components/ui/neo-loader";
 
 export default function CommunityDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [gradientColors, setGradientColors] = useState<[string, string, string]>(["#09090b", "#333333", "#09090b"]);
   const [joined, setJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
 
-  // Use Zustand store to fetch community
   const { communityDetails, fetchCommunityById } = useCommunityStore();
   const community = id ? communityDetails[id as string] : null;
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch community if not in cache and check membership
   useEffect(() => {
     let mounted = true;
-
     async function loadCommunity() {
       if (!id || !user) {
         setIsLoading(false);
         return;
       }
-
       try {
-        console.log("📡 Fetching community with ID:", id);
         await fetchCommunityById(id as string);
         if (mounted) {
-          console.log("✅ Community loaded");
-          setGradientColors(["#0c0c0c", "#1a1a1a", "#2d2d2d"]);
-          
           try {
-            const membershipCheck = await checkMembership(user.id, id as string);
+            const membershipCheck = await checkMembership(
+              user.id,
+              id as string,
+            );
             setJoined(membershipCheck?.isMember || false);
-            console.log("✅ Membership status:", membershipCheck?.isMember ? "Member" : "Not a member");
           } catch (err) {
-            console.error("❌ Failed to check membership:", err);
             setJoined(false);
           }
         }
       } catch (err) {
-        console.error("❌ Failed to load community:", err);
       } finally {
         if (mounted) setIsLoading(false);
       }
     }
-
     loadCommunity();
     return () => {
       mounted = false;
@@ -71,547 +72,303 @@ export default function CommunityDetail() {
   }, [id, user, fetchCommunityById]);
 
   const handleJoinCommunity = async () => {
-    if (!user || !community) {
-      Alert.alert("Error", "User or community not found");
-      return;
-    }
-
+    if (!user || !community) return;
     try {
       setIsJoining(true);
       await joinCommunity(user.id, community.id);
       setJoined(true);
-      console.log("🎉 Successfully joined community:", community.id);
-      Alert.alert("Success", "You have joined this community!");
+      Alert.alert("WELCOME!", "You have joined the community.");
     } catch (err: any) {
-      console.error("❌ Failed to join community:", err);
-      Alert.alert("Error", err.message || "Failed to join community");
+      Alert.alert("Error", err.message || "Failed to join");
     } finally {
       setIsJoining(false);
     }
   };
 
   const handleLeaveCommunity = async () => {
-    if (!user || !community) {
-      console.error("❌ Missing user or community");
-      Alert.alert("Error", "User or community not found");
-      return;
-    }
-
-    console.log("🔵 Attempting to leave community:", { userId: user.id, communityId: community.id });
-
-    Alert.alert(
-      "Leave Community",
-      "Are you sure you want to leave this community?",
-      [
-        { text: "Cancel", onPress: () => {}, style: "cancel" },
-        {
-          text: "Leave",
-          onPress: async () => {
-            try {
-              setIsLeaving(true);
-              console.log("🔵 Calling leaveCommunity API...");
-              const result = await leaveCommunity(user.id, community.id);
-              console.log("✅ API Response:", result);
-              setJoined(false);
-              console.log("✅ Left community:", community.id);
-              Alert.alert("Success", "You have left this community");
-              router.back();
-            } catch (err: any) {
-              console.error("❌ Failed to leave community:", {
-                message: err.message,
-                status: err.status,
-                body: err.body,
-                error: err,
-              });
-              Alert.alert("Error", err.message || "Failed to leave community");
-            } finally {
-              setIsLeaving(false);
-            }
-          },
-          style: "destructive",
+    if (!user || !community) return;
+    Alert.alert("LEAVE COMMUNITY?", "Are you sure?", [
+      { text: "Stay", style: "cancel" },
+      {
+        text: "Leave",
+        onPress: async () => {
+          try {
+            setIsLeaving(true);
+            await leaveCommunity(user.id, community.id);
+            setJoined(false);
+            router.back();
+          } catch (err: any) {
+            Alert.alert("Error", err.message);
+          } finally {
+            setIsLeaving(false);
+          }
         },
-      ]
-    );
+        style: "destructive",
+      },
+    ]);
   };
 
-  // Loading state
+  const onShare = async () => {
+    try {
+      await Share.share({ message: `Check out ${community?.name} on Meetup!` });
+    } catch (error) {}
+  };
+
   if (isLoading) {
     return (
-      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color="#fff" />
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <View className="flex-1 items-center justify-center">
+        <NeoLoader />
+      </View>
     );
   }
 
-  // Error state
   if (!community) {
     return (
-      <LinearGradient colors={["#09090b", "#333333"]} style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <ArrowLeft color="white" size={24} />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Community Details</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <View style={styles.centerContainer}>
-            <Text style={styles.errorText}>Community not found</Text>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <Text style={styles.backButtonText}>Go Back</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+      <View className="flex-1 bg-neo-bg pt-12 px-4">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mb-4 w-12 h-12 bg-white border-2 border-black items-center justify-center shadow-[4px_4px_0px_0px_#000]"
+        >
+          <ArrowLeft color="black" size={24} strokeWidth={3} />
+        </TouchableOpacity>
+        <View className="bg-neo-red border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000]">
+          <Text className="font-black text-2xl uppercase text-white">
+            Community not found
+          </Text>
+        </View>
+      </View>
     );
   }
 
   return (
-    <LinearGradient colors={gradientColors} style={{ flex: 1 }}>
-      <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-        <ScrollView stickyHeaderIndices={[0]} showsVerticalScrollIndicator={false}>
-          <BlurView intensity={50} tint="default" style={styles.blurHeader}>
-            {/* Header with back button */}
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()}>
-                <ArrowLeft color="white" size={24} />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Community</Text>
-              <View style={{ width: 24 }} />
-            </View>
-          </BlurView>
+    <View className="flex-1 bg-neo-bg">
+      <ScrollView
+        stickyHeaderIndices={[0]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* HEADER */}
+        <View className="px-4 py-4 pt-12 bg-neo-bg border-b-4 border-black flex-row justify-between items-center z-10">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="bg-white border-2 border-black p-2 active:translate-y-1 shadow-[2px_2px_0px_0px_#000]"
+          >
+            <ArrowLeft color="black" size={24} strokeWidth={3} />
+          </TouchableOpacity>
+          <Text
+            className="font-black uppercase text-xl truncate max-w-[200px]"
+            numberOfLines={1}
+          >
+            {community.name}
+          </Text>
+          <TouchableOpacity
+            onPress={onShare}
+            className="bg-neo-yellow border-2 border-black p-2 active:translate-y-1 shadow-[2px_2px_0px_0px_#000]"
+          >
+            <Share2 color="black" size={24} strokeWidth={3} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Hero Image */}
-          <View style={styles.imageContainer}>
-            {community.profile_image ? (
-              <Image
-                source={{ uri: community.profile_image }}
-                style={styles.heroImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.heroImage, styles.placeholderImage]}>
-                <Text style={styles.placeholderEmoji}>👥</Text>
-              </View>
-            )}
+        {/* HERO IMAGE */}
+        <View className="h-64 w-full border-b-4 border-black bg-black">
+          {community.profile_image ? (
+            <Image
+              source={{ uri: community.profile_image }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-full h-full bg-neo-violet flex items-center justify-center">
+              <Text className="text-6xl">👾</Text>
+            </View>
+          )}
+          <View className="absolute bottom-4 left-4 bg-white border-4 border-black px-4 py-2 rotate-2 shadow-[4px_4px_0px_0px_#000]">
+            <Text className="font-black uppercase">
+              {joined ? "MEMBER" : "GVEST"}
+            </Text>
           </View>
+        </View>
 
-          {/* Content */}
-          <View style={styles.contentContainer}>
-            {/* Title */}
-            <Text style={styles.title}>{community.name}</Text>
-
-            {/* Privacy Badge */}
-            <View style={styles.privacyBadge}>
-              {community.privacy_mode ? (
-                <>
-                  <Lock size={14} color="#f59e0b" />
-                  <Text style={styles.privacyText}>Private Community</Text>
-                </>
-              ) : (
-                <>
-                  <Globe size={14} color="#10b981" />
-                  <Text style={[styles.privacyText, { color: "#10b981" }]}>
-                    Public Community
-                  </Text>
-                </>
-              )}
-            </View>
-
-            {/* CTA Buttons */}
-            {!joined ? (
-              <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                  style={styles.joinButton}
-                  onPress={handleJoinCommunity}
-                  disabled={isJoining}
-                >
-                  {isJoining ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.joinButtonText}>Join Community</Text>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.favoriteButton}>
-                  <Heart color="white" size={20} />
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.buttonRow}>
-                <TouchableOpacity 
-                  style={[styles.joinButton, styles.joinedButton]}
-                  onPress={() => {}}
-                  disabled
-                >
-                  <Text style={styles.joinButtonText}>✓ Member</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.favoriteButton}>
-                  <Heart color="white" size={20} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Quick Actions */}
-            {joined && (
-              <TouchableOpacity 
-                style={styles.chatButton}
-                onPress={() => router.push(`/chat/${community.id}?name=${community.name}`)}
-              >
-                <MessageCircle size={18} color="#fff" />
-                <Text style={styles.chatButtonText}>Open Group Chat</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Topics */}
-            {community.topics && community.topics.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Topics</Text>
-                <View style={styles.topicsContainer}>
-                  {community.topics.map((topic, idx) => (
-                    <View key={idx} style={styles.topicPill}>
-                      <Text style={styles.topicText}>{topic}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* About */}
-            {community.description && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>About</Text>
-                <Text style={styles.descriptionText}>
-                  {community.description}
+        <View className="p-4">
+          {/* TITLE & BADGES */}
+          <View className="mb-6">
+            <Text className="text-4xl font-black uppercase leading-none mb-2">
+              {community.name}
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              <View className="bg-neo-yellow border-2 border-black px-2 py-1 flex-row items-center gap-1">
+                {community.privacy_mode ? (
+                  <Lock size={14} color="black" />
+                ) : (
+                  <Globe size={14} color="black" />
+                )}
+                <Text className="font-bold text-xs uppercase">
+                  {community.privacy_mode ? "Private" : "Public"}
                 </Text>
               </View>
-            )}
-
-            {user && community.owner_id === user.id && (
-              <View style={styles.section}>
-                <TouchableOpacity 
-                  style={styles.createTemplateButton}
-                  onPress={() => router.push({
-                    pathname: '/community/create-template',
-                    params: { community_id: community.id }
-                  })}
-                >
-                  <Text style={styles.createTemplateIcon}>✨</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.createTemplateTitle}>Create Event Template</Text>
-                    <Text style={styles.createTemplateDescription}>
-                      Make it easier for community members to create events
-                    </Text>
-                  </View>
-                  <Text style={styles.createTemplateArrow}>→</Text>
-                </TouchableOpacity>
+              <View className="bg-white border-2 border-black px-2 py-1 flex-row items-center gap-1">
+                <Users size={14} color="black" />
+                <Text className="font-bold text-xs uppercase">12 Members</Text>
               </View>
+            </View>
+          </View>
+
+          {/* ACTION BUTTONS */}
+          <View className="flex-row gap-4 mb-8">
+            {!joined ? (
+              <TouchableOpacity
+                onPress={handleJoinCommunity}
+                disabled={isJoining}
+                className="flex-1 bg-neo-red border-4 border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+              >
+                {isJoining ? (
+                  <NeoButtonLoader color="white" />
+                ) : (
+                  <Text className="font-black text-xl text-white uppercase">
+                    Join Now
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={handleLeaveCommunity}
+                disabled={isLeaving}
+                className="flex-1 bg-black border-4 border-black p-4 items-center shadow-[4px_4px_0px_0px_#888] active:translate-y-1 active:shadow-none"
+              >
+                {isLeaving ? (
+                  <NeoButtonLoader color="white" />
+                ) : (
+                  <Text className="font-black text-xl text-white uppercase">
+                    Joined ✓
+                  </Text>
+                )}
+              </TouchableOpacity>
             )}
 
-            {/* Community Rules */}
-            {community.rules && community.rules.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Community Rules</Text>
-                <View style={styles.rulesContainer}>
-                  {community.rules.map((rule, idx) => (
-                    <View key={idx} style={styles.ruleRow}>
-                      <Text style={styles.ruleNumber}>{idx + 1}.</Text>
-                      <Text style={styles.ruleText}>{rule}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
+            <TouchableOpacity className="bg-white border-4 border-black p-4 items-center justify-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none">
+              <Heart color="black" size={24} strokeWidth={3} />
+            </TouchableOpacity>
+          </View>
 
-            {/* FAQ */}
-            {community.faq && community.faq.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-                {community.faq.map((item, idx) => (
-                  <View key={idx} style={styles.faqItem}>
-                    <Text style={styles.faqQuestion}>Q: {item.question}</Text>
-                    <Text style={styles.faqAnswer}>A: {item.answer}</Text>
+          {/* CHAT/ACTIONS FOR MEMBERS */}
+          {joined && (
+            <TouchableOpacity
+              onPress={() =>
+                router.push(`/chat/${community.id}?name=${community.name}`)
+              }
+              className="mb-8 bg-neo-violet border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1"
+            >
+              <MessageCircle size={24} color="black" strokeWidth={3} />
+              <Text className="font-black text-lg uppercase">
+                Open Group Chat
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* TOPICS */}
+          {community.topics && community.topics.length > 0 && (
+            <View className="mb-8">
+              <Text className="font-black text-xl uppercase mb-3 border-l-4 border-neo-yellow pl-3">
+                Topics
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {community.topics.map((t, i) => (
+                  <View
+                    key={i}
+                    className="bg-white border-2 border-black px-3 py-1 rounded-full"
+                  >
+                    <Text className="font-bold uppercase text-xs">{t}</Text>
                   </View>
                 ))}
               </View>
-            )}
+            </View>
+          )}
 
-            {/* Meta Info */}
-            <View style={styles.metaSection}>
-              <View style={styles.metaRow}>
-                <Users size={16} color="#999" />
-                <Text style={styles.metaText}>
-                  Created {new Date(community.created_at || "").toLocaleDateString("en-US", {
-                    month: "short",
-                    year: "numeric",
-                  })}
+          {/* ABOUT */}
+          {community.description && (
+            <View className="mb-8 bg-white border-4 border-black p-4 shadow-[6px_6px_0px_0px_#000]">
+              <Text className="font-black text-xl uppercase mb-3 border-b-4 border-black pb-1 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+                About
+              </Text>
+              <Text className="font-bold text-lg leading-6">
+                {community.description}
+              </Text>
+            </View>
+          )}
+
+          {/* ADMIN TOOLS */}
+          {user && community.owner_id === user.id && (
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/community/create-template",
+                  params: { community_id: community.id },
+                })
+              }
+              className="mb-8 bg-black border-4 border-black p-4 flex-row items-center gap-4 shadow-[6px_6px_0px_0px_#888] active:translate-y-1"
+            >
+              <View className="bg-neo-yellow border-2 border-white p-2">
+                <Plus size={24} color="black" strokeWidth={4} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-black text-white uppercase text-lg">
+                  Create Template
+                </Text>
+                <Text className="text-gray-400 font-bold text-xs">
+                  For recurring events
                 </Text>
               </View>
-              {community.slug && (
-                <Text style={styles.slugText}>@{community.slug}</Text>
-              )}
-            </View>
+              <Text className="text-white text-2xl font-black">→</Text>
+            </TouchableOpacity>
+          )}
 
-            <View style={{ height: 40 }} />
+          {/* RULES */}
+          {community.rules && community.rules.length > 0 && (
+            <View className="mb-8 bg-white border-4 border-black p-4 shadow-[6px_6px_0px_0px_#000] rotate-1">
+              <Text className="font-black text-xl uppercase mb-3 border-b-4 border-black pb-1 bg-neo-yellow -mx-4 -mt-4 px-4 pt-4">
+                House Rules
+              </Text>
+              {community.rules.map((rule, idx) => (
+                <View key={idx} className="flex-row gap-3 mb-2">
+                  <Text className="font-black text-neo-red">{idx + 1}.</Text>
+                  <Text className="font-bold flex-1">{rule}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* FAQs */}
+          {community.faq && community.faq.length > 0 && (
+            <View className="mb-8">
+              <Text className="font-black text-xl uppercase mb-3 border-l-4 border-neo-yellow pl-3">
+                FAQs
+              </Text>
+              {community.faq.map((item, idx) => (
+                <View
+                  key={idx}
+                  className="mb-4 bg-neo-bg border-2 border-black p-3"
+                >
+                  <Text className="font-black uppercase mb-1">
+                    Q: {item.question}
+                  </Text>
+                  <Text className="font-medium text-gray-600">
+                    A: {item.answer}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* FOOTER */}
+          <View className="items-center py-8">
+            <Text className="font-bold text-gray-400 uppercase text-xs">
+              Created{" "}
+              {new Date(community.created_at || "").toLocaleDateString()}
+            </Text>
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        </View>
+      </ScrollView>
+      <MobileNav />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  centerContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  loadingText: {
-    color: "#fff",
-    marginTop: 12,
-    fontSize: 16,
-  },
-  errorText: {
-    color: "#ff6b6b",
-    fontSize: 16,
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  backButton: {
-    backgroundColor: "#4f46e5",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  blurHeader: {
-    paddingBottom: 24,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  imageContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  heroImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-  },
-  placeholderImage: {
-    backgroundColor: "#1a1a1a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholderEmoji: {
-    fontSize: 64,
-  },
-  contentContainer: {
-    paddingHorizontal: 20,
-  },
-  title: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  privacyBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#0f0f0f",
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    marginBottom: 16,
-    gap: 6,
-  },
-  privacyText: {
-    color: "#f59e0b",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  joinButton: {
-    flex: 1,
-    backgroundColor: "#4f46e5",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  joinedButton: {
-    backgroundColor: "#10b981",
-  },
-  joinButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  favoriteButton: {
-    width: 50,
-    height: 50,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  chatButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#7c3aed",
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginBottom: 24,
-    gap: 8,
-  },
-  chatButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  topicsContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  topicPill: {
-    backgroundColor: "#4f46e5",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  topicText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  descriptionText: {
-    color: "#ccc",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  rulesContainer: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 16,
-  },
-  ruleRow: {
-    flexDirection: "row",
-    marginBottom: 12,
-    gap: 8,
-  },
-  ruleNumber: {
-    color: "#4f46e5",
-    fontWeight: "700",
-    fontSize: 14,
-  },
-  ruleText: {
-    flex: 1,
-    color: "#ccc",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  faqItem: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-  },
-  faqQuestion: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 8,
-  },
-  faqAnswer: {
-    color: "#999",
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  metaSection: {
-    backgroundColor: "#0f0f0f",
-    borderRadius: 12,
-    padding: 16,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  metaText: {
-    color: "#999",
-    fontSize: 13,
-  },
-  slugText: {
-    color: "#4f46e5",
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  createTemplateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(79, 70, 229, 0.15)",
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#4f46e5",
-    gap: 12,
-  },
-  createTemplateIcon: {
-    fontSize: 28,
-  },
-  createTemplateTitle: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  createTemplateDescription: {
-    color: "#a0a0a0",
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  createTemplateArrow: {
-    color: "#4f46e5",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-});

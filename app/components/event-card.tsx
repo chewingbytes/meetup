@@ -1,6 +1,4 @@
 import { TouchableOpacity, View, Text, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Calendar, MapPin, DollarSign } from "lucide-react-native";
 import { EventProps } from "@/utils/types";
 
 export default function EventCard({
@@ -25,16 +23,11 @@ export default function EventCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="w-full rounded-2xl overflow-hidden mb-4"
-      style={{
-        shadowColor: "#000",
-        shadowOpacity: 0.18,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 6,
-      }}
+      activeOpacity={1}
+      className="w-full bg-white border-2 border-black mb-6 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
     >
-      <View className="w-full h-56 bg-slate-800">
+      {/* Image Section - Default aspect ratio 16:9 or similar */}
+      <View className="w-full h-48 border-b-4 border-black bg-neo-bg relative overflow-hidden">
         {event.cover_image ? (
           <Image
             source={{ uri: event.cover_image }}
@@ -42,78 +35,46 @@ export default function EventCard({
             resizeMode="cover"
           />
         ) : (
-          <View className="w-full h-full bg-slate-800 items-center justify-center">
-            <Text className="text-3xl">📅</Text>
-          </View>
-        )}
-
-        {/* Gradient overlay */}
-        <LinearGradient
-          colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
-          style={{
-            position: "absolute",
-            inset: 0,
-            padding: 16,
-            justifyContent: "flex-end",
-            gap: 6,
-          }}
-        >
-          {/* Top-left pill (date) */}
-          <View
-            style={{
-              position: "absolute",
-              top: 12,
-              left: 12,
-              backgroundColor: "rgba(0,0,0,0.55)",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-            }}
-          >
-            <Text className="text-white text-xs font-semibold">
-              {formattedDate}
-            </Text>
-          </View>
-
-          {/* Top-right pill (price/free) */}
-          <View
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              backgroundColor: "rgba(0,0,0,0.65)",
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderRadius: 999,
-            }}
-          >
-            <Text className="text-white text-xs font-semibold">
-              {isPaid ? `SGD $${event.price?.toFixed(2)}` : "Free"}
-            </Text>
-          </View>
-
-          {/* Title */}
-          <Text className="text-white text-xl font-semibold" numberOfLines={2}>
-            {event.name}
-          </Text>
-
-          {/* Meta rows */}
-          <View className="flex-row items-center gap-2">
-            <Calendar size={14} color="#e5e7eb" />
-            <Text className="text-white/80 text-sm">
-              {formattedDate} · {formattedTime}
-            </Text>
-          </View>
-
-          {event.location_text && (
-            <View className="flex-row items-center gap-2">
-              <MapPin size={14} color="#e5e7eb" />
-              <Text className="text-white/80 text-sm" numberOfLines={1}>
-                {event.location_text}
-              </Text>
+            <View className="flex-1 items-center justify-center bg-neo-yellow">
+                <Text className="text-6xl">📅</Text>
             </View>
-          )}
-        </LinearGradient>
+        )}
+        
+        {/* Date Sticker */}
+        <View className="absolute top-4 left-4 bg-white border-4 border-black p-2 -rotate-3">
+            <Text className="text-black font-black uppercase text-xs">{formattedDate}</Text>
+        </View>
+
+        {/* Price Sticker */}
+        <View className="absolute bottom-4 right-4 bg-neo-red border-4 border-black px-3 py-1 rotate-2">
+            <Text className="text-white font-black uppercase text-sm">
+                {isPaid ? `$${event.price?.toFixed(2)}` : "FREE"}
+            </Text>
+        </View>
+      </View>
+
+      {/* Content Section */}
+      <View className="p-4 bg-white">
+        <Text className="text-3xl font-black uppercase text-black leading-none mb-2" numberOfLines={2}>
+            {event.name}
+        </Text>
+        
+        <View className="flex-row items-center gap-2 mb-2">
+            <View className="bg-neo-bg border-2 border-black px-2 py-0.5">
+                <Text className="text-xs font-bold uppercase">{formattedTime}</Text>
+            </View>
+            {event.location && (
+                <Text className="text-black font-bold uppercase text-xs truncate max-w-[200px]" numberOfLines={1}>
+                    @ {event.location}
+                </Text>
+            )}
+        </View>
+
+        {event.description && (
+             <Text className="text-black/60 font-medium text-sm leading-tight" numberOfLines={2}>
+                {event.description}
+            </Text>
+        )}
       </View>
     </TouchableOpacity>
   );

@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { HeaderProps } from "@/utils/types";
+import { Bell } from "lucide-react-native";
 
 export default function Header({
   title,
@@ -12,63 +12,29 @@ export default function Header({
   const router = useRouter();
 
   return (
-    <BlurView
-      intensity={50}
-      tint="default"
+    <View
+      className="absolute top-0 left-0 right-0 z-50 bg-neo-bg border-b-4 border-black pt-12 pb-4 px-4 flex-row items-center justify-between"
       style={{
-        gap: 16,
-        width: "100%",
-        padding: 18,
-        position: "absolute",
-        top: 35,
-        zIndex: 999,
-        overflow: "hidden",
+           // Ensure it's above everything and handles notch area if SafeAreaView isn't wrapping it explicitly (it's absolute)
+           paddingTop: 60 // Approximate notch, or use safe area inset hook if available
       }}
     >
-      <View
-        style={{
-          width: "100%",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
         {/* Left: Profile + Title */}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          {profileImage && (
-            <TouchableOpacity onPress={() => router.push("/settings")}>
+        <View className="flex-row items-center gap-4">
+          <TouchableOpacity onPress={() => router.push("/settings")} className="border-4 border-black bg-white rounded-full overflow-hidden w-12 h-12">
               <Image
                 source={{ uri: profileImage }}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20, // makes it round
-                }}
+                className="w-full h-full"
               />
-            </TouchableOpacity>
-          )}
+          </TouchableOpacity>
 
-          <Text
-            style={{
-              fontSize: 30,
-              fontWeight: "700",
-              color: "#fff",
-            }}
-          >
-            {title}
-          </Text>
+          <View className="bg-neo-yellow border-4 border-black px-2 -rotate-2 shadow-[4px_4px_0px_0px_#000]">
+             <Text className="text-2xl font-black uppercase text-black">{title}</Text>
+          </View>
         </View>
 
         {/* Right Action Buttons */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            gap: 25,
-          }}
-        >
+        <View className="flex-row items-center gap-4">
           {actions.map((action, idx) => {
             const Icon = action.icon;
 
@@ -79,13 +45,13 @@ export default function Header({
                   if (action.onPress) action.onPress();
                   if (action.link) router.push(action.link as any);
                 }}
+                className="bg-white border-4 border-black p-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
               >
-                <Icon size={22} color="#fff" />
+                <Icon size={20} color="#000" strokeWidth={3} />
               </TouchableOpacity>
             );
           })}
         </View>
-      </View>
-    </BlurView>
+    </View>
   );
 }

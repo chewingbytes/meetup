@@ -3,8 +3,8 @@ import { CommunityProps, FaqItem } from "@/utils/types";
 export const usersCommunities: CommunityProps[] = [
   {
     id: "c1",
-    name: "Gaming Hub",
-    description: "Main gaming community for all types of gamers.",
+    name: "Pickleball United",
+    description: "Pickleball @ Punggol for all skill levels.",
     dateCreated: "2025-01-01",
     privacyMode: false,
     rules: ["Be respectful", "No cheating", "No spam"],
@@ -13,7 +13,7 @@ export const usersCommunities: CommunityProps[] = [
       { question: "Do I need to register?", answer: "No registration needed." },
     ],
     profileImage: "https://picsum.photos/seed/c1/1980/1080",
-    topics: ["Gaming", "Multiplayer", "Strategy"],
+    topics: ["Pickleball", "Sports", "Outdoor"],
   },
   {
     id: "c2",

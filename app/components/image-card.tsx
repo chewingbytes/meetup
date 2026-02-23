@@ -26,7 +26,7 @@ const ImageCard: React.FC<CommunityCardProps> = ({ card, onPress }) => {
           }}
         >
           <ImageBackground
-            source={{ uri: card.image || card.profileImage }}
+            source={{ uri: card.cover_image || card.image || card.profileImage }}
             resizeMode="cover"
             style={{
               flex: 1,

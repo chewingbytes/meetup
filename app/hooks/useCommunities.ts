@@ -1,29 +1,33 @@
-import { useEffect } from "react";
-import { useCommunityStore } from "@/lib/stores/communityStore";
+import { usersCommunities } from "@/data/communities";
 import { useAuth } from "@/lib/authContext";
+import { useCommunityStore } from "@/lib/stores/communityStore";
+import { CommunityProps } from "@/utils/types";
+import { useEffect } from "react";
+
+const USE_MOCK_DATA = false;
 
 /**
  * CUSTOM HOOK: useCommunities
- * 
+ *
  * Automatically fetches communities on first mount and provides store state.
  * Smart caching: only fetches if data is empty or cache expires.
- * 
+ *
  * USAGE:
  * ```tsx
  * const { communities, isLoading, refresh } = useCommunities();
  * // Or fetch only user's communities:
  * const { communities, isLoading, refresh } = useCommunities(true, true);
- * 
+ *
  * // To manually refresh:
  * const handlePullToRefresh = async () => {
  *   await refresh();
  * };
  * ```
- * 
+ *
  * PARAMETERS:
  * - autoFetch (default: true): Automatically fetch on mount
  * - myCommunitiesOnly (default: true): Fetch only user's joined communities
- * 
+ *
  * RETURNS:
  * - communities: Array of CommunityProps
  * - isLoading: boolean indicating if fetch is in progress
@@ -34,35 +38,59 @@ import { useAuth } from "@/lib/authContext";
 export const useCommunities = (autoFetch = true, myCommunitiesOnly = true) => {
   const {
     communities,
+    allCommunities,
     isLoading,
     isRefreshing,
     error,
     fetchCommunities,
+    setCommunities,
   } = useCommunityStore();
   const { user } = useAuth();
 
+  const mapSampleCommunities = (): CommunityProps[] => {
+    return usersCommunities.map((c, idx) => ({
+      ...c,
+      created_at:
+        (c as any).created_at ||
+        (c as any).dateCreated ||
+        new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      privacy_mode: (c as any).privacy_mode ?? (c as any).privacyMode ?? false,
+      profile_image:
+        (c as any).profile_image ?? (c as any).profileImage ?? null,
+      owner_id: idx === 0 && user?.id ? user.id : (c as any).owner_id || null,
+    })) as CommunityProps[];
+  };
+
   useEffect(() => {
-    if (autoFetch && user) {
-      // Fetch communities on component mount (only if cache is empty)
+    if (!autoFetch) return;
+    if (USE_MOCK_DATA) {
+      setCommunities(mapSampleCommunities());
+      return;
+    }
+    if (user) {
       const userId = myCommunitiesOnly ? user.id : undefined;
       fetchCommunities(false, userId);
     }
-  }, [autoFetch, myCommunitiesOnly, user, fetchCommunities]);
+  }, [autoFetch, myCommunitiesOnly, user, fetchCommunities, setCommunities]);
 
   const refresh = async () => {
-    if (!user) return;
-    // Set refreshing state for UI feedback
+    if (!user && !USE_MOCK_DATA) return;
     useCommunityStore.setState({ isRefreshing: true });
     try {
-      const userId = myCommunitiesOnly ? user.id : undefined;
-      await fetchCommunities(true, userId); // Force refresh
+      if (USE_MOCK_DATA) {
+        setCommunities(mapSampleCommunities());
+      } else {
+        const userId = myCommunitiesOnly ? user!.id : undefined;
+        await fetchCommunities(true, userId);
+      }
     } finally {
       useCommunityStore.setState({ isRefreshing: false });
     }
   };
 
   return {
-    communities,
+    communities: myCommunitiesOnly ? communities : allCommunities,
     isLoading,
     isRefreshing,
     error,

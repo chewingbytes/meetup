@@ -1,9 +1,9 @@
 import React, { useEffect } from "react";
-import { View, Text, Image, TouchableOpacity, Dimensions } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { View, Text, Image, Dimensions, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/lib/authContext";
+import { Button } from "@/components/ui/button";
 
 const hero =
   "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80";
@@ -22,66 +22,67 @@ export default function WelcomeScreen() {
   }, [isLoading, user]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-      <View style={{ flex: 1 }}>
-        {/* Hero image */}
-        <View style={{ flex: 1, overflow: "hidden" }}>
-          <Image
-            source={{ uri: hero }}
-            style={{ width: "100%", height: height * 0.6 }}
-            resizeMode="cover"
-          />
-          {/* Gradient overlay */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.75)", "rgba(0,0,0,0.95)"]}
-            style={{
-              position: "absolute",
-              inset: 0,
-              justifyContent: "flex-end",
-              paddingHorizontal: 24,
-              paddingBottom: 32,
-              gap: 12,
-            }}
-          >
-            <Text className="text-white text-4xl font-bold leading-tight">
-              Meet. Create. Thrive.
-            </Text>
-            <Text className="text-white/80 text-base">
-              Find events, join communities, and make friends around your campus
-              and beyond.
-            </Text>
-          </LinearGradient>
+    <SafeAreaView className="flex-1 bg-neo-bg" edges={["top", "bottom"]}>
+      <View className="flex-grow justify-between p-6">
+        <View className="items-center mb-8 relative">
+          <View className="absolute top-0 right-0 z-10 rotate-12">
+            <View className="bg-neo-yellow border-4 border-black p-2 self-start shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+              <Text className="text-xl font-bold uppercase tracking-widest">
+                Hangout!
+              </Text>
+            </View>
+          </View>
+          <View className="absolute bottom-0 left-0 w-12 h-12 rounded-full bg-neo-red border-4 border-black z-10" />
+
+          <View className="border-4 border-black bg-white p-2 w-full -rotate-2 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+            <Image
+              source={{ uri: hero }}
+              style={{ width: "100%", height: height * 0.4 }}
+              resizeMode="cover"
+              className="border-2 border-black"
+            />
+          </View>
         </View>
 
-        {/* Bottom actions */}
-        <View style={{ padding: 20, gap: 12 }}>
-          <TouchableOpacity onPress={() => router.push("/login")}>
-            <LinearGradient
-              colors={["#4f46e5", "#7c3aed"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{
-                borderRadius: 14,
-                paddingVertical: 14,
-                alignItems: "center",
-              }}
-            >
-              <Text className="text-white font-bold text-base">Log In</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+        {/* Text Content */}
+        <View className="mb-12 space-y-4">
+          <Text className="text-5xl font-black uppercase text-black leading-[0.9] tracking-tighter pt-1">
+            Meet. <Text className="text-neo-red italic">Create.</Text> Thrive.
+          </Text>
+          <View className="bg-white border-4 border-black p-4 rotate-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mt-4">
+            <Text className="text-black text-xl font-bold leading-tight">
+              Find events and join new communities{" "}
+              <Text className="text-red-500">safely and securely.</Text>
+            </Text>
+          </View>
+        </View>
 
-          <TouchableOpacity
-            onPress={() => router.push("/register")}
-            style={{
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: "center",
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.15)",
-            }}
+        {/* Actions */}
+        <View className="gap-4 w-full">
+          <Button
+            onPress={() => router.push("/login")}
+            variant="default"
+            size="lg"
+            className="w-full"
           >
-            <Text className="text-white font-semibold text-base">Sign Up</Text>
-          </TouchableOpacity>
+            Log In
+          </Button>
+
+          <Button
+            onPress={() => router.push("/register")}
+            variant="secondary"
+            size="lg"
+            className="w-full"
+          >
+            Sign Up
+          </Button>
+        </View>
+
+        {/* Footer */}
+        <View className="mt-8 items-center">
+          <Text className="text-xs font-bold uppercase tracking-widest text-black/50">
+            Hangout! © 2026
+          </Text>
         </View>
       </View>
     </SafeAreaView>

@@ -13,45 +13,42 @@ export default function CommunityCard({
     month: "short",
     day: "numeric",
   });
+  
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row w-full rounded-xl"
-      style={{
-        shadowColor: "#000",
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 3,
-      }}
+      className="flex-row w-full bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-4 mb-6 active:translate-y-[2px] active:shadow-none"
     >
-      {community.profileImage ? (
-        <Image
-          source={{ uri: community.profileImage }}
-          className="w-20 h-auto rounded-xl"
-          resizeMode="cover"
-        />
-      ) : (
-        <View className="w-20 h-auto rounded-xl mr-4 bg-gray-600 justify-center items-center">
-          <Text className="text-2xl">📅</Text>
-        </View>
-      )}
+      {/* Image Box */}
+      <View className="border-4 border-black bg-neo-yellow w-24 h-24 mr-4 items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#000] -rotate-2">
+        {community.profileImage ? (
+          <Image
+            source={{ uri: community.profileImage }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <Text className="text-4xl">👾</Text>
+        )}
+      </View>
 
-      {/* Right Content */}
-      <View className="flex-1 justify-between">
-        {/* Community Description */}
-        <Text className="text-white/70 text-lg font-normal">
+      {/* Content */}
+      <View className="flex-1 justify-between py-1">
+        <View>
+            <View className="bg-neo-red border-2 border-black self-start px-2 mb-1 rotate-1">
+                <Text className="text-white text-xs font-bold uppercase">{community.privacyMode ? "PRIVATE" : "PUBLIC"}</Text>
+            </View>
+            <Text className="text-black text-xl font-black uppercase leading-tight" numberOfLines={2}>
+            {community.name}
+            </Text>
+        </View>
+
+        <Text className="text-black/80 font-medium text-sm leading-tight mt-1" numberOfLines={2}>
           {community.description}
         </Text>
-
-        {/* Community Name */}
-        <Text className="text-white text-xl font-medium leading-tight mt-1">
-          {community.name}
-        </Text>
-
-        {/* Privacy mode */}
-        <Text className="text-white/50 text-sm mt-1">
-          {community.privacyMode ? "Private" : "Public"} • Created on{" "}
-          {formattedDate}
+        
+        <Text className="text-black/40 text-xs font-bold uppercase mt-2">
+           EST. {formattedDate}
         </Text>
       </View>
     </TouchableOpacity>

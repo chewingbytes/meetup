@@ -1,551 +1,419 @@
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { NeoButtonLoader } from "@/components/ui/neo-loader";
+import { auth } from "@/lib/api";
+import { useAuth } from "@/lib/authContext";
+import { supabase } from "@/lib/supabase";
+import { decode } from "base64-arraybuffer";
+import * as FileSystem from "expo-file-system/legacy";
+import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  ArrowRight,
+  Camera,
+  FileText,
+  Sparkles,
+  User,
+} from "lucide-react-native";
+import React, { useState } from "react";
 import {
   Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
-  ActivityIndicator,
 } from "react-native";
-import { useAuth } from "@/lib/authContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Check } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
+
+const INTERESTS = [
+  "Tech",
+  "Design",
+  "Music",
+  "Food",
+  "Outdoors",
+  "Gaming",
+  "Art",
+  "Business",
+  "Wellness",
+  "Party",
+];
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { signUp } = useAuth();
-
+  const params = useLocalSearchParams<{ email?: string; password?: string }>();
+  const { signIn } = useAuth();
   const [step, setStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const [email] = useState((params.email as string) || "");
-  const [password] = useState((params.password as string) || "");
-
-  const [name, setName] = useState("");
-  const [school, setSchool] = useState("");
-  const [year, setYear] = useState("");
-
-  const allInterests = [
-    "Gaming",
-    "Fitness",
-    "Study",
-    "Arts",
-    "Cafe Hopping",
-    "Sunrise Walks",
-    "Sports",
-    "Music",
-    "Movies / Anime",
-    "Thrifting",
-    "Career & Tech",
-  ];
+  // Data State
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
-  const personalityQuestions = [
-    {
-      id: "social",
-      q: "What's your social energy like?",
-      opts: ["⚡ Extrovert", "🌙 Introvert", "🔄 Ambivert"],
-    },
-    {
-      id: "weekend",
-      q: "Your ideal weekend?",
-      opts: ["Out exploring", "Cozy at home", "Studying", "Doing sports"],
-    },
-    {
-      id: "connect",
-      q: "How do you connect?",
-      opts: ["Deep 1-to-1", "Group hangs", "Shared hobbies", "Shy but warm up"],
-    },
-    {
-      id: "planning",
-      q: "How do you prefer to plan?",
-      opts: ["Spontaneous", "Structured plan", "Flexible mix"],
-    },
-    {
-      id: "stress",
-      q: "How do you handle stress?",
-      opts: ["Talk it out", "Need alone time", "Exercise", "Creative outlet"],
-    },
-    {
-      id: "learning",
-      q: "Learning style preference?",
-      opts: ["Visual learner", "Hands-on", "Reading/Writing", "Listening"],
-    },
-  ];
-  const [personalityAnswers, setPersonalityAnswers] = useState<
-    Record<string, string>
-  >({});
+  const handleNext = async () => {
+    // Validation
+    if (step === 0) {
+      if (!username.trim()) {
+        Alert.alert("Hold up", "We need a username to call you by.");
+        return;
+      }
+    }
 
-  const [prefScope, setPrefScope] = useState("Nearby schools");
-  const [radius, setRadius] = useState(5);
-  const [preferredTypes, setPreferredTypes] = useState<string[]>(["casual"]);
+    // Step Transition
+    if (step < 2) {
+      setStep(step + 1);
+    } else {
+      // Final Step (Interests)
+      if (selectedInterests.length < 3) {
+        Alert.alert(
+          "Almost there",
+          "Pick at least 3 interests so your feed isn't empty.",
+        );
+        return;
+      }
 
-  const toggleInterest = (i: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(i) ? prev.filter((p) => p !== i) : [...prev, i]
-    );
-  };
+      // Submit everything via signup
+      const email = params.email as string | undefined;
+      const password = params.password as string | undefined;
+      if (!email || !password) {
+        Alert.alert(
+          "Missing info",
+          "Email or password not provided from signup.",
+        );
+        return;
+      }
 
-  const selectPersonality = (id: string, opt: string) => {
-    setPersonalityAnswers((p) => ({ ...p, [id]: opt }));
-  };
-
-  const handleFinishOnboarding = async () => {
-    const onboardingData = {
-      name,
-      school,
-      year,
-      selectedInterests,
-      personalityAnswers,
-      prefScope,
-      radius,
-      preferredTypes,
-    };
-
-    if (email && password) {
+      setIsLoading(true);
       try {
-        setIsSubmitting(true);
-        const { user, error } = await signUp(email, password, onboardingData);
+        let avatarUrl = uploadedImageUrl;
 
-        if (error) {
+        // 1. Upload Image to Supabase if new image selected
+        if (
+          profileImage &&
+          !uploadedImageUrl &&
+          !profileImage.startsWith("http")
+        ) {
+          const { uri } = await FileSystem.getInfoAsync(profileImage);
+          if (uri) {
+            const fileExt =
+              profileImage.split(".").pop()?.toLowerCase() || "jpg";
+            const safeEmail = email.replace(/[^a-zA-Z0-9-_]/g, "_");
+            const fileName = `${safeEmail}_${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const base64 = await FileSystem.readAsStringAsync(profileImage, {
+              encoding: "base64",
+            });
+            const fileData = decode(base64);
+
+            const { error: uploadError } = await supabase.storage
+              .from("profile_pictures")
+              .upload(filePath, fileData, {
+                contentType: `image/${fileExt}`,
+                upsert: true,
+              });
+
+            if (uploadError) {
+              console.error("Supabase upload error:", uploadError);
+            }
+
+            const {
+              data: { publicUrl },
+            } = supabase.storage
+              .from("profile_pictures")
+              .getPublicUrl(filePath);
+
+            avatarUrl = publicUrl;
+            setUploadedImageUrl(publicUrl);
+          }
+        }
+
+        // 2. Call server signup (creates user + profile)
+        const { signUpUser, signUpError } = await auth.signUp(
+          email,
+          password,
+          username,
+          avatarUrl || "",
+          bio,
+          selectedInterests,
+        );
+
+        if (signUpError) {
           Alert.alert(
-            "Signup Error",
-            error.message || "Failed to create account"
+            "Sign Up Error",
+            signUpError.message || "Failed to sign up",
           );
           return;
         }
 
-        if (user) {
-          await AsyncStorage.setItem(
-            "onboarding_data",
-            JSON.stringify(onboardingData)
-          );
-          await AsyncStorage.setItem("pending_email_verification", email);
-          router.push("/verify/email");
+        const { user, error } = await signIn(email, password);
+        if (error) {
+          Alert.alert("Sign In Error", error.message || "Failed to sign in");
+          return;
         }
-      } catch (err: any) {
-        Alert.alert("Error", err.message || "An error occurred");
+        if (user) {
+          router.replace("/home");
+        }
+      } catch (error: any) {
+        Alert.alert("Error", error.message || "An unexpected error occurred");
       } finally {
-        setIsSubmitting(false);
+        setIsLoading(false);
       }
-    } else {
-      await AsyncStorage.setItem(
-        "onboarding_data",
-        JSON.stringify(onboardingData)
-      );
-      router.push("/login");
     }
   };
 
-  const totalSteps = 5;
-  const progress = ((step + 1) / totalSteps) * 100;
+  const handleBack = () => {
+    if (step > 0) {
+      setStep(step - 1);
+    }
+  };
+
+  const toggleInterest = (interest: string) => {
+    if (selectedInterests.includes(interest)) {
+      setSelectedInterests(selectedInterests.filter((i) => i !== interest));
+    } else {
+      setSelectedInterests([...selectedInterests, interest]);
+    }
+  };
+
+  // Mock Image Picker
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+
+    if (!result.canceled) {
+      setProfileImage(result.assets[0].uri);
+    }
+  };
+
+  const StepIndicator = () => (
+    <View className="flex-row justify-center mb-8 gap-3">
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          className={`h-3 w-3 border-[2px] border-black ${
+            i <= step ? "bg-[#FF6B6B]" : "bg-white"
+          } ${i === step ? "transform scale-125" : ""}`}
+        />
+      ))}
+    </View>
+  );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }} edges={["top"]}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        {/* Header */}
-        <View className="px-5 pt-4 pb-6">
-          <TouchableOpacity
-            onPress={() => (step > 0 ? setStep(step - 1) : router.back())}
-            className="mb-6"
-          >
-            <ArrowLeft size={24} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Progress Bar */}
-          <View className="bg-white/10 h-1.5 rounded-full mb-4 overflow-hidden">
-            <View
-              className="bg-indigo-500 h-full rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </View>
-
-          <Text className="text-white/60 text-sm font-semibold">
-            Step {step + 1} of {totalSteps}
-          </Text>
-        </View>
-
-        {/* Step 0: Basic Info */}
-        {step === 0 && (
-          <View className="flex-1 px-5">
-            <Text className="text-white text-3xl font-bold mb-2">
-              Basic Info
-            </Text>
-            <Text className="text-white/60 text-base mb-8">
-              Tell us about yourself
-            </Text>
-
-            <View className="mb-5">
-              <Text className="text-white/80 text-sm font-semibold mb-2">
-                Preferred Name
+    <SafeAreaView className="flex-1 bg-[#FFFDF5]" edges={["top", "bottom"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            {/* Header */}
+            <View className="px-6 pt-4 pb-2 flex-row justify-between items-center">
+              <Text className="font-black text-xs uppercase tracking-widest text-[#FF6B6B]">
+                Setup Profile
               </Text>
-              <TextInput
-                placeholder="Mei"
-                placeholderTextColor="#666"
-                value={name}
-                onChangeText={setName}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-base"
-              />
-            </View>
-
-            <View className="mb-5">
-              <Text className="text-white/80 text-sm font-semibold mb-2">
-                School
+              <Text className="font-bold text-xs uppercase text-black/40">
+                Step {step + 1}/3
               </Text>
-              <TextInput
-                placeholder="e.g. NUS / NP"
-                placeholderTextColor="#666"
-                value={school}
-                onChangeText={setSchool}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-base"
-              />
             </View>
 
-            <View className="mb-8">
-              <Text className="text-white/80 text-sm font-semibold mb-2">
-                Year of Study
-              </Text>
-              <TextInput
-                placeholder="1"
-                placeholderTextColor="#666"
-                value={year}
-                onChangeText={setYear}
-                keyboardType="numeric"
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-base"
-              />
-            </View>
+            <View className="flex-1 px-6 pt-4">
+              <StepIndicator />
 
-            <TouchableOpacity
-              onPress={() => setStep(1)}
-              disabled={!name || !school}
-            >
-              <LinearGradient
-                colors={
-                  !name || !school ? ["#333", "#333"] : ["#4f46e5", "#7c3aed"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  alignSelf: "flex-start", // 👈 shrink to content
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                }}
-              >
-                <Text className="text-white font-bold text-base">Next</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.replace("/home")}
-              className="mt-4 py-3 items-center"
-            >
-              <Text className="text-white/50 text-sm">Skip for now</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Step 1: Interests */}
-        {step === 1 && (
-          <View className="flex-1 px-5">
-            <Text className="text-white text-3xl font-bold mb-2">
-              Your Interests
-            </Text>
-            <Text className="text-white/60 text-base mb-8">
-              Pick what you vibe with
-            </Text>
-
-            <View className="flex-row flex-wrap gap-2 mb-8">
-              {allInterests.map((i) => {
-                const active = selectedInterests.includes(i);
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    onPress={() => toggleInterest(i)}
-                    className={`px-4 py-3 rounded-full ${
-                      active
-                        ? "bg-indigo-500 border border-indigo-400"
-                        : "bg-white/5 border border-white/10"
-                    }`}
-                  >
-                    <Text
-                      className={`font-semibold text-sm ${
-                        active ? "text-white" : "text-white/70"
-                      }`}
-                    >
-                      {i}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => {
-                // Redirect to interest ranking screen with selected interests
-                router.push({
-                  pathname: "/onboarding/interest-ranking",
-                  params: { interests: JSON.stringify(selectedInterests) }
-                });
-              }}
-              disabled={selectedInterests.length === 0}
-            >
-              <LinearGradient
-                colors={
-                  selectedInterests.length === 0
-                    ? ["#333", "#333"]
-                    : ["#4f46e5", "#7c3aed"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  alignSelf: "flex-start", // 👈 shrink to content
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                }}
-              >
-                <Text className="text-white font-bold text-base">Next: Rank Your Interests</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Step 2: Personality */}
-        {step === 2 && (
-          <View className="flex-1 px-5">
-            <Text className="text-white text-3xl font-bold mb-2">
-              Personality
-            </Text>
-            <Text className="text-white/60 text-base mb-8">
-              Help us match you better
-            </Text>
-
-            {personalityQuestions.map((q) => (
-              <View key={q.id} className="mb-6">
-                <Text className="text-white font-semibold mb-3">{q.q}</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {q.opts.map((o) => {
-                    const selected = personalityAnswers[q.id] === o;
-                    return (
-                      <TouchableOpacity
-                        key={o}
-                        onPress={() => selectPersonality(q.id, o)}
-                        className={`px-4 py-3 rounded-full ${
-                          selected
-                            ? "bg-indigo-500 border border-indigo-400"
-                            : "bg-white/5 border border-white/10"
-                        }`}
-                      >
-                        <Text
-                          className={`text-sm ${
-                            selected
-                              ? "text-white font-semibold"
-                              : "text-white/70"
-                          }`}
-                        >
-                          {o}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            ))}
-
-            <TouchableOpacity onPress={() => setStep(3)}>
-              <LinearGradient
-                colors={["#4f46e5", "#7c3aed"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  alignSelf: "flex-start", // 👈 shrink to content
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                }}
-              >
-                <Text className="text-white font-bold text-base">Next</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Step 3: Preferences */}
-        {step === 3 && (
-          <View className="flex-1 px-5">
-            <Text className="text-white text-3xl font-bold mb-2">
-              Preferences
-            </Text>
-            <Text className="text-white/60 text-base mb-8">
-              Set your discovery range
-            </Text>
-
-            <Text className="text-white/80 text-sm font-semibold mb-3">
-              Who can see you
-            </Text>
-            <View className="flex-row flex-wrap gap-2 mb-6">
-              {["Your school", "Nearby schools", "Whole-of-SG"].map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => setPrefScope(s)}
-                  className={`px-4 py-3 rounded-full ${
-                    prefScope === s
-                      ? "bg-indigo-500 border border-indigo-400"
-                      : "bg-white/5 border border-white/10"
-                  }`}
-                >
-                  <Text
-                    className={`text-sm ${
-                      prefScope === s
-                        ? "text-white font-semibold"
-                        : "text-white/70"
-                    }`}
-                  >
-                    {s}
+              {/* STEP 1: Photo & Username */}
+              {step === 0 && (
+                <View className="flex-1 items-center pt-8">
+                  <Text className="font-black text-3xl uppercase mb-2 text-center">
+                    Who are you?
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <Text className="font-medium text-black/60 mb-10 text-center uppercase text-sm">
+                    Show us your face (or not) and pick a handle.
+                  </Text>
 
-            <Text className="text-white/80 text-sm font-semibold mb-3">
-              Preferred meet types
-            </Text>
-            <View className="flex-row flex-wrap gap-2 mb-8">
-              {["casual", "study", "sports", "activities"].map((t) => {
-                const active = preferredTypes.includes(t);
-                return (
+                  {/* Photo Upload */}
                   <TouchableOpacity
-                    key={t}
-                    onPress={() =>
-                      setPreferredTypes((p) =>
-                        p.includes(t) ? p.filter((x) => x !== t) : [...p, t]
-                      )
-                    }
-                    className={`px-4 py-3 rounded-full ${
-                      active
-                        ? "bg-indigo-500 border border-indigo-400"
-                        : "bg-white/5 border border-white/10"
-                    }`}
+                    onPress={pickImage}
+                    activeOpacity={0.8}
+                    className="mb-10 relative"
                   >
-                    <Text
-                      className={`text-sm ${
-                        active ? "text-white font-semibold" : "text-white/70"
-                      }`}
+                    <View
+                      className={`w-40 h-40 border-[4px] border-black bg-white items-center justify-center shadow-[8px_8px_0px_0px_#000] rotate-2 ${profileImage ? "overflow-hidden" : ""}`}
                     >
-                      {t}
-                    </Text>
+                      {profileImage ? (
+                        <Image
+                          source={{ uri: profileImage }}
+                          className="w-full h-full"
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Camera size={48} color="#000" strokeWidth={2} />
+                      )}
+                    </View>
+                    {!profileImage && (
+                      <View className="absolute -bottom-4 -right-4 bg-[#FFD93D] border-[3px] border-black p-2 -rotate-12 shadow-[4px_4px_0px_0px_white]">
+                        <Text className="font-black text-xs uppercase">
+                          Upload
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
-                );
-              })}
-            </View>
 
-            <TouchableOpacity onPress={() => setStep(4)}>
-              <LinearGradient
-                colors={["#4f46e5", "#7c3aed"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  alignSelf: "flex-start", // 👈 shrink to content
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                }}
-              >
-                <Text className="text-white font-bold text-base">Next</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
+                  {/* Username Input */}
+                  <View className="w-full">
+                    <Text className="font-bold mb-2 uppercase text-xs tracking-wider">
+                      Username
+                    </Text>
+                    <View className="bg-white border-[3px] border-black p-4 shadow-[6px_6px_0px_0px_#000] flex-row items-center">
+                      <User
+                        size={24}
+                        color="#000"
+                        className="mr-3 opacity-50"
+                      />
+                      <TextInput
+                        placeholder="@username"
+                        value={username}
+                        onChangeText={setUsername}
+                        className="flex-1 font-bold text-xl h-full p-0 leading-none" // Reset padding to align with icon
+                        style={{ textAlignVertical: "center" }}
+                        placeholderTextColor="#999"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
 
-        {/* Step 4: Review */}
-        {step === 4 && (
-          <View className="flex-1 px-5">
-            <Text className="text-white text-3xl font-bold mb-2">
-              Almost Done!
-            </Text>
-            <Text className="text-white/60 text-base mb-8">
-              Review your profile
-            </Text>
+              {/* STEP 2: Bio */}
+              {step === 1 && (
+                <View className="flex-1 pt-8">
+                  <Text className="font-black text-3xl uppercase mb-2 text-center">
+                    Your Vibe
+                  </Text>
+                  <Text className="font-medium text-black/60 mb-10 text-center uppercase text-sm">
+                    What makes you... you? Keep it short or yap away.
+                  </Text>
 
-            <View className="bg-white/5 rounded-xl p-4 mb-8 border border-white/10">
-              <View className="mb-4">
-                <Text className="text-white/60 text-xs font-semibold mb-1">
-                  NAME
-                </Text>
-                <Text className="text-white text-base font-semibold">
-                  {name}
-                </Text>
-              </View>
+                  <View className="w-full flex-1 max-h-[300px]">
+                    <View className="flex-row justify-between mb-2 items-end">
+                      <Text className="font-bold uppercase text-xs tracking-wider">
+                        Bio
+                      </Text>
+                      <Text className="font-bold text-xs text-black/40">
+                        {bio.length}/150
+                      </Text>
+                    </View>
 
-              <View className="mb-4">
-                <Text className="text-white/60 text-xs font-semibold mb-1">
-                  SCHOOL
-                </Text>
-                <Text className="text-white text-base font-semibold">
-                  {school} · Year {year}
-                </Text>
-              </View>
+                    <View className="bg-white border-[3px] border-black p-4 shadow-[8px_8px_0px_0px_#000] flex-1 -rotate-1">
+                      <View className="mb-2 opacity-50">
+                        <FileText size={24} color="#000" />
+                      </View>
+                      <TextInput
+                        placeholder="I'm a designer who loves coffee and..."
+                        value={bio}
+                        onChangeText={setBio}
+                        multiline
+                        maxLength={150}
+                        className="flex-1 font-medium text-lg text-black p-0"
+                        style={{ textAlignVertical: "top" }}
+                        placeholderTextColor="#999"
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
 
-              <View className="mb-4">
-                <Text className="text-white/60 text-xs font-semibold mb-1">
-                  INTERESTS
-                </Text>
-                <Text className="text-white text-sm">
-                  {selectedInterests.join(", ")}
-                </Text>
-              </View>
-
-              <View>
-                <Text className="text-white/60 text-xs font-semibold mb-1">
-                  PERSONALITY
-                </Text>
-                <Text className="text-white text-sm">
-                  {Object.values(personalityAnswers).join(" • ")}
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleFinishOnboarding}
-              disabled={isSubmitting}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={
-                  isSubmitting ? ["#333", "#333"] : ["#4f46e5", "#7c3aed"]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={{
-                  alignSelf: "flex-start", // 👈 shrink to content
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 999,
-                }}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <View className="flex-row items-center">
-                    <Check size={20} color="#fff" style={{ marginRight: 8 }} />
-                    <Text
-                      style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}
-                    >
-                      Complete Setup
+              {/* STEP 3: Interests */}
+              {step === 2 && (
+                <View className="flex-1 pt-4">
+                  <View className="items-center mb-8">
+                    <View className="w-16 h-16 bg-[#C4B5FD] border-[3px] border-black items-center justify-center rotate-6 mb-4 shadow-[4px_4px_0px_0px_#000]">
+                      <Sparkles
+                        size={32}
+                        color="white"
+                        fill="black"
+                        strokeWidth={1}
+                      />
+                    </View>
+                    <Text className="font-black text-3xl uppercase mb-2 text-center">
+                      Interests
+                    </Text>
+                    <Text className="font-bold text-gray-500 uppercase tracking-wider text-center">
+                      Pick at least 3
                     </Text>
                   </View>
+
+                  <ScrollView contentContainerClassName="flex-row flex-wrap gap-3 justify-center pb-4">
+                    {INTERESTS.map((interest, index) => {
+                      const isSelected = selectedInterests.includes(interest);
+                      return (
+                        <TouchableOpacity
+                          key={interest}
+                          onPress={() => toggleInterest(interest)}
+                          activeOpacity={0.8}
+                          className={`
+                        px-4 py-3 border-[3px] border-black mb-2
+                        ${isSelected ? "bg-[#A7F3D0] -translate-y-1 shadow-[4px_4px_0px_0px_#000]" : "bg-white"}
+                        ${index % 2 === 0 ? "rotate-1" : "-rotate-1"}
+                      `}
+                        >
+                          <Text className="font-black text-sm uppercase">
+                            {interest}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+
+            {/* Footer Navigation */}
+            <View className="px-6 pb-6 pt-4 border-t-[4px] border-black bg-white flex-row gap-4">
+              {step > 0 && (
+                <TouchableOpacity
+                  onPress={handleBack}
+                  className="flex-1 bg-white border-[3px] border-black py-4 items-center active:translate-y-1 active:shadow-none justify-center"
+                >
+                  <Text className="font-black text-xl uppercase text-black">
+                    Back
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={handleNext}
+                className={`flex-1 bg-[#FF6B6B] border-[3px] border-black py-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none flex-row justify-center ${step === 0 ? "w-full flex-none" : ""}`} // flex-none to respect flex-1 if parent has gap but wait..
+                // Actually if step > 0, footer has two buttons, if step 0, one button usually
+                style={{ flex: step === 0 ? 1 : 1 }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <NeoButtonLoader color="white" />
+                ) : (
+                  <>
+                    <Text className="font-black text-xl uppercase text-white mr-2">
+                      {step === 2 ? "Let's Go" : "Next"}
+                    </Text>
+                    <ArrowRight size={24} color="#FFF" strokeWidth={3} />
+                  </>
                 )}
-              </LinearGradient>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           </View>
-        )}
-      </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

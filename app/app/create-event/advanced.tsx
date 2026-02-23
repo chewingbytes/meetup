@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,17 +6,27 @@ import {
   ScrollView,
   TextInput,
   Alert,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Plus, X } from 'lucide-react-native';
-import { useAuth } from '@/lib/authContext';
-import { createEvent, getEventTemplates } from '@/lib/api';
-import { LinearGradient } from 'expo-linear-gradient';
+  Switch,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import {
+  ArrowLeft,
+  Clock,
+  MapPin,
+  Users,
+  Calendar,
+  DollarSign,
+  Plus,
+} from "lucide-react-native";
+import { useAuth } from "@/lib/authContext";
+// Assuming these API interactions remain the same
+// In a real scenario, I'd check the exact signature of createEvent
+// But based on the file read, it takes an object.
+import { createEvent, getEventTemplates } from "@/lib/api";
+import { NeoLoader, NeoButtonLoader } from "@/components/ui/neo-loader";
 
+/* Types for templates */
 interface EventTemplate {
   id: string;
   name: string;
@@ -29,27 +39,29 @@ interface EventTemplate {
 
 export default function CreateEventScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const { user } = useAuth();
 
-  const community_id = (params.community_id as string) || '';
-  const organizer_id = user?.id || '';
+  const community_id = (params.community_id as string) || "";
+  const organizer_id = user?.id || "";
 
-  const [step, setStep] = useState<'template' | 'details'>(('template' as any) || 'template');
+  const [step, setStep] = useState<"template" | "details">("template");
   const [templates, setTemplates] = useState<EventTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<EventTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<EventTemplate | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Form fields
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [capacity, setCapacity] = useState('50');
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [startDate, setStartDate] = useState(""); // YYYY-MM-DD
+  const [startTime, setStartTime] = useState(""); // HH:MM
+  const [capacity, setCapacity] = useState("50");
   const [isPaid, setIsPaid] = useState(false);
-  const [price, setPrice] = useState('');
+  const [price, setPrice] = useState("");
 
   useEffect(() => {
     loadTemplates();
@@ -57,18 +69,14 @@ export default function CreateEventScreen() {
 
   const loadTemplates = async () => {
     if (!community_id) {
-      console.log('❌ No community_id provided');
       setLoading(false);
       return;
     }
-    
-    console.log('📡 Loading templates for community:', community_id);
     try {
       const data = await getEventTemplates(community_id);
-      console.log('✅ Templates loaded:', data);
       setTemplates(data || []);
     } catch (error) {
-      console.error('❌ Error loading templates:', error);
+      console.error("Error loading templates:", error);
     } finally {
       setLoading(false);
     }
@@ -79,40 +87,53 @@ export default function CreateEventScreen() {
     setName(template.name);
     setDescription(template.description);
     setCapacity(String(template.default_capacity));
-    setStep('details');
+    setStep("details");
+  };
+
+  const handleCreateFromScratch = () => {
+    setSelectedTemplate(null);
+    setName("");
+    setDescription("");
+    setCapacity("50");
+    setStep("details");
   };
 
   const handleCreateEvent = async () => {
     if (!name || !startDate || !startTime) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert("Error", "Please fill in Name, Date, and Time");
       return;
     }
 
     try {
       setSubmitting(true);
 
-      const start_at = `${startDate}T${startTime}:00Z`;
-      // Assume 2 hour duration if not specified
-      const endTime = new Date(new Date(start_at).getTime() + 2 * 60 * 60 * 1000).toISOString();
+      // Basic ISO string construction
+      // Ideally use a date library like date-fns or dayjs
+      const startAt = `${startDate}T${startTime}:00Z`;
+      // Calculcate end time roughly (2 hours)
+      const endDate = new Date(
+        new Date(startAt).getTime() + 2 * 60 * 60 * 1000,
+      );
+      const endAt = endDate.toISOString();
 
       await createEvent({
         name,
         description,
-        start_at,
-        end_at: endTime,
+        start_at: startAt,
+        end_at: endAt,
         location_text: location,
         community_id,
         organizer_id,
-        capacity: parseInt(capacity),
+        capacity: parseInt(capacity) || 50,
         is_paid: isPaid,
-        price: isPaid ? parseFloat(price) : null,
-        visibility: 'public',
+        price: isPaid ? parseFloat(price) : 0,
+        visibility: "public",
       });
 
-      Alert.alert('Success', 'Event created!');
+      Alert.alert("Success", "Event created!");
       router.back();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to create event');
+      Alert.alert("Error", error.message || "Failed to create event");
     } finally {
       setSubmitting(false);
     }
@@ -120,355 +141,280 @@ export default function CreateEventScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#4f46e5" />
-      </SafeAreaView>
+      <View className="flex-1 items-center justify-center">
+        <NeoLoader />
+      </View>
     );
   }
 
+  /*
+   * STEP 1: TEMPLATE SELECTION
+   */
+  if (step === "template") {
+    return (
+      <View className="flex-1 bg-[#FFFDF5]">
+        {/* Header */}
+        <View
+          style={{ paddingTop: insets.top }}
+          className="bg-[#FFD93D] border-b-4 border-black pb-4 px-4 sticky top-0 z-50 flex-row items-center justify-between"
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000] active:translate-y-1"
+          >
+            <ArrowLeft size={24} color="black" strokeWidth={3} />
+          </TouchableOpacity>
+          <Text className="text-xl font-black uppercase tracking-tighter text-black">
+            Select Template
+          </Text>
+          <View className="w-10" />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          <View className="bg-white border-4 border-black p-4 mb-6 shadow-[4px_4px_0px_0px_#000]">
+            <Text className="font-bold text-lg mb-1">FAST TRACK </Text>
+            <Text className="text-sm text-gray-800">
+              Pick a blueprint to launch your event in seconds.
+            </Text>
+          </View>
+
+          {/* Create from Scratch Button */}
+          <TouchableOpacity
+            onPress={handleCreateFromScratch}
+            activeOpacity={1}
+            className="bg-white border-4 border-black border-dashed p-6 items-center justify-center mb-8 active:bg-gray-50"
+          >
+            <Plus size={32} color="black" strokeWidth={3} />
+            <Text className="font-black text-lg uppercase mt-2 text-center">
+              Start from Scratch
+            </Text>
+          </TouchableOpacity>
+
+          {/* Templates List */}
+          {templates.length > 0 ? (
+            <View className="gap-4">
+              <Text className="font-black text-xl uppercase mb-2">
+                Saved Templates
+              </Text>
+              {templates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  onPress={() => handleSelectTemplate(template)}
+                  activeOpacity={0.9}
+                  className="bg-white border-4 border-black p-4 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+                >
+                  <View className="flex-row items-start justify-between mb-4">
+                    <View className="w-12 h-12 bg-neo-purple border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_#000] mr-3">
+                      <Text className="text-2xl">{template.icon || ""}</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="font-black text-xl uppercase leading-6">
+                        {template.name}
+                      </Text>
+                      <View className="flex-row gap-2 mt-1">
+                        <View className="bg-neo-green px-2 py-0.5 border border-black rounded-full">
+                          <Text className="text-xs font-bold">
+                            {template.duration_minutes}m
+                          </Text>
+                        </View>
+                        <View className="bg-neo-blue px-2 py-0.5 border border-black rounded-full">
+                          <Text className="text-xs font-bold">
+                            {template.default_capacity} ppl
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                  <Text className="font-medium text-gray-800 border-t-2 border-black pt-2 border-dashed">
+                    {template.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View className="items-center justify-center py-10 opacity-50">
+              <Text className="font-bold text-gray-500">
+                No custom templates found.
+              </Text>
+            </View>
+          )}
+
+          <View className="h-20" />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  /*
+   * STEP 2: DETAILS FORM
+   */
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#27272a' }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginRight: 12 }}>
-          <ArrowLeft size={24} color="#fff" />
+    <View className="flex-1 bg-[#FFFDF5]">
+      {/* Details Header */}
+      <View
+        style={{ paddingTop: insets.top }}
+        className="bg-[#C4B5FD] border-b-4 border-black pb-4 px-4 sticky top-0 z-50 flex-row items-center justify-between"
+      >
+        <TouchableOpacity
+          onPress={() => setStep("template")}
+          className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000] active:translate-y-1"
+        >
+          <ArrowLeft size={24} color="black" strokeWidth={3} />
         </TouchableOpacity>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', flex: 1 }}>
-          {step === 'template' ? 'Choose a Template' : 'Event Details'}
+        <Text className="text-xl font-black uppercase tracking-tighter text-black">
+          Finalize Details
         </Text>
+        <View className="w-10" />
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingVertical: 20 }} showsVerticalScrollIndicator={false}>
-        {step === 'template' ? (
-          <View>
-            <Text style={{ color: '#888', fontSize: 12, fontWeight: '600', marginBottom: 16 }}>
-              SELECT A TEMPLATE OR START FROM SCRATCH
+      <ScrollView contentContainerStyle={{ padding: 20 }}>
+        {/* Name Input */}
+        <View className="mb-6">
+          <Text className="font-black text-sm uppercase mb-1">Event Name</Text>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="E.G. SUMMER BASH"
+            placeholderTextColor="#999"
+            className="bg-white border-4 border-black p-4 font-bold text-lg text-black shadow-[4px_4px_0px_0px_#000]"
+          />
+        </View>
+
+        {/* Date & Time Row (Simplified text inputs for now) */}
+        <View className="flex-row gap-4 mb-6">
+          <View className="flex-1">
+            <Text className="font-black text-sm uppercase mb-1">
+              Date (YYYY-MM-DD)
             </Text>
-
-            {/* Template Cards */}
-            {templates.length > 0 && (
-              <View style={{ marginBottom: 20 }}>
-                {templates.map((template) => (
-                  <TouchableOpacity
-                    key={template.id}
-                    onPress={() => handleSelectTemplate(template)}
-                    style={{
-                      backgroundColor: template.color,
-                      borderRadius: 16,
-                      padding: 20,
-                      marginBottom: 12,
-                      opacity: 0.85,
-                    }}
-                  >
-                    <Text style={{ fontSize: 28, marginBottom: 8 }}>{template.icon}</Text>
-                    <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
-                      {template.name}
-                    </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>
-                      {template.description}
-                    </Text>
-                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 8 }}>
-                      ~{template.duration_minutes} min · {template.default_capacity} cap.
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-
-            {/* No Templates Available Message */}
-            {templates.length === 0 && (
-              <View style={{
-                backgroundColor: '#1a1a1f',
-                borderRadius: 16,
-                padding: 24,
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: '#27272a',
-                alignItems: 'center',
-              }}>
-                <Text style={{ fontSize: 48, marginBottom: 12 }}>📋</Text>
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
-                  No Templates Available
-                </Text>
-                <Text style={{ color: '#888', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
-                  Contact the community admin to create event templates, or start creating events from scratch.
-                </Text>
-              </View>
-            )}
-
-            {/* Blank Event */}
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedTemplate(null);
-                setStep('details');
-              }}
-              style={{
-                backgroundColor: '#18181b',
-                borderRadius: 16,
-                padding: 20,
-                borderWidth: 2,
-                borderColor: '#4f46e5',
-                borderStyle: 'dashed',
-                alignItems: 'center',
-              }}
-            >
-              <Plus size={32} color="#4f46e5" />
-              <Text style={{ color: '#4f46e5', fontSize: 16, fontWeight: '700', marginTop: 8 }}>
-                Create from Scratch
-              </Text>
-            </TouchableOpacity>
+            <View className="relative">
+              <TextInput
+                value={startDate}
+                onChangeText={setStartDate}
+                placeholder="2024-12-31"
+                placeholderTextColor="#999"
+                className="bg-white border-4 border-black p-3 font-bold text-md text-black shadow-[4px_4px_0px_0px_#000]"
+              />
+              <Calendar
+                size={20}
+                color="black"
+                style={{ position: "absolute", right: 12, top: 12 }}
+              />
+            </View>
           </View>
-        ) : (
-          <View>
-            {/* Event Name */}
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Event Name *
-              </Text>
+          <View className="flex-1">
+            <Text className="font-black text-sm uppercase mb-1">
+              Time (24h)
+            </Text>
+            <View className="relative">
               <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="e.g., Coffee & Study"
-                placeholderTextColor="#666"
-                style={{
-                  backgroundColor: '#18181b',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: '#fff',
-                  fontSize: 14,
-                  borderWidth: 1,
-                  borderColor: '#27272a',
-                }}
+                value={startTime}
+                onChangeText={setStartTime}
+                placeholder="14:00"
+                placeholderTextColor="#999"
+                className="bg-white border-4 border-black p-3 font-bold text-md text-black shadow-[4px_4px_0px_0px_#000]"
+              />
+              <Clock
+                size={20}
+                color="black"
+                style={{ position: "absolute", right: 12, top: 12 }}
               />
             </View>
+          </View>
+        </View>
 
-            {/* Description */}
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Description
-              </Text>
-              <TextInput
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Tell us about your event..."
-                placeholderTextColor="#666"
-                multiline
-                numberOfLines={4}
-                style={{
-                  backgroundColor: '#18181b',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: '#fff',
-                  fontSize: 14,
-                  borderWidth: 1,
-                  borderColor: '#27272a',
-                  textAlignVertical: 'top',
-                }}
-              />
-            </View>
+        {/* Location */}
+        <View className="mb-6">
+          <Text className="font-black text-sm uppercase mb-1">Location</Text>
+          <View className="relative">
+            <TextInput
+              value={location}
+              onChangeText={setLocation}
+              placeholder="WHERE WE MEETING?"
+              placeholderTextColor="#999"
+              className="bg-white border-4 border-black p-4 font-bold text-lg text-black shadow-[4px_4px_0px_0px_#000]"
+            />
+            <MapPin
+              size={24}
+              color="black"
+              style={{ position: "absolute", right: 16, top: 16 }}
+            />
+          </View>
+        </View>
 
-            {/* Location */}
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Location
-              </Text>
-              <TextInput
-                value={location}
-                onChangeText={setLocation}
-                placeholder="e.g., Central Library, Level 7"
-                placeholderTextColor="#666"
-                style={{
-                  backgroundColor: '#18181b',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: '#fff',
-                  fontSize: 14,
-                  borderWidth: 1,
-                  borderColor: '#27272a',
-                }}
-              />
-            </View>
+        {/* Description */}
+        <View className="mb-6">
+          <Text className="font-black text-sm uppercase mb-1">Description</Text>
+          <TextInput
+            value={description}
+            onChangeText={setDescription}
+            placeholder="TELL US MORE..."
+            placeholderTextColor="#999"
+            multiline
+            numberOfLines={4}
+            className="bg-white border-4 border-black p-4 font-bold text-lg text-black shadow-[4px_4px_0px_0px_#000] min-h-[120px]"
+            textAlignVertical="top"
+          />
+        </View>
 
-            {/* Date & Time */}
-            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Date *
-                </Text>
-                <TextInput
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#666"
-                  style={{
-                    backgroundColor: '#18181b',
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    color: '#fff',
-                    fontSize: 14,
-                    borderWidth: 1,
-                    borderColor: '#27272a',
-                  }}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Time *
-                </Text>
-                <TextInput
-                  value={startTime}
-                  onChangeText={setStartTime}
-                  placeholder="HH:MM"
-                  placeholderTextColor="#666"
-                  style={{
-                    backgroundColor: '#18181b',
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    color: '#fff',
-                    fontSize: 14,
-                    borderWidth: 1,
-                    borderColor: '#27272a',
-                  }}
-                />
-              </View>
-            </View>
-
-            {/* Capacity */}
-            <View style={{ marginBottom: 20 }}>
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                Capacity
-              </Text>
+        {/* Capacity & Price */}
+        <View className="flex-row gap-4 mb-8">
+          <View className="flex-1">
+            <Text className="font-black text-sm uppercase mb-1">Capacity</Text>
+            <View className="relative">
               <TextInput
                 value={capacity}
                 onChangeText={setCapacity}
                 placeholder="50"
-                placeholderTextColor="#666"
                 keyboardType="numeric"
-                style={{
-                  backgroundColor: '#18181b',
-                  borderRadius: 12,
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  color: '#fff',
-                  fontSize: 14,
-                  borderWidth: 1,
-                  borderColor: '#27272a',
-                }}
+                placeholderTextColor="#999"
+                className="bg-white border-4 border-black p-3 font-bold text-lg text-black shadow-[4px_4px_0px_0px_#000]"
+              />
+              <Users
+                size={20}
+                color="black"
+                style={{ position: "absolute", right: 12, top: 12 }}
               />
             </View>
-
-            {/* Price Toggle */}
-            <TouchableOpacity
-              onPress={() => setIsPaid(!isPaid)}
-              style={{
-                backgroundColor: '#18181b',
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 20,
-                borderWidth: 1,
-                borderColor: '#27272a',
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Paid Event</Text>
-              <View
-                style={{
-                  width: 50,
-                  height: 28,
-                  borderRadius: 14,
-                  backgroundColor: isPaid ? '#4f46e5' : '#333',
-                  justifyContent: 'center',
-                  alignItems: isPaid ? 'flex-end' : 'flex-start',
-                  paddingHorizontal: 2,
-                }}
-              >
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              </View>
-            </TouchableOpacity>
-
-            {/* Price Input */}
-            {isPaid && (
-              <View style={{ marginBottom: 20 }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                  Price ($)
-                </Text>
-                <TextInput
-                  value={price}
-                  onChangeText={setPrice}
-                  placeholder="0.00"
-                  placeholderTextColor="#666"
-                  keyboardType="decimal-pad"
-                  style={{
-                    backgroundColor: '#18181b',
-                    borderRadius: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    color: '#fff',
-                    fontSize: 14,
-                    borderWidth: 1,
-                    borderColor: '#27272a',
-                  }}
-                />
-              </View>
-            )}
           </View>
-        )}
-      </ScrollView>
+          <View className="flex-1">
+            <Text className="font-black text-sm uppercase mb-1">Price ($)</Text>
+            <View className="relative">
+              <TextInput
+                value={price}
+                onChangeText={(t) => {
+                  setPrice(t);
+                  setIsPaid(t !== "" && t !== "0");
+                }}
+                placeholder="0.00"
+                keyboardType="numeric"
+                placeholderTextColor="#999"
+                className="bg-white border-4 border-black p-3 font-bold text-lg text-black shadow-[4px_4px_0px_0px_#000]"
+              />
+              <DollarSign
+                size={20}
+                color="black"
+                style={{ position: "absolute", right: 12, top: 12 }}
+              />
+            </View>
+          </View>
+        </View>
 
-      {/* Action Buttons */}
-      <View style={{ paddingHorizontal: 20, paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#27272a', flexDirection: 'row', gap: 12 }}>
-        {step === 'details' && (
-          <TouchableOpacity
-            onPress={() => setStep('template')}
-            style={{
-              flex: 1,
-              backgroundColor: '#18181b',
-              borderRadius: 12,
-              paddingVertical: 14,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: '#27272a',
-            }}
-          >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Back</Text>
-          </TouchableOpacity>
-        )}
+        {/* Submit Button */}
         <TouchableOpacity
-          onPress={step === 'template' ? undefined : handleCreateEvent}
+          onPress={handleCreateEvent}
           disabled={submitting}
-          style={{
-            flex: 1,
-            backgroundColor: '#4f46e5',
-            borderRadius: 12,
-            paddingVertical: 14,
-            alignItems: 'center',
-            opacity: submitting ? 0.7 : 1,
-          }}
+          activeOpacity={1}
+          className="bg-neo-accent border-4 border-black p-5 items-center shadow-[6px_6px_0px_0px_#000] active:translate-y-1 active:shadow-none mb-10"
         >
           {submitting ? (
-            <ActivityIndicator color="#fff" />
+            <NeoButtonLoader color="white" />
           ) : (
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
-              {step === 'template' ? 'Next' : 'Create Event'}
+            <Text className="font-black text-2xl text-white uppercase tracking-widest">
+              Launch Event
             </Text>
           )}
         </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </View>
   );
 }

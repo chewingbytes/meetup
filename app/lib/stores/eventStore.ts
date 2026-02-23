@@ -1,6 +1,51 @@
 import { create } from "zustand";
 import api from "@/lib/api";
 import { EventProps } from "@/utils/types";
+import { sampleEvents } from "@/data/event";
+
+const USE_MOCK_DATA = false;
+
+const parseTimeToHours = (time: string) => {
+  const match = time.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!match) return { hours: 18, minutes: 0 };
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] ? parseInt(match[2], 10) : 0;
+  const meridiem = match[3]?.toUpperCase();
+  if (meridiem === "PM" && hours < 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+  return { hours, minutes };
+};
+
+const mapSampleEvents = (): EventProps[] => {
+  return sampleEvents.map((ev, idx) => {
+    const parsed = Date.parse(`${ev.date} ${ev.time}`);
+    const start = new Date(Number.isNaN(parsed) ? Date.now() : parsed);
+    if (Number.isNaN(parsed)) {
+      const { hours, minutes } = parseTimeToHours(ev.time);
+      start.setDate(start.getDate() + idx + 1);
+      start.setHours(hours, minutes, 0, 0);
+    }
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+    const communityId = `c${(idx % 8) + 1}`;
+    return {
+      id: ev.id,
+      name: ev.title,
+      description_md: ev.description,
+      start_at: start.toISOString(),
+      end_at: end.toISOString(),
+      location_text: ev.location,
+      cover_image: ev.image,
+      is_paid: false,
+      price: null,
+      visibility: "public",
+      capacity: 40,
+      community_id: communityId,
+      organizer_id: null,
+      created_at: start.toISOString(),
+      updated_at: start.toISOString(),
+    } as EventProps;
+  });
+};
 
 interface EventStoreState {
   // State
@@ -66,13 +111,22 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
-      const data = await api.getEvents();
-      if (Array.isArray(data)) {
+      if (USE_MOCK_DATA) {
+        const data = mapSampleEvents();
         set({
           events: data,
           lastFetchTime: Date.now(),
           error: null,
         });
+      } else {
+        const data = await api.getEvents();
+        if (Array.isArray(data)) {
+          set({
+            events: data,
+            lastFetchTime: Date.now(),
+            error: null,
+          });
+        }
       }
     } catch (err: any) {
       set({
@@ -94,6 +148,18 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
     }
 
     try {
+      if (USE_MOCK_DATA) {
+        const data = mapSampleEvents().find((ev) => ev.id === id) || null;
+        if (data) {
+          set((state) => ({
+            eventDetails: {
+              ...state.eventDetails,
+              [id]: data,
+            },
+          }));
+        }
+        return data;
+      }
       const data = await api.getEvent(id);
       set((state) => ({
         eventDetails: {
