@@ -1,5 +1,5 @@
-import { TouchableOpacity, View, Text, Image } from "react-native";
 import { CommunityProps } from "@/utils/types";
+import { Image, Text, TouchableOpacity, View } from "react-native";
 
 export default function CommunityCard({
   community,
@@ -8,12 +8,15 @@ export default function CommunityCard({
   community: CommunityProps;
   onPress: () => void;
 }) {
+  const imageSource = community.profile_image ?? community.profileImage;
+  const resolvedImageSource =
+    typeof imageSource === "string" ? { uri: imageSource } : imageSource;
   const createdDate = new Date(community.created_at as string);
   const formattedDate = createdDate.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
-  
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -21,9 +24,9 @@ export default function CommunityCard({
     >
       {/* Image Box */}
       <View className="border-4 border-black bg-neo-yellow w-24 h-24 mr-4 items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#000] -rotate-2">
-        {community.profileImage ? (
+        {resolvedImageSource ? (
           <Image
-            source={{ uri: community.profileImage }}
+            source={resolvedImageSource as any}
             className="w-full h-full"
             resizeMode="cover"
           />
@@ -35,20 +38,28 @@ export default function CommunityCard({
       {/* Content */}
       <View className="flex-1 justify-between py-1">
         <View>
-            <View className="bg-neo-red border-2 border-black self-start px-2 mb-1 rotate-1">
-                <Text className="text-white text-xs font-bold uppercase">{community.privacyMode ? "PRIVATE" : "PUBLIC"}</Text>
-            </View>
-            <Text className="text-black text-xl font-black uppercase leading-tight" numberOfLines={2}>
-            {community.name}
+          <View className="bg-neo-red border-2 border-black self-start px-2 mb-1 rotate-1">
+            <Text className="text-white text-xs font-bold uppercase">
+              {community.privacyMode ? "PRIVATE" : "PUBLIC"}
             </Text>
+          </View>
+          <Text
+            className="text-black text-xl font-black uppercase leading-tight"
+            numberOfLines={2}
+          >
+            {community.name}
+          </Text>
         </View>
 
-        <Text className="text-black/80 font-medium text-sm leading-tight mt-1" numberOfLines={2}>
+        <Text
+          className="text-black/80 font-medium text-sm leading-tight mt-1"
+          numberOfLines={2}
+        >
           {community.description}
         </Text>
-        
+
         <Text className="text-black/40 text-xs font-bold uppercase mt-2">
-           EST. {formattedDate}
+          EST. {formattedDate}
         </Text>
       </View>
     </TouchableOpacity>

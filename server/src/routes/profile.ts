@@ -74,9 +74,10 @@ router.patch("/", upload.single("avatar"), async (req, res) => {
 });
 
 // GET /api/users/:id
-router.get("/users/:id", async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
     const id = req.params.id;
+    console.log("RECEVIEDED ID:", id)
     const { data, error } = await supabase.from("profiles").select("*").eq("id", id).single();
     if (error && (error as any).code !== "PGRST116") throw error;
     if (!data) return res.status(404).json({ message: "Profile not found" });

@@ -1,238 +1,119 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { NeoButtonLoader } from "@/components/ui/neo-loader";
+import { useAuth } from "@/lib/authContext";
+import { useRouter } from "expo-router";
+import { ArrowLeft, ArrowRight, Mail } from "lucide-react-native";
+import { useState } from "react";
 import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  Alert,
-} from 'react-native';
-import { NeoButtonLoader } from '@/components/ui/neo-loader';
-// import { useAuth } from '@/lib/authContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const PALETTE = {
-  coral: '#FF8FA3',
-  white: '#FFFFFF',
-  graphite: '#2C2C2C',
-  lightGrey: '#F5F5F5',
-  babyPink: '#FFD7E9',
-};
-
-export default function EmailVerify() {
+export default function EmailStep() {
   const router = useRouter();
-  // const { verifyOtp } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { userProfile } = useAuth();
 
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [canResend, setCanResend] = useState(true);
 
-  useEffect(() => {
-    // Retrieve email from AsyncStorage (set during signup)
-    const getEmail = async () => {
-      const savedEmail = await AsyncStorage.getItem('pending_email_verification');
-      if (savedEmail) {
-        setEmail(savedEmail);
-      }
-    };
-    getEmail();
-  }, []);
-
-  // Timer for resend button
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !canResend) {
-      setCanResend(true);
-    }
-  }, [timeLeft, canResend]);
-
-  const handleSendOtp = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Email is required');
+  const handleSend = async () => {
+    if (!email || !email.includes("@")) {
+      Alert.alert("Error", "Please enter a valid school email address.");
       return;
     }
 
-    try {
-      setIsLoading(true);
-      // DEV MODE: Mock OTP send
-      Alert.alert('Success', `🔧 DEV MODE: Use code 123456 to verify`);
-      setCanResend(false);
-      setTimeLeft(60);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send OTP');
-    } finally {
+    setIsLoading(true);
+    // Mimic API call
+    setTimeout(() => {
       setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otp || otp.length < 6) {
-      Alert.alert('Error', 'Please enter a valid 6-digit code');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      // DEV MODE: Only accept 123456
-      if (otp === '123456') {
-        Alert.alert('Success', '✅ Email verified! Redirecting...');
-        await AsyncStorage.removeItem('pending_email_verification');
-        router.replace('/');
-        return;
-      }
-
-      // Invalid code
-      Alert.alert('Invalid Code', '🔧 DEV MODE: Use 123456');
-      setOtp('');
-
-      // COMMENTED OUT: Original verifyOtp logic
-      // const { user, error } = await verifyOtp(email, otp);
-      // if (error) {
-      //   Alert.alert('Verification Failed', error.message || 'Invalid code');
-      //   return;
-      // }
-      // if (user) {
-      //   await AsyncStorage.removeItem('pending_email_verification');
-      //   router.replace('/');
-      // }
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
+      // Pass email to next step via params
+      router.push({ pathname: "/verify/otp", params: { email } });
+    }, 1500);
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFDF5" }}>
       <View
-        style={{
-          flex: 1,
-          padding: 20,
-          backgroundColor: PALETTE.white,
-          justifyContent: 'space-between',
-          paddingTop: 60,
-        }}
+        style={{ paddingTop: insets.top, zIndex: 50 }}
+        className="bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
       >
-        {/* Header */}
-        <View>
-          <Text
-            style={{
-              fontSize: 28,
-              fontWeight: '800',
-              color: PALETTE.graphite,
-              marginBottom: 8,
-            }}
-          >
-            Verify Your Email
-          </Text>
-          <Text style={{ color: '#6b7280', marginBottom: 24, fontSize: 16 }}>
-            We've sent a verification code to:
-          </Text>
-
-          {/* Email Display */}
-          <View
-            style={{
-              backgroundColor: PALETTE.lightGrey,
-              padding: 14,
-              borderRadius: 12,
-              marginBottom: 28,
-            }}
-          >
-            <Text style={{ textAlign: 'center', color: PALETTE.graphite, fontWeight: '600' }}>
-              {email}
-            </Text>
-          </View>
-
-          {/* OTP Input */}
-          <Text style={{ marginBottom: 8, color: PALETTE.graphite, fontWeight: '600' }}>
-            Enter Verification Code
-          </Text>
-          <TextInput
-            value={otp}
-            onChangeText={setOtp}
-            placeholder="000000"
-            keyboardType="number-pad"
-            maxLength={6}
-            editable={!isLoading}
-            style={{
-              borderWidth: 1,
-              borderColor: PALETTE.babyPink,
-              padding: 14,
-              borderRadius: 12,
-              marginBottom: 24,
-              fontSize: 20,
-              letterSpacing: 8,
-              textAlign: 'center',
-              fontWeight: 'bold',
-              backgroundColor: isLoading ? PALETTE.lightGrey : PALETTE.white,
-            }}
-          />
-
-          {/* Info - DEV MODE */}
-          <View style={{ backgroundColor: '#FEF3C7', padding: 12, borderRadius: 8, marginBottom: 24, borderLeftWidth: 4, borderLeftColor: '#F59E0B' }}>
-            <Text style={{ fontSize: 13, color: '#92400E', lineHeight: 18, fontWeight: '600' }}>
-              🔧 DEV MODE: Enter 123456 to verify
-            </Text>
-          </View>
-        </View>
-
-        {/* Buttons */}
-        <View>
+        <View className="flex-row items-center justify-between mt-4">
           <TouchableOpacity
-            onPress={handleVerifyOtp}
-            disabled={isLoading || otp.length < 6}
-            style={{
-              backgroundColor:
-                isLoading || otp.length < 6 ? '#ddd' : PALETTE.coral,
-              paddingVertical: 16,
-              borderRadius: 12,
-              alignItems: 'center',
-              marginBottom: 12,
-            }}
+            onPress={() => router.back()}
+            className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
           >
-            {isLoading ? (
-              <NeoButtonLoader color={PALETTE.white} />
-            ) : (
-              <Text
-                style={{
-                  color: PALETTE.white,
-                  fontWeight: '700',
-                  fontSize: 16,
-                }}
-              >
-                Verify Code
-              </Text>
-            )}
+            <ArrowLeft size={24} color="#000" strokeWidth={3} />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleSendOtp}
-            disabled={!canResend || isLoading}
-            style={{
-              paddingVertical: 12,
-              borderRadius: 12,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={{
-                color: !canResend ? '#ccc' : PALETTE.coral,
-                fontWeight: '600',
-              }}
-            >
-              {canResend
-                ? 'Resend Code'
-                : `Resend in ${timeLeft}s`}
-            </Text>
-          </TouchableOpacity>
+          <Text className="text-xl font-black uppercase tracking-tighter">
+            Step 1 of 3
+          </Text>
+          <View className="w-10" />
         </View>
       </View>
-    </ScrollView>
+
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={{
+            padding: 20,
+            flexGrow: 1,
+            justifyContent: "center",
+          }}
+        >
+          <View className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] mb-8">
+            <View className="absolute -top-8 left-1/2 -translate-x-8 bg-[#A0D2EB] border-4 border-black p-4 rotate-6 shadow-[4px_4px_0px_0px_#000]">
+              <Mail size={32} color="black" />
+            </View>
+
+            <Text className="text-3xl font-black uppercase text-center mt-8 mb-2">
+              School Email
+            </Text>
+            <Text className="font-bold text-center text-gray-500 mb-8">
+              We need to verify you are a student. Please enter your .edu email.
+            </Text>
+
+            <View className="mb-6">
+              <Text className="font-black text-sm uppercase mb-2 ml-1">
+                Email Address
+              </Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="student@university.edu.sg"
+                className="bg-gray-50 border-4 border-black p-4 font-bold text-lg"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={isLoading}
+              className="bg-[#FF6B6B] border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+            >
+              {isLoading ? (
+                <NeoButtonLoader color="black" />
+              ) : (
+                <>
+                  <Text className="font-black text-lg uppercase text-white">
+                    Send Code
+                  </Text>
+                  <ArrowRight size={24} color="white" strokeWidth={3} />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }

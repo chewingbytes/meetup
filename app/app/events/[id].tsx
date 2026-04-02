@@ -1,43 +1,37 @@
+import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
 import {
-  joinEvent,
-  leaveEvent,
   checkEventMembership,
   createEventTestimonial,
+  joinEvent,
+  leaveEvent,
 } from "@/lib/api";
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Share,
-} from "react-native";
+import { useEventStore } from "@/lib/stores/eventStore";
+import { useAuthRedirect } from "@/lib/useAuthRedirect";
+import { EventProps } from "@/utils/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
-  MapPin,
   Calendar,
-  Clock,
-  Users,
-  Heart,
-  ShieldCheck,
-  EyeOff,
-  X,
-  Star,
+  MapPin,
   Share2,
-  MessageSquare,
+  Star,
+  Users,
+  X,
 } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { useEventStore } from "@/lib/stores/eventStore";
-import { EventProps } from "@/utils/types";
-import { useAuthRedirect } from "@/lib/useAuthRedirect";
-import { NeoLoader, NeoButtonLoader } from "@/components/ui/neo-loader";
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Share,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function EventDetail() {
   const { id } = useLocalSearchParams();
@@ -55,6 +49,8 @@ export default function EventDetail() {
   const event = id
     ? (eventDetails[id as string] as EventProps | undefined)
     : null;
+
+  console.log("EVENT DETAILS:", event);
 
   useEffect(() => {
     let mounted = true;
@@ -283,10 +279,7 @@ export default function EventDetail() {
               </View>
             </View>
 
-            <TouchableOpacity
-              onPress={() => router.push(`/events/participants?id=${event.id}`)}
-              className="flex-row items-center gap-4 active:opacity-60"
-            >
+            <View className="flex-row items-center gap-4">
               <View className="bg-neo-yellow border-2 border-black p-2">
                 <Users color="black" size={24} />
               </View>
@@ -300,10 +293,68 @@ export default function EventDetail() {
                     : "Unlimited space"}
                 </Text>
               </View>
-              <View className="ml-auto">
-                <Text className="font-black text-2xl">→</Text>
-              </View>
-            </TouchableOpacity>
+            </View>
+
+            {/* Participants Previews */}
+            {(event as any).participants &&
+              (event as any).participants.length > 0 && (
+                <View className="mt-4 pt-4 border-t-2 border-black">
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="pl-1 pb-2 pt-1"
+                  >
+                    <View className="flex-row items-center">
+                      {(event as any).participants
+                        .slice(0, 6)
+                        .map((p: any, index: number) => {
+                          const colors = [
+                            "bg-neo-blue",
+                            "bg-neo-red",
+                            "bg-neo-green",
+                            "bg-neo-violet",
+                            "bg-neo-yellow",
+                            "bg-neo-pink",
+                          ];
+                          const bgColor = colors[index % colors.length];
+                          return (
+                            <TouchableOpacity
+                              key={p.id}
+                              onPress={() =>
+                                router.push(`/profile/${p.id}` as any)
+                              }
+                              className={`w-12 h-12 ${bgColor} border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_#000] mr-3 active:translate-y-[2px] active:shadow-none`}
+                            >
+                              {p.avatar_url ? (
+                                <Image
+                                  source={{ uri: p.avatar_url }}
+                                  className="w-full h-full"
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <Text className="font-black text-white text-lg">
+                                  {p.full_name?.charAt(0).toUpperCase() || "?"}
+                                </Text>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      {(event as any).participants.length > 6 && (
+                        <TouchableOpacity
+                          onPress={() =>
+                            router.push(`/events/participants?id=${event.id}`)
+                          }
+                          className="w-12 h-12 bg-white border-2 border-black items-center justify-center shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:shadow-none mr-4"
+                        >
+                          <Text className="font-black text-black">
+                            +{(event as any).participants.length - 6}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
           </View>
 
           {/* ACTIONS */}
@@ -338,10 +389,6 @@ export default function EventDetail() {
                   )}
                 </TouchableOpacity>
               ))}
-
-            <TouchableOpacity className="bg-white border-4 border-black p-4 items-center justify-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none">
-              <Heart color="black" size={24} strokeWidth={3} />
-            </TouchableOpacity>
           </View>
 
           {/* PAST EVENT ACTION */}

@@ -1,30 +1,29 @@
-﻿import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Alert,
-  Switch,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter, useLocalSearchParams } from "expo-router";
+﻿import { useAuth } from "@/lib/authContext";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Clock,
-  MapPin,
-  Users,
   Calendar,
+  Clock,
   DollarSign,
+  MapPin,
   Plus,
+  Users,
 } from "lucide-react-native";
-import { useAuth } from "@/lib/authContext";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 // Assuming these API interactions remain the same
 // In a real scenario, I'd check the exact signature of createEvent
 // But based on the file read, it takes an object.
+import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
 import { createEvent, getEventTemplates } from "@/lib/api";
-import { NeoLoader, NeoButtonLoader } from "@/components/ui/neo-loader";
 
 /* Types for templates */
 interface EventTemplate {
@@ -45,6 +44,8 @@ export default function CreateEventScreen() {
 
   const community_id = (params.community_id as string) || "";
   const organizer_id = user?.id || "";
+
+  console.log("CreateEventScreen params:", params);
 
   const [step, setStep] = useState<"template" | "details">("template");
   const [templates, setTemplates] = useState<EventTemplate[]>([]);
@@ -128,6 +129,8 @@ export default function CreateEventScreen() {
         is_paid: isPaid,
         price: isPaid ? parseFloat(price) : 0,
         visibility: "public",
+        organizerId: organizer_id,
+        communityId: community_id,
       });
 
       Alert.alert("Success", "Event created!");

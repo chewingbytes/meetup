@@ -20,6 +20,7 @@ interface UserProfile {
   school?: string | null;
   year_of_study?: string | null;
   personality_answers?: Record<string, string> | null;
+  verified: boolean;
 }
 
 interface UserSettings {

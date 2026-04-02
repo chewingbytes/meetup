@@ -8,7 +8,7 @@ import {
   Lock,
   LogOut,
   Plus,
-  X
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -19,13 +19,13 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 // ChatDrawer removed
 import { NeoButtonLoader } from "@/components/ui/neo-loader";
 import { useCommunities } from "@/hooks/useCommunities";
-import { leaveCommunity } from "@/lib/api";
+import { getMyEvents, leaveCommunity } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { useChatNotificationStore } from "@/lib/stores/chatNotificationStore";
 import { useRouter } from "expo-router";
@@ -40,6 +40,8 @@ export default function CommunityContent({ community }: CommunityContentProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // chatDrawerOpen state removed
   const [isLeavingCommunity, setIsLeavingCommunity] = useState(false);
+  const [myEvents, setMyEvents] = useState<EventProps[]>([]);
+  const [isMyEventsLoading, setIsMyEventsLoading] = useState(false);
   const slide = useRef(new Animated.Value(drawerWidth)).current;
   const router = useRouter();
   const { user } = useAuth();
@@ -73,6 +75,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           new Date(b.start_at || 0).getTime(),
       );
   }, [events, community]);
+  console.log("Upcoming Events:", upcomingEvents);
 
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0],
@@ -82,9 +85,48 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     new Date().toISOString().slice(0, 7),
   );
 
-  const handleRefresh = async () => {
-    await Promise.all([refreshEvents(), refreshCommunities()]);
+  useEffect(() => {
+    console.log("events:", events);
+  }, [events]);
+
+  const refreshMyEvents = async () => {
+    if (!user?.id) {
+      setMyEvents([]);
+      return;
+    }
+    setIsMyEventsLoading(true);
+    try {
+      const data = await getMyEvents(user.id);
+      setMyEvents(data || []);
+    } catch (err) {
+      console.error(err);
+      setMyEvents([]);
+    } finally {
+      setIsMyEventsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    refreshMyEvents();
+  }, [user?.id]);
+
+  const handleRefresh = async () => {
+    await Promise.all([
+      refreshEvents(),
+      refreshCommunities(),
+      refreshMyEvents(),
+    ]);
+  };
+
+  const attendingEventIds = useMemo(
+    () => new Set((myEvents || []).map((ev) => ev.id)),
+    [myEvents],
+  );
+
+  const attendingEvents = useMemo(
+    () => upcomingEvents.filter((ev) => attendingEventIds.has(ev.id)),
+    [upcomingEvents, attendingEventIds],
+  );
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, EventProps[]> = {};
@@ -224,12 +266,15 @@ export default function CommunityContent({ community }: CommunityContentProps) {
         {/* Chat Button */}
         <TouchableOpacity
           activeOpacity={1}
-          className="mx-6 mb-8 bg-white border-4 border-black p-4 flex-row items-center justify-between shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
+          className="mx-6 mb-4 bg-white border-4 border-black p-4 flex-row items-center justify-between shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
           onPress={() => {
             if (community?.id) {
               router.push({
                 pathname: "/chat/[channelId]",
-                params: { channelId: community.id, channelName: "general" },
+                params: {
+                  channelId: community.id,
+                  channelName: "General Chat",
+                },
               });
             }
           }}
@@ -252,14 +297,52 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           )}
         </TouchableOpacity>
 
+        {/* Event Chats */}
+        {attendingEvents.map((event) => {
+          const eventUnreadCount = unreadByChannel[event.id] || 0;
+          return (
+            <TouchableOpacity
+              key={event.id}
+              activeOpacity={1}
+              className="mx-6 mb-4 bg-white border-4 border-black p-4 flex-row items-center justify-between shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
+              onPress={() => {
+                router.push({
+                  pathname: "/chat/[channelId]",
+                  params: { channelId: event.id, channelName: event.name },
+                });
+              }}
+            >
+              <View className="flex-row items-center gap-3">
+                <View className="bg-neo-yellow p-2">
+                  <Hash size={20} color="#000" strokeWidth={3} />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  className="text-black font-black text-lg w-52 uppercase tracking-wider"
+                >
+                  {event.name} Chat
+                </Text>
+              </View>
+
+              {eventUnreadCount > 0 && (
+                <View className="bg-neo-red border-2 border-black px-2 py-1 rotate-3 absolute -top-3 -right-3 shadow-[2px_2px_0px_0px_#000]">
+                  <Text className="text-white font-bold text-xs">
+                    {eventUnreadCount} NEW
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+
         {/* Events Section */}
-        <View className="px-6 pb-24">
+        <View className="px-6 pb-24 mt-6">
           <View className="flex-row justify-between items-center mb-6 border-b-4 border-black pb-2">
             <Text className="text-2xl font-black uppercase text-black italic">
               Schedule
             </Text>
 
-            {user && (
+            {user && community.owner_id === user.id && (
               <TouchableOpacity
                 activeOpacity={1}
                 onPress={() => {
@@ -371,17 +454,25 @@ export default function CommunityContent({ community }: CommunityContentProps) {
             {/* Drawer Content */}
             <View className="items-center mb-6 mt-4">
               <View className="w-32 h-32 border-4 border-black mb-4 bg-white shadow-[6px_6px_0px_0px_#000] rotate-2">
-                {community.profile_image ? (
-                  <Image
-                    source={{ uri: community.profile_image }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View className="flex-1 items-center justify-center bg-neo-blue">
-                    <Text className="text-5xl">👾</Text>
-                  </View>
-                )}
+                {(() => {
+                  const imageSource =
+                    community.profile_image ?? community.profileImage;
+                  const resolvedImageSource =
+                    typeof imageSource === "string"
+                      ? { uri: imageSource }
+                      : imageSource;
+                  return resolvedImageSource ? (
+                    <Image
+                      source={resolvedImageSource as any}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="flex-1 items-center justify-center bg-neo-blue">
+                      <Text className="text-5xl">👾</Text>
+                    </View>
+                  );
+                })()}
               </View>
               <Text className="text-2xl font-black uppercase text-center mt-4 leading-none">
                 {community.name}

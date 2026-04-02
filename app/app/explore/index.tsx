@@ -1,6 +1,7 @@
 import EventCard from "@/components/event-card";
 import MobileNav from "@/components/mobile-nav";
 import { PullToRefresh } from "@/components/pull-to-refresh";
+import SearchModal from "@/components/searchmodal";
 import { NeoLoader } from "@/components/ui/neo-loader";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEvents } from "@/hooks/useEvents";
@@ -8,20 +9,14 @@ import { useAuthRedirect } from "@/lib/useAuthRedirect";
 import { useRouter } from "expo-router";
 import { Flame, Map, Search, Ticket, Users, Zap } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import {
-  Image,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
 
   const { user, isCheckingAuth } = useAuthRedirect("/");
 
@@ -91,18 +86,19 @@ export default function ExploreScreen() {
         </View>
 
         <View className="relative mt-2 px-4 shadow-none">
-          <View className="absolute top-0 left-0 right-0 bottom-0 bg-black translate-x-1 translate-y-1 ml-4 mr-4" />
-          <View className="bg-white border-2 border-black flex-row items-center px-4 py-3">
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setSearchSheetOpen(true)}
+            className="bg-white border-2 border-black flex-row items-center px-4 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
+          >
             <Search size={24} color="#000" strokeWidth={3} />
-            <TextInput
-              placeholder="Search for chaos..."
-              placeholderTextColor="#999"
-              className="flex-1 ml-3 font-bold text-lg text-black bg-transparent border-0 min-h-[24px]"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+            <Text
+              className="flex-1 ml-3 font-bold text-lg text-grey-500"
               style={{ fontFamily: "SpaceGrotesk-Bold" }}
-            />
-          </View>
+            >
+              {searchQuery || "Search for chaos..."}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -270,6 +266,14 @@ export default function ExploreScreen() {
         </ScrollView>
       </View>
       <MobileNav active="explore" />
+
+      <SearchModal
+        searchSheetOpen={searchSheetOpen}
+        setSearchSheetOpen={setSearchSheetOpen}
+        events={events}
+        communities={communities}
+        router={router}
+      />
     </View>
   );
 }

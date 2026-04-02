@@ -3,24 +3,27 @@ import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
 import { useAuth } from "@/lib/authContext";
 import { useRouter } from "expo-router";
 import {
-    Bell,
-    Camera,
-    LogOut,
-    Pencil,
-    Save,
-    User,
-    X,
+  AlertTriangle,
+  BadgeCheck,
+  Bell,
+  Camera,
+  LogOut,
+  Pencil,
+  Save,
+  ShieldCheck,
+  User,
+  X,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    Alert,
-    Image,
-    ScrollView,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -99,6 +102,10 @@ export default function ProfileIndex() {
     ]);
   };
 
+  const handleVerify = () => {
+    router.push("/verify/singpass" as any);
+  };
+
   const toggleNotification = async () => {
     if (!userSettings) return;
     try {
@@ -119,6 +126,13 @@ export default function ProfileIndex() {
     return (
       <View className="flex-1 bg-neo-bg items-center justify-center">
         <NeoLoader />
+        <TouchableOpacity
+          onPress={handleLogout}
+          className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+        >
+          <LogOut size={20} color="#000" strokeWidth={3} />
+          <Text className="font-black text-lg uppercase">Log Out</Text>
+        </TouchableOpacity>
       </View>
       //   <TouchableOpacity
       //     onPress={handleLogout}
@@ -130,8 +144,7 @@ export default function ProfileIndex() {
     );
   }
 
-  const displayName =
-    userProfile.full_name?.trim() || userProfile.username || "Unnamed";
+  const displayName = userProfile.username || "Unnamed";
   const displaySchool = userProfile.school?.trim() || "Not provided";
   const displayYear =
     userProfile.year_of_study?.toString().trim() || "Not provided";
@@ -237,11 +250,24 @@ export default function ProfileIndex() {
                   {userProfile.personality_type || "Take Quiz"}
                 </Text>
               </View>
-              <View className="absolute bottom-0 w-full bg-neo-yellow border-t-2 border-black py-1">
-                <Text className="text-[8px] font-black text-center uppercase">
-                  Verified
-                </Text>
-              </View>
+              {userProfile.verified ? (
+                <View className="absolute bottom-0 w-full bg-neo-yellow border-t-2 border-black py-1 flex-row items-center justify-center gap-1">
+                  <BadgeCheck size={10} color="black" />
+                  <Text className="text-[8px] font-black text-center uppercase">
+                    Verified
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={handleVerify}
+                  className="absolute bottom-0 w-full bg-neo-red border-t-2 border-black py-1 flex-row items-center justify-center gap-1"
+                >
+                  <AlertTriangle size={10} color="white" />
+                  <Text className="text-[8px] font-black text-center uppercase text-white">
+                    Verify Now
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View className="flex-1 gap-3">
@@ -360,6 +386,38 @@ export default function ProfileIndex() {
           </View>
         </View>
 
+        {/* Verification Banner */}
+        {!userProfile.verified && (
+          <TouchableOpacity
+            onPress={handleVerify}
+            className="mb-8 bg-neo-red border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+            activeOpacity={1}
+          >
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 mr-4">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <ShieldCheck size={24} color="white" fill="black" />
+                  <Text className="text-xl font-black uppercase text-white">
+                    Unverified
+                  </Text>
+                </View>
+                <Text className="font-bold text-xs text-white/90 uppercase mb-3">
+                  Verification is required to join communities and events.
+                </Text>
+                <View className="bg-white px-3 py-1 self-start border-2 border-black rotate-1">
+                  <Text className="font-black text-xs uppercase">
+                    Verify Identity &rarr;
+                  </Text>
+                </View>
+              </View>
+
+              <View className="bg-black/20 p-2 rounded border-2 border-white/50 rotate-3">
+                <AlertTriangle size={36} color="white" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* My Stuff Section */}
         <View className="mb-8">
           <Text className="text-2xl font-black uppercase mb-4">Archives</Text>
@@ -388,6 +446,18 @@ export default function ProfileIndex() {
               </Text>
               <Text className="font-bold text-xs uppercase bg-white px-1">
                 5 Stars
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push("/host/dashboard" as any)}
+              className="w-full bg-[#4ADE80] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
+            >
+              <Text className="font-black text-lg uppercase mb-1">
+                Host Dashboard
+              </Text>
+              <Text className="font-bold text-xs uppercase bg-white px-1">
+                Manage Events & Guests
               </Text>
             </TouchableOpacity>
           </View>

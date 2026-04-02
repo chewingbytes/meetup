@@ -1,14 +1,13 @@
+import { CommunityProps } from "@/utils/types";
+import { Plus } from "lucide-react-native";
 import React from "react";
 import {
-  View,
-  ScrollView,
-  TouchableOpacity,
   Image,
+  ScrollView,
   Text,
-  Dimensions,
+  TouchableOpacity,
+  View
 } from "react-native";
-import { Plus } from "lucide-react-native";
-import { CommunityProps } from "@/utils/types";
 
 interface CommunitySidebarProps {
   communities: CommunityProps[];
@@ -42,19 +41,27 @@ export default function CommunitySidebar({
                 : "rotate-1"
             }`}
           >
-            {community.profile_image ? (
-              <Image
-                source={{ uri: community.profile_image }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="w-full h-full items-center justify-center bg-neo-violet">
-                <Text className="text-black text-xl font-black uppercase">
-                  {community.name?.charAt(0)}
-                </Text>
-              </View>
-            )}
+            {(() => {
+              const imageSource =
+                community.profile_image ?? community.profileImage;
+              const resolvedImageSource =
+                typeof imageSource === "string"
+                  ? { uri: imageSource }
+                  : imageSource;
+              return resolvedImageSource ? (
+                <Image
+                  source={resolvedImageSource as any}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="w-full h-full items-center justify-center bg-neo-violet">
+                  <Text className="text-black text-xl font-black uppercase">
+                    {community.name?.charAt(0)}
+                  </Text>
+                </View>
+              );
+            })()}
           </TouchableOpacity>
         ))}
 

@@ -89,15 +89,23 @@ export default function BrowseCommunitiesScreen() {
             >
               {/* Image Box */}
               <View className="border-2 border-black bg-neo-yellow w-20 h-20 mr-4 items-center justify-center overflow-hidden -rotate-2">
-                {community.profile_image ? (
-                  <Image
-                    source={{ uri: community.profile_image }}
-                    className="w-full h-full"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Text className="text-3xl"></Text>
-                )}
+                {(() => {
+                  const imageSource =
+                    community.profile_image ?? community.profileImage;
+                  const resolvedImageSource =
+                    typeof imageSource === "string"
+                      ? { uri: imageSource }
+                      : imageSource;
+                  return resolvedImageSource ? (
+                    <Image
+                      source={resolvedImageSource as any}
+                      className="w-full h-full"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text className="text-3xl"></Text>
+                  );
+                })()}
               </View>
 
               {/* Content */}

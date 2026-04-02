@@ -141,7 +141,7 @@ export const savePushToken = (body: any) =>
 
 // Profile
 export const getProfile = (id?: string) =>
-  request(id ? `/users/${id}` : `/profile`);
+  request(id ? `/profile/${id}` : `/profile`);
 export const updateProfile = (body: any) =>
   request("/profile", { method: "PATCH", body: JSON.stringify(body) });
 

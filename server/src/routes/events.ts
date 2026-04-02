@@ -39,9 +39,7 @@ router.get("/my-events", async (req, res) => {
 
     // Get all event IDs (organized + joined)
     const eventIds = [
-      ...new Set([
-        ...((joinedEventIds || []).map((j: any) => j.event_id)),
-      ]),
+      ...new Set([...(joinedEventIds || []).map((j: any) => j.event_id)]),
     ];
 
     // Fetch events (organized by user OR user joined)
@@ -51,7 +49,9 @@ router.get("/my-events", async (req, res) => {
       .order("start_at", { ascending: true });
 
     if (eventIds.length > 0) {
-      query = query.or(`organizer_id.eq.${user_id},id.in.(${eventIds.join(",")})`);
+      query = query.or(
+        `organizer_id.eq.${user_id},id.in.(${eventIds.join(",")})`,
+      );
     } else {
       query = query.eq("organizer_id", user_id);
     }
@@ -64,7 +64,9 @@ router.get("/my-events", async (req, res) => {
     res.json(events || []);
   } catch (err: any) {
     console.error(err);
-    res.status(500).json({ message: err.message || "Failed to fetch user events" });
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to fetch user events" });
   }
 });
 
@@ -74,7 +76,9 @@ router.get("/check-membership", async (req, res) => {
     const { user_id, event_id } = req.query;
 
     if (!user_id || !event_id) {
-      return res.status(400).json({ message: "user_id and event_id are required" });
+      return res
+        .status(400)
+        .json({ message: "user_id and event_id are required" });
     }
 
     console.log("🔵 Checking event membership:", { user_id, event_id });
@@ -106,7 +110,9 @@ router.get("/check-membership", async (req, res) => {
     res.json({ isMember: !!joined, isOrganizer: false });
   } catch (err: any) {
     console.error(err);
-    res.status(500).json({ message: err.message || "Failed to check membership" });
+    res
+      .status(500)
+      .json({ message: err.message || "Failed to check membership" });
   }
 });
 
@@ -120,7 +126,41 @@ router.get("/:id", async (req, res) => {
       .single();
     if (error && (error as any).code !== "PGRST116") throw error;
     if (!ev) return res.status(404).json({ message: "Not found" });
-    res.json(ev);
+    const { data: participantIds, error: participantIdsError } = await supabase
+      .from("user_events")
+      .select("user_id")
+      .eq("event_id", id);
+
+    if (participantIdsError) throw participantIdsError;
+
+    const userIds = (participantIds || []).map((row: any) => row.user_id);
+
+    let participants: Array<{
+      id: string;
+      username: string | null;
+      avatar_url: string | null;
+    }> = [];
+
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url")
+        .in("id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      participants = (profiles || []).map((profile: any) => ({
+        id: profile.id,
+        username: profile.username || null,
+        avatar_url: profile.avatar_url || null,
+      }));
+    }
+
+    const output={ ...ev, participants }
+
+    console.log("Fetched event with participants:", output);
+
+    res.json(output);
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ message: err.message || "Failed to fetch event" });
@@ -151,6 +191,8 @@ router.post("/", upload.single("cover"), async (req, res) => {
       organizerId,
       communityId,
     } = payload;
+
+    console.log("PAYLOAD:", payload);
 
     let cover_image_url: string | null = null;
     if (req.file) {
@@ -206,11 +248,14 @@ router.post("/", upload.single("cover"), async (req, res) => {
             event_id: created.id,
             joined_at: new Date().toISOString(),
           },
-          { onConflict: "user_id,event_id" }
+          { onConflict: "user_id,event_id" },
         );
 
       if (userEventError) {
-        console.warn("⚠️ Failed to add organizer to user_events:", userEventError);
+        console.warn(
+          "⚠️ Failed to add organizer to user_events:",
+          userEventError,
+        );
         // Don't throw - event was created successfully, just warn about the user_events entry
       } else {
         console.log("✅ Organizer added to user_events for event:", created.id);

@@ -36,7 +36,8 @@ export interface CommunityProps {
   name: string;
   slug?: string;
   description?: string;
-  profile_image?: string | null;
+  profile_image?: string | number | null;
+  profileImage?: string | number | null;
   privacy_mode?: boolean;
   owner_id?: string | null;
   topics?: string[];

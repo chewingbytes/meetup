@@ -1,4 +1,5 @@
-import { CommunityProps, FaqItem } from "@/utils/types";
+import { CommunityProps } from "@/utils/types";
+import wildflowerImage from "../assets/images/cat.jpg";
 
 export const usersCommunities: CommunityProps[] = [
   {
@@ -43,7 +44,8 @@ export const usersCommunities: CommunityProps[] = [
   {
     id: "c4",
     name: "Music",
-    description: "Music lovers community for sharing and discovering new tunes.",
+    description:
+      "Music lovers community for sharing and discovering new tunes.",
     dateCreated: "2025-05-01",
     privacyMode: false,
     rules: ["Share respectfully", "No copyright infringement"],
@@ -69,8 +71,35 @@ export const usersCommunities: CommunityProps[] = [
     dateCreated: "2025-07-01",
     privacyMode: false,
     rules: ["Respect all art forms", "Constructive criticism only"],
-    faq: [{ question: "All mediums?", answer: "Yes, digital, traditional, etc." }],
+    faq: [
+      { question: "All mediums?", answer: "Yes, digital, traditional, etc." },
+    ],
     profileImage: "https://picsum.photos/seed/c6/1980/1080",
     topics: ["Painting", "Digital", "Exhibitions"],
+  },
+  {
+    id: "wildflower-studio",
+    name: "Wildflower Studio",
+    description:
+      "Wildflower Studio in Singapore is a social enterprise located at Enabling Village that combines art jamming with cat fostering. It acts as a therapeutic space where visitors can paint while socializing with rescue cats, helping them get adopted. They offer guided painting sessions and private events.",
+    dateCreated: "2026-03-13",
+    privacyMode: false,
+    rules: [
+      "Be gentle with the cats",
+      "Respect others' artwork",
+      "No outside food for cats",
+    ],
+    faq: [
+      {
+        question: "Do I need painting experience?",
+        answer: "Not at all, we offer guided sessions!",
+      },
+      {
+        question: "Can I adopt a cat?",
+        answer: "Yes, we facilitate cat adoptions.",
+      },
+    ],
+    profile_image: wildflowerImage,
+    topics: ["Art Jamming", "Cats", "Social Enterprise"],
   },
 ];
