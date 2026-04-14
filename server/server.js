@@ -28,7 +28,7 @@ const PORT = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: ["http://localhost:8081", "http://46.62.157.49", "http://localhost:4321", "https://www.hangoutstudios.com"], // allowed origins
+    origin: ["http://localhost:8081", "http://172.20.10.2", "http://46.62.157.49", "http://localhost:4321", "https://www.hangoutstudios.com", "http://192.168.0.107"], // allowed origins
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,

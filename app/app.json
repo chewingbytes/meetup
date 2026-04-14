@@ -4,16 +4,20 @@
     "slug": "meetup2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "meetup2",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {
+      "icon": "./assets/images/logo.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.chewingbytes.meetup2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby events and communities on the map."
+        "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby events and communities on the map.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
       },
       "config": {
         "googleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY"
@@ -52,7 +56,8 @@
       ],
       "expo-maps",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
