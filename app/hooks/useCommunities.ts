@@ -68,11 +68,14 @@ export const useCommunities = (autoFetch = true, myCommunitiesOnly = true) => {
       setCommunities(mapSampleCommunities());
       return;
     }
-    if (user) {
+    if (user?.id) {
       const userId = myCommunitiesOnly ? user.id : undefined;
       fetchCommunities(false, userId);
     }
-  }, [autoFetch, myCommunitiesOnly, user, fetchCommunities, setCommunities]);
+    // Use user?.id (stable primitive) instead of `user` (object reference that
+    // changes on every auth tick) to prevent re-fetching after data arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFetch, myCommunitiesOnly, user?.id]);
 
   const refresh = async () => {
     if (!user && !USE_MOCK_DATA) return;

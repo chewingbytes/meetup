@@ -33,7 +33,7 @@ export default function ResetPasswordScreen() {
         setIsLoading(false);
         // Navigate home (auto-login simulation)
         // In real app, you would call updatePassword(password) then signIn(email, password)
-        router.replace("/home"); 
+        router.replace("/"); 
     }, 2000);
   };
 

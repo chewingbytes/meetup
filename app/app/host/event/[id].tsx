@@ -160,7 +160,6 @@ export default function EditEvent() {
       Alert.alert("Success", "Event updated successfully!");
       router.back();
     } catch (e: any) {
-      console.log(e);
       Alert.alert("Error", "Failed to update event.");
     } finally {
       setSaving(false);

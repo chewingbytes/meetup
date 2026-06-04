@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // Self-hosted Supabase configuration
 const SUPABASE_URL = 'https://supabase.hangoutstudios.com';
+// const SUPABASE_URL = 'http://5.223.94.83:8000';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY0NjkxMjAwLCJleHAiOjE5MjI0NTc2MDB9.RB4UMWyk4yUl0GvrbJ_B1f9u6AEar6prsBUTqN3ftWQ';
 
 // Create AsyncStorage adapter for Supabase

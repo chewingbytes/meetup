@@ -54,7 +54,7 @@ export default function LoginScreen() {
           await AsyncStorage.setItem("pending_email_verification", email);
           router.push("/verify/email");
         } else {
-          router.replace("/home");
+          router.replace("/");
         }
       }
     } catch (error: any) {

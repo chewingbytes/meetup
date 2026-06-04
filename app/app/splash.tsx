@@ -31,13 +31,13 @@ export default function Splash() {
       // Route based on auth state
       if (session?.user) {
         // User is logged in, go to home
-        router.replace("/home");
+        router.replace("/");
       } else if (onboardingData) {
         // Onboarding done but not logged in, go to login
         router.replace("/login");
       } else {
         // New user, go to welcome/onboarding
-        router.replace("/");
+        router.replace("/main");
       }
     };
 
@@ -67,7 +67,7 @@ export default function Splash() {
             if (onboardingData || session?.user) {
               router.replace("/login");
             } else {
-              router.replace("/welcome");
+              router.replace("/");
             }
           }}
           style={{ position: "absolute", bottom: 60, backgroundColor: PALETTE.coral, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 12 }}

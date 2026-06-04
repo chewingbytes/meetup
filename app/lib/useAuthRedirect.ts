@@ -9,9 +9,7 @@ export function useAuthRedirect(redirectTo: any = "/") {
   useEffect(() => {
     if (isLoading) return;
     if (!user) router.replace(redirectTo as any);
-
-    console.log("USER:", user);
-  }, [isLoading, user, redirectTo]);
+  }, [isLoading, user, redirectTo, router]);
 
   return { user, isCheckingAuth: isLoading };
 }

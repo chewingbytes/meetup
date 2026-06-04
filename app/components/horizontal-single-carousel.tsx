@@ -56,7 +56,7 @@ function SingleRowCarousel<T>({
               onPress={
                 onItemPress
                   ? () => onItemPress(item)
-                  : () => console.log("Pressed:", item)
+                  : () => ""
               }
             />
           </View>

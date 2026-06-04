@@ -64,7 +64,7 @@ export default function SuccessStep() {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.replace("/home" as any)}
+          onPress={() => router.replace("/settings" as any)}
           className="bg-neo-blue border-4 border-black w-full p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
         >
           <Home size={20} color="white" strokeWidth={3} />

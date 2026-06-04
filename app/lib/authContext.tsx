@@ -1,9 +1,9 @@
-import { savePushToken } from "@/lib/api";
-import { registerForPushNotificationsAsync } from "@/lib/notifications";
+// import { savePushToken } from "@/lib/api";
+// import { registerForPushNotificationsAsync } from "@/lib/notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Platform } from "react-native";
+// import { Platform } from "react-native";
 import { supabase } from "./supabase";
 
 interface UserProfile {
@@ -20,7 +20,7 @@ interface UserProfile {
   school?: string | null;
   year_of_study?: string | null;
   personality_answers?: Record<string, string> | null;
-  verified: boolean;
+  verified: "true" | "pending" | "false" | null;
 }
 
 interface UserSettings {
@@ -88,7 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize session from Supabase (not AsyncStorage - Supabase handles this)
   useEffect(() => {
-    console.log("🔵 AuthProvider: Initializing...");
+
+    const hydrateUserData = async (userId: string) => {
+      await Promise.allSettled([
+        fetchUserProfileInternal(userId),
+        fetchUserSettingsInternal(userId),
+      ]);
+    };
 
     const initializeAuth = async () => {
       try {
@@ -100,10 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error,
         } = await supabase.auth.getSession();
 
-        console.log(
-          "📱 Initial session check:",
-          session ? `Found user: ${session.user.email}` : "No session",
-        );
 
         if (error) {
           console.error("❌ Session error:", error);
@@ -112,20 +114,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session) {
           setSession(session);
           setUser(session.user);
-          console.log("✅ Session set:", session.user.email);
 
-          // Fetch user data
-          await fetchUserProfileInternal(session.user.id);
-          await fetchUserSettingsInternal(session.user.id);
+          // Do not block initial app rendering on profile/settings network calls
+          void hydrateUserData(session.user.id);
         } else {
           setSession(null);
           setUser(null);
+          setUserProfile(null);
+          setUserSettings(null);
         }
       } catch (error) {
         console.error("❌ Error initializing auth:", error);
       } finally {
         setIsLoading(false);
-        console.log("✅ Auth initialization complete");
       }
     };
 
@@ -135,56 +136,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(
-        "🔐 Auth state changed:",
-        event,
-        session ? `User: ${session.user.email}` : "No session",
-      );
 
       setSession(session);
       setUser(session?.user ?? null);
+      setIsLoading(false);
 
       if (session) {
-        await fetchUserProfileInternal(session.user.id);
-        await fetchUserSettingsInternal(session.user.id);
+        void hydrateUserData(session.user.id);
       } else {
         setUserProfile(null);
         setUserSettings(null);
       }
-
-      setIsLoading(false);
     });
 
     return () => {
-      console.log("🔴 Unsubscribing from auth changes");
       subscription.unsubscribe();
     };
   }, []);
 
-  useEffect(() => {
-    const registerPush = async () => {
-      if (!user) return;
-      try {
-        const token = await registerForPushNotificationsAsync();
-        if (token) {
-          await savePushToken({
-            user_id: user.id,
-            token,
-            platform: Platform.OS,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to register push notifications:", err);
-      }
-    };
+  // Notifications not implemented yet — intentionally disabled.
+  // useEffect(() => {
+  //   const registerPush = async () => {
+  //     if (!user) return;
+  //     try {
+  //       const token = await registerForPushNotificationsAsync();
+  //       if (token) {
+  //         await savePushToken({
+  //           user_id: user.id,
+  //           token,
+  //           platform: Platform.OS,
+  //         });
+  //       }
+  //     } catch (err) {
+  //       console.error("Failed to register push notifications:", err);
+  //     }
+  //   };
 
-    registerPush();
-  }, [user]);
+  //   registerPush();
+  // }, [user]);
 
   // Internal fetch methods that accept userId
   const fetchUserProfileInternal = async (userId: string) => {
     try {
-      console.log("🔵 Fetching profile for user:", userId);
 
       const { data, error } = await supabase
         .from("profiles")
@@ -197,7 +190,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("✅ Profile loaded:", data?.username);
       setUserProfile(data);
     } catch (error) {
       console.error("❌ Error in fetchUserProfile:", error);
@@ -206,7 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserSettingsInternal = async (userId: string) => {
     try {
-      console.log("🔵 Fetching settings for user:", userId);
 
       const { data, error } = await supabase
         .from("user_settings")
@@ -219,7 +210,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("✅ Settings loaded");
       setUserSettings(data);
     } catch (error) {
       console.error("❌ Error in fetchUserSettings:", error);
@@ -232,7 +222,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onboardingData: OnboardingData,
   ) => {
     try {
-      console.log("🔵 Signing up:", email);
 
       // Sign up with Supabase Auth
       const { data, error: authError } = await supabase.auth.signUp({
@@ -251,7 +240,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error: authError };
       }
 
-      console.log("✅ Sign up successful:", data.user?.email);
 
       if (data.user) {
         // Store onboarding data
@@ -304,7 +292,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log("🔵 Signing in:", email);
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -316,7 +303,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error };
       }
 
-      console.log("✅ Sign in successful:", data.user?.email);
 
       // Session is automatically set by onAuthStateChange
       return { user: data.user, error: null };
@@ -328,14 +314,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log("🔵 Signing out");
       await supabase.auth.signOut();
       await AsyncStorage.removeItem("onboarding_data");
       setSession(null);
       setUser(null);
       setUserProfile(null);
       setUserSettings(null);
-      console.log("✅ Signed out");
     } catch (error) {
       console.error("❌ Error signing out:", error);
     }
@@ -343,7 +327,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const verifyOtp = async (email: string, token: string) => {
     try {
-      console.log("🔵 Verifying OTP for:", email);
 
       const { data, error } = await supabase.auth.verifyOtp({
         email,
@@ -356,7 +339,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { user: null, error };
       }
 
-      console.log("✅ OTP verified:", data.user?.email);
       return { user: data.user, error: null };
     } catch (error) {
       console.error("❌ OTP verification exception:", error);
@@ -379,8 +361,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("🔵 Updating profile");
-
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -394,7 +374,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("✅ Profile updated");
       await fetchUserProfile();
     } catch (error) {
       console.error("❌ Error in updateUserProfile:", error);
@@ -416,8 +395,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("🔵 Updating settings");
-
       const { error } = await supabase
         .from("user_settings")
         .update({
@@ -431,7 +408,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      console.log("✅ Settings updated");
       await fetchUserSettings();
     } catch (error) {
       console.error("❌ Error in updateUserSettings:", error);
@@ -454,13 +430,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchUserSettings,
     updateUserSettings,
   };
-
-  console.log(
-    "🟢 AuthContext render - Loading:",
-    isLoading,
-    "User:",
-    user?.email || "None",
-  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

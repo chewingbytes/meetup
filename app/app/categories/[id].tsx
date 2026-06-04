@@ -105,11 +105,6 @@ export default function CategoryDetail() {
     }
   }, [category]);
 
-    useEffect(() => {
-      console.log("CATEOGRY:", categoryId, categoryCommunities);
-
-  }, [categoryId, categoryCommunities]);
-
   if (!category) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "transparent" }}>
@@ -121,12 +116,7 @@ export default function CategoryDetail() {
   }
 
   const handleSubscribe = () => {
-    console.log("Subscribe button pressed for category:", categoryId);
     setIsSubscribed(!isSubscribed);
-  };
-
-  const handleMapPress = () => {
-    console.log("Map button pressed for category:", categoryId);
   };
 
   const Icon = category.icon;

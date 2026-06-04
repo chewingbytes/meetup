@@ -1,11 +1,14 @@
 import { NeoButtonLoader } from "@/components/ui/neo-loader";
+import { useAuth } from "@/lib/authContext";
+import { uploadVerificationImages } from "@/lib/supabaseStorage";
+import { submitVerification } from "@/lib/api";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-    ArrowLeft,
     Camera,
     Check,
-    FileText
+    FileText,
+    Image as ImageIcon,
 } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -21,41 +24,99 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export default function IdStep() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
+
+  // selfieUri is passed from face.tsx via router params
+  const { selfieUri } = useLocalSearchParams<{ selfieUri?: string }>();
 
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [backImage, setBackImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const pickImage = async (side: "front" | "back") => {
-    // In a real app, maybe show ActionSheet to choose Camera vs Gallery
-    // For now, launch gallery for simplicity
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+  const pickImage = (side: "front" | "back") => {
+    Alert.alert(
+      side === "front" ? "ID Front" : "ID Back",
+      "Choose how to add your image",
+      [
+        {
+          text: "Take Photo",
+          onPress: () => launchCamera(side),
+        },
+        {
+          text: "Choose from Library",
+          onPress: () => launchGallery(side),
+        },
+        { text: "Cancel", style: "cancel" },
+      ],
+    );
+  };
+
+  const launchCamera = async (side: "front" | "back") => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Camera Access Required", "Please allow camera access.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      cameraType: ImagePicker.CameraType.back,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.85,
     });
-
-    if (!result.canceled) {
+    if (!result.canceled && result.assets?.length) {
       if (side === "front") setFrontImage(result.assets[0].uri);
       else setBackImage(result.assets[0].uri);
     }
   };
 
-  const handleSubmit = () => {
-    if (!frontImage || !backImage) {
-      Alert.alert(
-        "Incomplete",
-        "Please provide both front and back of your ID.",
-      );
+  const launchGallery = async (side: "front" | "back") => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== "granted") {
+      Alert.alert("Photo Library Access Required", "Please allow photo library access.");
       return;
     }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets?.length) {
+      if (side === "front") setFrontImage(result.assets[0].uri);
+      else setBackImage(result.assets[0].uri);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!frontImage || !backImage) {
+      Alert.alert("Incomplete", "Please provide both front and back of your ID.");
+      return;
+    }
+
+    const userId = session?.user?.id;
+    if (!userId) {
+      Alert.alert("Error", "No active session. Please log in again.");
+      return;
+    }
+
     setIsLoading(true);
-    // Mock API Upload
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await uploadVerificationImages({
+        userId,
+        idFrontUri: frontImage,
+        idBackUri: backImage,
+        selfieUri: selfieUri ?? null,
+      });
+
+      // Mark profile as pending verification
+      await submitVerification(userId);
+
       router.push("/verify/success" as any);
-    }, 2000);
+    } catch (err: any) {
+      Alert.alert("Upload Failed", err?.message || "Could not upload verification documents. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderSide = (side: "front" | "back", image: string | null) => (
@@ -82,10 +143,11 @@ export default function IdStep() {
             resizeMode="cover"
           />
         ) : (
-          <View className="items-center opacity-40">
+          <View className="items-center gap-2 opacity-40">
             <Camera size={32} color="black" />
-            <Text className="font-black text-xs uppercase mt-2">
-              Tap to Capture
+            <ImageIcon size={24} color="black" />
+            <Text className="font-black text-xs uppercase mt-1">
+              Tap to Capture or Upload
             </Text>
           </View>
         )}
@@ -100,14 +162,8 @@ export default function IdStep() {
         className="bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
       >
         <View className="flex-row items-center justify-between mt-4">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
-          >
-            <ArrowLeft size={24} color="#000" strokeWidth={3} />
-          </TouchableOpacity>
           <Text className="text-xl font-black uppercase tracking-tighter">
-            ID Upload
+            Step 3 of 3
           </Text>
           <View className="w-10" />
         </View>

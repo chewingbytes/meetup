@@ -24,14 +24,14 @@ import { useAuth } from "@/lib/authContext";
 import { useEventStore } from "@/lib/stores/eventStore";
 
 const SINGAPORE_AREAS = [
-  "Marina Bay",
-  "Orchard",
-  "Bugis",
-  "Tiong Bahru",
-  "Holland Village",
-  "Sentosa",
-  "Woodlands",
-  "Jurong East",
+  { name: "Marina Bay",     lat: 1.2789,  lng: 103.8536 },
+  { name: "Orchard",        lat: 1.3048,  lng: 103.8318 },
+  { name: "Bugis",          lat: 1.3009,  lng: 103.8565 },
+  { name: "Tiong Bahru",    lat: 1.2848,  lng: 103.8275 },
+  { name: "Holland Village",lat: 1.3113,  lng: 103.7959 },
+  { name: "Sentosa",        lat: 1.2494,  lng: 103.8303 },
+  { name: "Woodlands",      lat: 1.4355,  lng: 103.7861 },
+  { name: "Jurong East",    lat: 1.3329,  lng: 103.7436 },
 ];
 
 export default function CreateEvent() {
@@ -71,6 +71,8 @@ export default function CreateEvent() {
   const [chosenLocation, setChosenLocation] = useState<string>("");
   const [manualLocation, setManualLocation] = useState("");
   const [locationInstructions, setLocationInstructions] = useState("");
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
 
   // markdown description
   const [description, setDescription] = useState("");
@@ -105,8 +107,6 @@ export default function CreateEvent() {
         if (params.communityId) {
           const matched = list.find((c) => c.id === params.communityId);
           if (matched) setSelectedCommunity(matched.id);
-
-          console.log("matched community:", matched);
         }
       } catch (e: any) {
         if (!isMounted) return;
@@ -120,6 +120,20 @@ export default function CreateEvent() {
       isMounted = false;
     };
   }, [params.communityId, params.communityName]);
+
+  async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ", Singapore")}&format=json&limit=1`,
+        { headers: { "User-Agent": "meetup-app/1.0" } },
+      );
+      const data = await res.json();
+      if (data?.[0]) {
+        return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+      }
+    } catch {}
+    return null;
+  }
 
   async function pickCover() {
     const r = await ImagePicker.launchImageLibraryAsync({
@@ -162,10 +176,17 @@ export default function CreateEvent() {
         return;
       }
       const pos = await Location.getCurrentPositionAsync({});
+      setLocationLat(pos.coords.latitude);
+      setLocationLng(pos.coords.longitude);
+
+      console.log("LOCAITON LAT:", pos.coords.latitude);
+      console.log("LOCAITON lng:", pos.coords.longitude);
       const [place] = await Location.reverseGeocodeAsync({
         latitude: pos.coords.latitude,
         longitude: pos.coords.longitude,
       });
+
+      console.log("PLACE:", place);
       const addr = [place.name, place.street, place.subregion, place.city]
         .filter(Boolean)
         .join(", ");
@@ -202,7 +223,7 @@ export default function CreateEvent() {
     return true;
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     if (!canSubmit()) {
       setError("Please fill all required fields.");
       return;
@@ -210,6 +231,18 @@ export default function CreateEvent() {
     setError(null);
     const selected = communities.find((c) => c.id === selectedCommunity);
     if (!selected) return;
+
+    let finalLat = locationLat;
+    let finalLng = locationLng;
+
+    // If we still don't have coords (manual text entry), geocode now at submit time
+    if (finalLat === null && chosenLocation) {
+      const coords = await geocodeAddress(chosenLocation);
+      if (coords) {
+        finalLat = coords.lat;
+        finalLng = coords.lng;
+      }
+    }
 
     const payload: any = {
       communityId: selected.id,
@@ -219,6 +252,8 @@ export default function CreateEvent() {
       start_at: start?.toISOString(),
       end_at: end?.toISOString(),
       location_text: chosenLocation,
+      location_lat: finalLat,
+      location_lng: finalLng,
       location_instructions: locationInstructions.trim() || undefined,
       description: description,
       require_approval: requireApproval,
@@ -228,15 +263,13 @@ export default function CreateEvent() {
       capacity: unlimited ? null : Number(capacity) || null,
     };
 
-    console.log("PAYLOAD:", payload);
-
     setIsSubmitting(true);
     createEventApi(payload)
       .then(async () => {
         const { fetchEvents } = useEventStore.getState();
         await fetchEvents(true);
         Alert.alert("SUCCESS", "Event created!");
-        router.push("/home");
+        router.push("/");
       })
       .catch((e: any) => setError(e?.message || "Failed to create event."))
       .finally(() => setIsSubmitting(false));
@@ -456,14 +489,16 @@ export default function CreateEvent() {
             <View className="flex-row flex-wrap gap-2 mb-4">
               {SINGAPORE_AREAS.map((a) => (
                 <TouchableOpacity
-                  key={a}
+                  key={a.name}
                   onPress={() => {
-                    setChosenLocation(a);
+                    setChosenLocation(a.name);
+                    setLocationLat(a.lat);
+                    setLocationLng(a.lng);
                     setLocationChoice("none");
                   }}
                   className="bg-neo-bg border-2 border-black px-2 py-1"
                 >
-                  <Text className="font-bold text-xs">{a}</Text>
+                  <Text className="font-bold text-xs">{a.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -477,6 +512,8 @@ export default function CreateEvent() {
               onChangeText={(t) => {
                 setManualLocation(t);
                 setChosenLocation(t);
+                setLocationLat(null);
+                setLocationLng(null);
               }}
             />
           )}

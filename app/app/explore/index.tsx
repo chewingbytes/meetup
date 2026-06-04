@@ -18,7 +18,7 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSheetOpen, setSearchSheetOpen] = useState(false);
 
-  const { user, isCheckingAuth } = useAuthRedirect("/");
+  const { user, isCheckingAuth } = useAuthRedirect("/main");
 
   const {
     events,
@@ -76,13 +76,13 @@ export default function ExploreScreen() {
           <Text className="text-5xl font-black uppercase text-black tracking-tighter">
             Explore
           </Text>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.push("/map" as any)}
             activeOpacity={1}
             className="bg-white border-2 border-black p-3 rotate-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
           >
             <Map size={24} color="#000" strokeWidth={3} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <View className="relative mt-2 px-4 shadow-none">
@@ -113,7 +113,7 @@ export default function ExploreScreen() {
             />
           }
         >
-          {/* Tags / Categories - Sticker Style */}
+          {/* Tags / Categories - Sticker Style
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -156,13 +156,12 @@ export default function ExploreScreen() {
                 key={tag.label}
                 className={`${tag.color} border-2 border-black px-4 py-2 flex-row items-center gap-2 active:translate-y-1 ${i % 2 === 0 ? "-rotate-2" : "rotate-1"}`}
               >
-                {/* <tag.icon size={16} color={tag.text === "text-white" ? "#fff" : "#000"} strokeWidth={3} /> */}
                 <Text className={`${tag.text} font-black uppercase`}>
                   {tag.label}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </ScrollView> 
 
           {/* Featured - "Hot Drops" */}
           <View className="mb-8">

@@ -50,8 +50,6 @@ export default function EventDetail() {
     ? (eventDetails[id as string] as EventProps | undefined)
     : null;
 
-  console.log("EVENT DETAILS:", event);
-
   useEffect(() => {
     let mounted = true;
     async function loadEvent() {
@@ -62,6 +60,7 @@ export default function EventDetail() {
           try {
             const result = await checkEventMembership(user.id, id as string);
             setJoined(result?.isMember || false);
+            console.log("result:", result);
           } catch (err) {
             setJoined(false);
           }

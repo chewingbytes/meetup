@@ -128,7 +128,6 @@ export default function CreateCommunity() {
       dateCreated: new Date().toISOString(),
     };
 
-    console.log("📌 Community created:", community);
     router.push("/explore");
   }
 

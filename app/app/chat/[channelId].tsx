@@ -94,14 +94,14 @@ export default function ChatScreen() {
             </Text>
           </View>
 
-          <View style={styles.headerActions}>
+          {/* <View style={styles.headerActions}>
             <TouchableOpacity style={styles.iconButton}>
                <Phone size={20} color="#000" strokeWidth={2.5} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
                <Video size={20} color="#000" strokeWidth={2.5} />
             </TouchableOpacity>
-          </View>
+          </View> */}
         </View>
       </View>
 

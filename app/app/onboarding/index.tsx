@@ -158,7 +158,7 @@ export default function OnboardingScreen() {
           return;
         }
         if (user) {
-          router.replace("/home");
+          router.replace("/");
         }
       } catch (error: any) {
         Alert.alert("Error", error.message || "An unexpected error occurred");

@@ -62,12 +62,12 @@ export default function OtpStep() {
         className="bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
       >
         <View className="flex-row items-center justify-between mt-4">
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.back()}
             className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
           >
             <ArrowLeft size={24} color="#000" strokeWidth={3} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
           <Text className="text-xl font-black uppercase tracking-tighter">
             Step 2 of 3
           </Text>

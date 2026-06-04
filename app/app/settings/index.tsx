@@ -1,12 +1,16 @@
-import MobileNav from "@/components/mobile-nav";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
+import { deleteProfile } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
+import { getAvatarPublicUrl, uploadAvatarImage } from "@/lib/supabaseStorage";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
   AlertTriangle,
   BadgeCheck,
   Bell,
   Camera,
+  ChevronLeft,
   LogOut,
   Pencil,
   Save,
@@ -14,10 +18,11 @@ import {
   User,
   X,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
   ScrollView,
   Switch,
   Text,
@@ -37,11 +42,28 @@ export default function ProfileIndex() {
     signOut,
     session,
     updateUserProfile,
+    fetchUserProfile,
+    fetchUserSettings,
   } = useAuth();
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<any>({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([fetchUserProfile(), fetchUserSettings()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchUserProfile, fetchUserSettings]);
 
   useEffect(() => {
     if (!session) {
@@ -51,7 +73,6 @@ export default function ProfileIndex() {
 
   useEffect(() => {
     if (userProfile) {
-      console.log("USERPROFILE:", userProfile);
       setForm({
         username: userProfile.username || "",
         bio: userProfile.bio || "",
@@ -88,6 +109,22 @@ export default function ProfileIndex() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!session?.user?.id) return;
+    setIsDeleting(true);
+    try {
+      await deleteProfile(session.user.id);
+      await signOut();
+      router.replace("/");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to delete account");
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      setDeleteConfirmText("");
+    }
+  };
+
   const handleLogout = () => {
     Alert.alert("Sign out", "Abandon your post?", [
       { text: "Stay", style: "cancel" },
@@ -104,6 +141,65 @@ export default function ProfileIndex() {
 
   const handleVerify = () => {
     router.push("/verify/singpass" as any);
+  };
+
+  const resolveAvatarUrl = (avatarUrl: string | null | undefined) => {
+    if (!avatarUrl) return null;
+    if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
+      return avatarUrl;
+    }
+
+    try {
+      return getAvatarPublicUrl(avatarUrl);
+    } catch {
+      return null;
+    }
+  };
+
+  const handleEditImage = async () => {
+    if (!session?.user?.id) {
+      Alert.alert("Error", "No active user session.");
+      return;
+    }
+
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Please allow photo library access to update your profile image.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      setIsUploadingAvatar(true);
+      const selectedImageUri = result.assets[0].uri;
+      const uploaded = await uploadAvatarImage(session.user.id, selectedImageUri);
+
+      await updateUserProfile({
+        avatar_url: uploaded.publicUrl,
+      });
+
+      Alert.alert("Success", "Profile image updated.");
+    } catch (error: any) {
+      Alert.alert(
+        "Upload Failed",
+        error?.message || "Could not upload profile image.",
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const toggleNotification = async () => {
@@ -140,7 +236,6 @@ export default function ProfileIndex() {
       //   >
       //     <LogOut size={20} color="#000" strokeWidth={3} />
       //     <Text className="font-black text-lg uppercase">Log Out</Text>
-      //   </TouchableOpacity>
     );
   }
 
@@ -152,6 +247,7 @@ export default function ProfileIndex() {
   const interestList = Array.isArray(userProfile.interests)
     ? userProfile.interests.filter(Boolean)
     : [];
+  const avatarUrl = resolveAvatarUrl(userProfile.avatar_url);
   const displayInterests = interestList.length
     ? interestList.join(", ")
     : "No interests added.";
@@ -164,9 +260,18 @@ export default function ProfileIndex() {
         className="absolute top-0 left-0 right-0 bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
       >
         <View className="flex-row items-center justify-between mt-4">
-          <Text className="text-5xl font-black uppercase tracking-tighter">
-            My ID
-          </Text>
+          <View className="flex-row items-center gap-3">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              className="border-2 bg-white border-black p-2 shadow-[2px_2px_0px_0px_#000]"
+              activeOpacity={0.8}
+            >
+              <ChevronLeft size={20} color="#000" strokeWidth={3} />
+            </TouchableOpacity>
+            <Text className="text-5xl font-black uppercase tracking-tighter">
+              My ID
+            </Text>
+          </View>
 
           {isEditing ? (
             <View className="flex-row gap-2">
@@ -201,10 +306,13 @@ export default function ProfileIndex() {
 
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + 100,
-          paddingBottom: 180,
+          paddingTop: insets.top + 110,
+          paddingBottom: 60,
           paddingHorizontal: 20,
         }}
+        refreshControl={
+          <PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
       >
         {/* ID Card */}
         <View className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] relative mb-8">
@@ -225,9 +333,9 @@ export default function ProfileIndex() {
               className="w-24 h-32 bg-gray-200 border-2 border-black relative"
               style={{ overflow: "visible" }}
             >
-              {userProfile.avatar_url ? (
+              {avatarUrl ? (
                 <Image
-                  source={{ uri: userProfile.avatar_url }}
+                  source={{ uri: avatarUrl }}
                   className="w-full h-full"
                   resizeMode="cover"
                 />
@@ -237,9 +345,18 @@ export default function ProfileIndex() {
                 </View>
               )}
               {isEditing && (
-                <View className="absolute inset-0 bg-black/30 items-center justify-center">
-                  <Camera size={24} color="#fff" />
-                </View>
+                <TouchableOpacity
+                  onPress={handleEditImage}
+                  disabled={isUploadingAvatar}
+                  className="absolute inset-0 bg-black/30 items-center justify-center"
+                  activeOpacity={0.8}
+                >
+                  {isUploadingAvatar ? (
+                    <NeoButtonLoader color="#fff" />
+                  ) : (
+                    <Camera size={24} color="#fff" />
+                  )}
+                </TouchableOpacity>
               )}
               {/* Personality badge */}
               <View
@@ -250,11 +367,18 @@ export default function ProfileIndex() {
                   {userProfile.personality_type || "Take Quiz"}
                 </Text>
               </View>
-              {userProfile.verified ? (
+              {userProfile.verified === "true" ? (
                 <View className="absolute bottom-0 w-full bg-neo-yellow border-t-2 border-black py-1 flex-row items-center justify-center gap-1">
                   <BadgeCheck size={10} color="black" />
                   <Text className="text-[8px] font-black text-center uppercase">
                     Verified
+                  </Text>
+                </View>
+              ) : userProfile.verified === "pending" ? (
+                <View className="absolute bottom-0 w-full bg-[#FB923C] border-t-2 border-black py-1 flex-row items-center justify-center gap-1">
+                  <ShieldCheck size={10} color="white" />
+                  <Text className="text-[8px] font-black text-center uppercase text-white">
+                    In Review
                   </Text>
                 </View>
               ) : (
@@ -387,7 +511,29 @@ export default function ProfileIndex() {
         </View>
 
         {/* Verification Banner */}
-        {!userProfile.verified && (
+        {userProfile.verified == "pending" ? (
+          <View className="mb-8 bg-[#FB923C] border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000]">
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 mr-4">
+                <View className="flex-row items-center gap-2 mb-1">
+                  <ShieldCheck size={24} color="white" />
+                  <Text className="text-xl font-black uppercase text-white">
+                    Under Review
+                  </Text>
+                </View>
+                <Text className="font-bold text-xs text-white/90 uppercase mb-3">
+                  Your documents have been submitted. We'll notify you once verified.
+                </Text>
+                <View className="bg-white px-3 py-1 self-start border-2 border-black">
+                  <Text className="font-black text-xs uppercase">Pending Approval</Text>
+                </View>
+              </View>
+              <View className="bg-black/20 p-2 rounded border-2 border-white/50 rotate-3">
+                <ShieldCheck size={36} color="white" />
+              </View>
+            </View>
+          </View>
+        ) : userProfile.verified == "false" ? (
           <TouchableOpacity
             onPress={handleVerify}
             className="mb-8 bg-neo-red border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] active:translate-y-1 active:shadow-none"
@@ -410,13 +556,12 @@ export default function ProfileIndex() {
                   </Text>
                 </View>
               </View>
-
               <View className="bg-black/20 p-2 rounded border-2 border-white/50 rotate-3">
                 <AlertTriangle size={36} color="white" />
               </View>
             </View>
           </TouchableOpacity>
-        )}
+        ) : null}
 
         {/* My Stuff Section */}
         <View className="mb-8">
@@ -519,9 +664,77 @@ export default function ProfileIndex() {
             <LogOut size={20} color="#000" strokeWidth={3} />
             <Text className="font-black text-lg uppercase">Log Out</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setShowDeleteModal(true)}
+            className="mt-3 border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none bg-black"
+          >
+            <AlertTriangle size={20} color="#fff" strokeWidth={3} />
+            <Text className="font-black text-lg uppercase text-white">Delete Account</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
-      <MobileNav active="profile" />
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowDeleteModal(false);
+          setDeleteConfirmText("");
+        }}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center px-6">
+          <View className="bg-white border-4 border-black w-full p-6 shadow-[8px_8px_0px_0px_#000]">
+            <Text className="text-2xl font-black uppercase mb-1">Delete Account</Text>
+            <Text className="text-sm font-bold text-gray-500 uppercase mb-4">
+              This action is permanent and cannot be undone.
+            </Text>
+            <Text className="font-bold mb-2">
+              Type <Text className="text-red-600 font-black">delete</Text> to confirm:
+            </Text>
+            <TextInput
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="delete"
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="border-2 border-black p-3 font-mono text-base mb-6"
+            />
+            <View className="flex-row gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDeleteModal(false);
+                  setDeleteConfirmText("");
+                }}
+                className="flex-1 bg-white border-2 border-black p-3 items-center shadow-[3px_3px_0px_0px_#000]"
+              >
+                <Text className="font-black uppercase">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteAccount}
+                disabled={deleteConfirmText.toLowerCase() !== "delete" || isDeleting}
+                className="flex-1 border-2 border-black p-3 items-center shadow-[3px_3px_0px_0px_#000]"
+                style={{
+                  backgroundColor:
+                    deleteConfirmText.toLowerCase() === "delete" ? "#000" : "#ccc",
+                }}
+              >
+                <Text
+                  className="font-black uppercase"
+                  style={{
+                    color:
+                      deleteConfirmText.toLowerCase() === "delete" ? "#fff" : "#888",
+                  }}
+                >
+                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

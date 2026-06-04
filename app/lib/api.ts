@@ -6,10 +6,17 @@
 const API_BASE = "https://server.hangoutstudios.com/api";
 const AUTH_BASE = `${API_BASE}/auth`;
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 12000;
+
 async function request(path: string, options: RequestInit = {}) {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const controller = new AbortController();
+  const timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const opts: RequestInit = {
     credentials: "include",
+    signal: controller.signal,
     ...options,
   };
 
@@ -24,24 +31,37 @@ async function request(path: string, options: RequestInit = {}) {
     };
   }
 
-  const res = await fetch(url, opts);
-  const text = await res.text();
-  let json = null;
   try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    json = text;
-  }
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    let json = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      json = text;
+    }
 
-  if (!res.ok) {
-    const err = new Error(
-      (json && json.message) || res.statusText || "Request failed",
-    );
-    (err as any).status = res.status;
-    (err as any).body = json;
-    throw err;
+    if (!res.ok) {
+      const err = new Error(
+        (json && json.message) || res.statusText || "Request failed",
+      );
+      (err as any).status = res.status;
+      (err as any).body = json;
+      throw err;
+    }
+    return json;
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      const timeoutError = new Error(
+        "Request timed out. Please check your connection and try again.",
+      );
+      (timeoutError as any).status = 408;
+      throw timeoutError;
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return json;
 }
 
 // Auth helpers (stubs)
@@ -145,6 +165,15 @@ export const getProfile = (id?: string) =>
   request(id ? `/profile/${id}` : `/profile`);
 export const updateProfile = (body: any) =>
   request("/profile", { method: "PATCH", body: JSON.stringify(body) });
+export const deleteProfile = (userId: string, headers?: Record<string, string>) =>
+  request(`/profile/${userId}`, {
+    method: "DELETE",
+    headers: { "x-user-id": userId, ...(headers || {}) },
+  });
+
+// Verification
+export const submitVerification = (userId: string) =>
+  request(`/profile/${userId}/verify`, { method: "PATCH" });
 
 // Friendships (stubs)
 export const getFriendRequests = () => request("/friends/requests");
@@ -281,6 +310,7 @@ export default {
   markNotificationRead,
   getProfile,
   updateProfile,
+  deleteProfile,
   getFriendRequests,
   respondFriend,
   getTestimonials,

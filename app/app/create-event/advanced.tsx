@@ -45,8 +45,6 @@ export default function CreateEventScreen() {
   const community_id = (params.community_id as string) || "";
   const organizer_id = user?.id || "";
 
-  console.log("CreateEventScreen params:", params);
-
   const [step, setStep] = useState<"template" | "details">("template");
   const [templates, setTemplates] = useState<EventTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] =

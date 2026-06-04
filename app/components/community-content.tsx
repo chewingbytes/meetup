@@ -10,7 +10,7 @@ import {
   Plus,
   X,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -55,8 +55,6 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     refresh: refreshEvents,
   } = useEvents();
   const {
-    communities,
-    isLoading: communitiesLoading,
     isRefreshing: communitiesRefreshing,
     refresh: refreshCommunities,
   } = useCommunities();
@@ -75,7 +73,6 @@ export default function CommunityContent({ community }: CommunityContentProps) {
           new Date(b.start_at || 0).getTime(),
       );
   }, [events, community]);
-  console.log("Upcoming Events:", upcomingEvents);
 
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split("T")[0],
@@ -85,11 +82,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     new Date().toISOString().slice(0, 7),
   );
 
-  useEffect(() => {
-    console.log("events:", events);
-  }, [events]);
-
-  const refreshMyEvents = async () => {
+  const refreshMyEvents = useCallback(async () => {
     if (!user?.id) {
       setMyEvents([]);
       return;
@@ -104,11 +97,11 @@ export default function CommunityContent({ community }: CommunityContentProps) {
     } finally {
       setIsMyEventsLoading(false);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     refreshMyEvents();
-  }, [user?.id]);
+  }, [refreshMyEvents]);
 
   const handleRefresh = async () => {
     await Promise.all([
@@ -187,7 +180,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
               setIsLeavingCommunity(true);
               await leaveCommunity(user.id, community.id);
               setDrawerOpen(false);
-              router.push("/home");
+              router.push("/");
             } catch (err: any) {
               Alert.alert("Error", err.message || "Failed to leave community");
             } finally {
