@@ -64,29 +64,62 @@ const SHEET_LEFT = SCREEN_WIDTH * 0.06;
 const WIZARD_HEIGHT = SCREEN_HEIGHT * 0.74;
 
 // ── Time label helper ──────────────────────────────────────────────────────
+// Returns {day, countdown} joined in the UI as "day  ·  countdown" (countdown may be "")
+// "No time set" = midnight (00:00) meaning the user only picked a date in the wizard.
 function getEventTimeLabel(startAt?: string): { day: string; countdown: string } {
   if (!startAt) return { day: "", countdown: "" };
+
   const now = new Date();
   const start = new Date(startAt);
-  const diffMs = start.getTime() - now.getTime();
+  const hasTime = start.getHours() !== 0 || start.getMinutes() !== 0;
+
+  const isToday = start.toDateString() === now.toDateString();
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = start.toDateString() === tomorrow.toDateString();
 
-  if (start.toDateString() === now.toDateString()) {
-    if (diffMs <= 0) return { day: "today", countdown: "already started" };
+  const dayName = isToday ? "today" : isTomorrow
+    ? "tomorrow"
+    : start.toLocaleDateString("en-SG", { weekday: "long" }).toLowerCase();
+
+  if (!hasTime) {
+    // Date only — just say when, no time breakdown
+    return { day: isToday ? "today" : `on ${dayName}`, countdown: "" };
+  }
+
+  if (isToday) {
+    const diffMs = start.getTime() - now.getTime();
+    if (diffMs <= 0) return { day: "now", countdown: "" };
     const mins = Math.floor(diffMs / 60000);
     if (mins < 60) return { day: "today", countdown: `starts in ${mins}m` };
     const hrs = Math.floor(mins / 60);
     const remMins = mins % 60;
     return { day: "today", countdown: `starts in ${hrs}h${remMins > 0 ? ` ${remMins}m` : ""}` };
   }
-  if (start.toDateString() === tomorrow.toDateString()) {
-    const t = start.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" });
-    return { day: "tomorrow", countdown: `at ${t}` };
-  }
-  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  const dayName = start.toLocaleDateString("en-SG", { weekday: "long" }).toLowerCase();
-  return { day: dayName, countdown: `in ${days} days` };
+
+  // Another day with a specific time set
+  const timeStr = start.toLocaleTimeString("en-SG", { hour: "numeric", minute: "2-digit" });
+  return { day: `${dayName}`, countdown: `at ${timeStr}` };
+}
+
+// ── MBTI helpers ──────────────────────────────────────────────────────────
+const MBTI_NAMES: Record<string, string> = {
+  INTJ: "The Architect",   INTP: "The Logician",
+  ENTJ: "The Commander",   ENTP: "The Debater",
+  INFJ: "The Advocate",    INFP: "The Mediator",
+  ENFJ: "The Protagonist", ENFP: "The Campaigner",
+  ISTJ: "The Logistician", ISFJ: "The Defender",
+  ESTJ: "The Executive",   ESFJ: "The Consul",
+  ISTP: "The Virtuoso",    ISFP: "The Adventurer",
+  ESTP: "The Entrepreneur",ESFP: "The Entertainer",
+};
+// Analyst=violet, Diplomat=green, Sentinel=blue, Explorer=amber
+function mbtiGradient(type: string): readonly [string, string] {
+  const t = type.toUpperCase();
+  if (["INTJ","INTP","ENTJ","ENTP"].includes(t)) return ["#8B5CF6","#6D28D9"];
+  if (["INFJ","INFP","ENFJ","ENFP"].includes(t)) return ["#10B981","#059669"];
+  if (["ISTJ","ISFJ","ESTJ","ESFJ"].includes(t)) return ["#3B82F6","#1D4ED8"];
+  return ["#F59E0B","#D97706"]; // Explorers
 }
 
 const SINGAPORE = {
@@ -148,6 +181,9 @@ export default function HomeScreen() {
   const [eventsModalVisible, setEventsModalVisible] = useState(false);
   const [wizardVisible, setWizardVisible] = useState(false);
   const [sheetOrganizerName, setSheetOrganizerName] = useState("");
+  const [sheetLoading, setSheetLoading] = useState(false);
+  const [newParticipantId, setNewParticipantId] = useState<string | null>(null);
+  const newParticipantAnim = useRef(new Animated.Value(0)).current;
 
   const SHEET_OFF = SCREEN_HEIGHT * 0.7;
   const sheetAnim = useRef(new Animated.Value(SHEET_OFF)).current;
@@ -183,6 +219,7 @@ export default function HomeScreen() {
       setSheetJoined(false);
       setSheetIsOrganizer(false);
       setSheetOrganizerName("");
+      setSheetLoading(true);
       Animated.spring(sheetAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -202,6 +239,7 @@ export default function HomeScreen() {
         }
         if (membership?.isMember) setSheetJoined(true);
         if (membership?.isOrganizer) setSheetIsOrganizer(true);
+        setSheetLoading(false);
       });
     },
     [sheetAnim, user],
@@ -222,7 +260,25 @@ export default function HomeScreen() {
     try {
       await joinEvent(user.id, selectedEvent.id);
       setSheetJoined(true);
-      Alert.alert("You're in!", `See you at ${selectedEvent.name} 🎉`);
+      // Re-fetch fresh participant list so the user's tile appears
+      const detail = await getEvent(selectedEvent.id).catch(() => null);
+      if (detail?.participants?.length) {
+        setSheetParticipants(detail.participants);
+        // Find the current user's entry to animate it in
+        const myEntry = detail.participants.find(
+          (p: any) => p.id === user.id || p.user_id === user.id,
+        );
+        if (myEntry) {
+          setNewParticipantId(myEntry.id ?? user.id);
+          newParticipantAnim.setValue(0);
+          Animated.spring(newParticipantAnim, {
+            toValue: 1,
+            useNativeDriver: true,
+            damping: 14,
+            stiffness: 200,
+          }).start();
+        }
+      }
     } catch (e: any) {
       Alert.alert("Oops", e?.message || "Could not join hangout.");
     } finally {
@@ -280,16 +336,41 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              // Find my tile and animate it out first
+              const myEntry = sheetParticipants.find(
+                (p: any) => p.id === user.id || p.user_id === user.id,
+              );
+              if (myEntry) {
+                const myId = myEntry.id ?? user.id;
+                setNewParticipantId(myId);
+                newParticipantAnim.setValue(1);
+                await new Promise<void>((resolve) => {
+                  Animated.timing(newParticipantAnim, {
+                    toValue: 0,
+                    duration: 280,
+                    useNativeDriver: true,
+                  }).start(() => resolve());
+                });
+              }
+
               await leaveEvent(user.id, selectedEvent.id);
               setSheetJoined(false);
+              setNewParticipantId(null);
+
+              // Re-fetch fresh participant list
+              const detail = await getEvent(selectedEvent.id).catch(() => null);
+              if (detail?.participants) {
+                setSheetParticipants(detail.participants);
+              }
             } catch (e: any) {
               Alert.alert("Error", e?.message || "Could not leave hangout.");
+              setNewParticipantId(null);
             }
           },
         },
       ],
     );
-  }, [user, selectedEvent]);
+  }, [user, selectedEvent, sheetParticipants, newParticipantAnim]);
 
   const handleWizardSuccess = useCallback(() => {
     closeWizard();
@@ -320,6 +401,9 @@ export default function HomeScreen() {
           const cat = getCategoryConfig((event as any).category);
           const grad = cat.gradient;
           const { Icon: CatIcon } = cat;
+          const orgAvatar = resolveAvatar((event as any).organizer_avatar_url);
+          const orgInitial = ((event as any).organizer_username as string | null)
+            ?.charAt(0)?.toUpperCase() ?? "?";
           return (
             <Marker
               key={event.id}
@@ -331,14 +415,35 @@ export default function HomeScreen() {
               tracksViewChanges={false}
             >
               <View style={styles.pinWrap}>
-                <LinearGradient
-                  colors={grad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.pinBubble}
-                >
-                  <CatIcon size={16} color="#fff" strokeWidth={2.5} />
-                </LinearGradient>
+                {/* Main bubble */}
+                <View style={styles.pinBubbleWrap}>
+                  <LinearGradient
+                    colors={grad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.pinBubble}
+                  >
+                    <CatIcon size={16} color="#fff" strokeWidth={2.5} />
+                  </LinearGradient>
+
+                  {/* Organizer avatar sticker — bottom-right */}
+                  <View style={styles.pinOrgAvatar}>
+                    {orgAvatar ? (
+                      <Image
+                        source={{ uri: orgAvatar }}
+                        style={styles.pinOrgAvatarImg}
+                      />
+                    ) : (
+                      <LinearGradient
+                        colors={C.Gradients.primary}
+                        style={styles.pinOrgAvatarImg}
+                      >
+                        <Text style={styles.pinOrgInitial}>{orgInitial}</Text>
+                      </LinearGradient>
+                    )}
+                  </View>
+                </View>
+
                 {/* Pin tail */}
                 <View style={[styles.pinTail, { backgroundColor: grad[1] }]} />
               </View>
@@ -429,7 +534,7 @@ export default function HomeScreen() {
             style={styles.allEventsBtnInner}
           >
             <MapPin size={15} color={C.accent} strokeWidth={2.5} />
-            <Text style={styles.allEventsBtnText}>All Hangouts</Text>
+            <Text style={styles.allEventsBtnText}>all hangouts</Text>
             {events.length > 0 && (
               <View style={styles.eventsBadge}>
                 <Text style={styles.eventsBadgeText}>{events.length}</Text>
@@ -475,7 +580,12 @@ export default function HomeScreen() {
         style={[styles.sheet, { transform: [{ translateY: sheetAnim }] }]}
         pointerEvents={selectedEvent ? "auto" : "none"}
       >
-        {selectedEvent && (() => {
+        {selectedEvent && sheetLoading && (
+          <View style={styles.sheetLoader}>
+            <NeoLoader />
+          </View>
+        )}
+        {selectedEvent && !sheetLoading && (() => {
           const catConfig = getCategoryConfig((selectedEvent as any).category);
           const CatIcon = catConfig.Icon;
           const { day, countdown } = getEventTimeLabel(selectedEvent.start_at);
@@ -513,20 +623,20 @@ export default function HomeScreen() {
                 </Text>
                 {(day || countdown) && (
                   <Text style={styles.sheetTimeLine}>
-                    {day}{countdown ? `  ·  ${countdown}` : ""}
+                    {day}{countdown ? ` · ${countdown}` : ""}
                   </Text>
                 )}
               </View>
 
               {/* Location */}
-              {selectedEvent.location_text && (
+              {/* {selectedEvent.location_text && (
                 <View style={styles.locationRow}>
                   <MapPin size={12} color={C.accentPink} strokeWidth={2.5} />
                   <Text style={styles.locationText} numberOfLines={1}>
                     {selectedEvent.location_text}
                   </Text>
                 </View>
-              )}
+              )} */}
 
               {/* Participants */}
               <View style={styles.sheetPeopleSection}>
@@ -541,28 +651,65 @@ export default function HomeScreen() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.sheetPeopleList}
                   >
-                    {sheetParticipants.map((p, i) => (
-                      <View key={p.id ?? i} style={styles.sheetPersonItem}>
-                        <LinearGradient
-                          colors={PIN_GRADIENTS[i % PIN_GRADIENTS.length]}
-                          style={styles.sheetPersonAvatar}
-                        >
-                          {p.avatar_url ? (
-                            <Image
-                              source={{ uri: p.avatar_url }}
-                              style={StyleSheet.absoluteFillObject}
-                            />
-                          ) : (
-                            <Text style={styles.sheetPersonInitial}>
-                              {p.username?.charAt(0)?.toUpperCase() ?? "?"}
-                            </Text>
-                          )}
-                        </LinearGradient>
-                        <Text style={styles.sheetPersonName} numberOfLines={1}>
-                          {p.username ?? "User"}
-                        </Text>
-                      </View>
-                    ))}
+                    {sheetParticipants.map((p, i) => {
+                      const mbti = p.personality_type?.toUpperCase() ?? null;
+                      const isNew = (p.id ?? p.user_id) === newParticipantId;
+                      const tileStyle = isNew
+                        ? {
+                            opacity: newParticipantAnim,
+                            transform: [
+                              {
+                                scale: newParticipantAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0.4, 1],
+                                }),
+                              },
+                              {
+                                translateY: newParticipantAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [12, 0],
+                                }),
+                              },
+                            ],
+                          }
+                        : undefined;
+                      const Tile = isNew ? Animated.View : View;
+                      return (
+                        <Tile key={p.id ?? i} style={[styles.sheetPersonItem, tileStyle]}>
+                          {/* Avatar with MBTI sticker overlaid */}
+                          <View style={styles.sheetPersonAvatarWrap}>
+                            <LinearGradient
+                              colors={PIN_GRADIENTS[i % PIN_GRADIENTS.length]}
+                              style={styles.sheetPersonAvatar}
+                            >
+                              {p.avatar_url ? (
+                                <Image
+                                  source={{ uri: p.avatar_url }}
+                                  style={StyleSheet.absoluteFillObject}
+                                />
+                              ) : (
+                                <Text style={styles.sheetPersonInitial}>
+                                  {p.username?.charAt(0)?.toUpperCase() ?? "?"}
+                                </Text>
+                              )}
+                            </LinearGradient>
+                            {mbti && (
+                              <LinearGradient
+                                colors={mbtiGradient(mbti)}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.mbtiSticker}
+                              >
+                                <Text style={styles.mbtiStickerText}>{mbti}</Text>
+                              </LinearGradient>
+                            )}
+                          </View>
+                          <Text style={styles.sheetPersonName} numberOfLines={1}>
+                            {p.username ?? "User"}
+                          </Text>
+                        </Tile>
+                      );
+                    })}
                   </ScrollView>
                 )}
               </View>
@@ -576,19 +723,42 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.deleteCtaText}>Delete Hangout</Text>
                 </TouchableOpacity>
+              ) : sheetJoined ? (
+                <View style={styles.ctaRow}>
+                  {/* Go to Chat */}
+                  <TouchableOpacity
+                    onPress={() => router.push({ pathname: "/chat/[channelId]", params: { channelId: selectedEvent.id, channelName: selectedEvent.name } })}
+                    style={[styles.joinCta, { flex: 1 }]}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={C.Gradients.green}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.joinCtaGrad}
+                    >
+                      <Text style={styles.joinCtaText}>Go to Chat</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Leave */}
+                  <TouchableOpacity
+                    onPress={handleLeave}
+                    style={styles.leaveCta}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.leaveCtaText}>Leave</Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
                 <TouchableOpacity
-                  onPress={
-                    sheetJoined
-                      ? () => router.push({ pathname: "/chat/[channelId]", params: { channelId: selectedEvent.id, channelName: selectedEvent.name } })
-                      : handleJoin
-                  }
+                  onPress={handleJoin}
                   disabled={joiningId === selectedEvent.id}
                   style={[styles.joinCta, joiningId === selectedEvent.id && { opacity: 0.7 }]}
                   activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={sheetJoined ? C.Gradients.green : C.Gradients.primary}
+                    colors={C.Gradients.primary}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.joinCtaGrad}
@@ -596,11 +766,9 @@ export default function HomeScreen() {
                     <Text style={styles.joinCtaText}>
                       {joiningId === selectedEvent.id
                         ? "Joining…"
-                        : sheetJoined
-                          ? "Go to Chat"
-                          : selectedEvent.require_approval
-                            ? "Apply Now"
-                            : "Join Chat"}
+                        : selectedEvent.require_approval
+                          ? "Apply Now"
+                          : "Join Chat"}
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
@@ -707,8 +875,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   wordmarkLogo: {
-    width: 30,
-    height: 30,
+    width: 35,
+    height: 35,
   },
   wordmarkText: {
     fontFamily: C.Fonts.heading,
@@ -745,9 +913,14 @@ const styles = StyleSheet.create({
 
   // ── Pins ──
   pinWrap: { alignItems: "center" },
+  pinBubbleWrap: {
+    position: "relative",
+    width: 50,
+    height: 50,
+  },
   pinBubble: {
-    width: 38,
-    height: 38,
+    width: 50,
+    height: 50,
     borderRadius: C.Radii.lg,
     alignItems: "center",
     justifyContent: "center",
@@ -761,6 +934,33 @@ const styles = StyleSheet.create({
     borderLeftColor: "rgba(255,255,255,0.30)",
     borderRightColor: "rgba(0,0,0,0.05)",
     borderBottomColor: "rgba(0,0,0,0.08)",
+  },
+  pinOrgAvatar: {
+    position: "absolute",
+    bottom: -5,
+    right: -2,
+    width: 25,
+    height: 25,
+    borderRadius: 99,
+    borderWidth: 0.5,
+    borderColor: "#fff",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  pinOrgAvatarImg: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinOrgInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 7,
+    color: "#fff",
   },
   pinText: {
     fontFamily: C.Fonts.heading,
@@ -926,6 +1126,11 @@ const styles = StyleSheet.create({
     borderRightColor: "rgba(255,255,255,0.20)",
     borderBottomColor: "rgba(255,255,255,0.10)",
   },
+  sheetLoader: {
+    height: 120,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   sheetClose: {
     position: "absolute",
     top: 14,
@@ -968,24 +1173,51 @@ const styles = StyleSheet.create({
     color: C.accent,
   },
   sheetHeadline: {
-    gap: 3,
+    gap: 4,
   },
   sheetWantsTo: {
     fontFamily: C.Fonts.body,
     fontSize: C.FontSizes.lg,
     color: C.textSecondary,
   },
+  sheetPersonAvatarWrap: {
+    width: 44,
+    height: 44,
+    // overflow visible so the sticker can peek outside the circle
+  },
+  mbtiSticker: {
+    position: "absolute",
+    bottom: -5,
+    right: -8,
+    borderRadius: C.Radii.md,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderWidth: 1.5,
+    borderColor: C.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  mbtiStickerText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 8,
+    color: "#fff",
+    letterSpacing: 0.6,
+  },
   sheetTitle: {
     fontFamily: C.Fonts.heading,
     fontSize: C.FontSizes.xl,
     color: C.textPrimary,
     lineHeight: C.FontSizes.xl * 1.15,
+    marginTop: 2,
   },
   sheetTimeLine: {
     fontFamily: C.Fonts.bodyMedium,
     fontSize: C.FontSizes.sm,
     color: C.accent,
-    marginTop: 2,
+    marginTop: 1,
   },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   locationText: {
@@ -1032,6 +1264,24 @@ const styles = StyleSheet.create({
     color: C.textSecondary,
     textAlign: "center",
     width: 54,
+  },
+  ctaRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 2,
+  },
+  leaveCta: {
+    height: 52,
+    borderRadius: C.Radii.xl,
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: C.Space.xl,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  leaveCtaText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#DC2626",
   },
   joinCta: {
     borderRadius: C.Radii.xl,

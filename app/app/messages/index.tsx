@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: C.Space.xl,
-    paddingBottom: 120,
+    paddingBottom: 125,
   },
   chatCard: {
     flexDirection: "row",
