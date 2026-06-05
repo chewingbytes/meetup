@@ -1,13 +1,35 @@
+/**
+ * Home screen — full-screen map with clay chrome.
+ *
+ * Map stays full-screen underneath everything.
+ * All UI elements (top bar, sheet, FAB, nav) float ABOVE the map
+ * as clay-styled surfaces with appropriate shadows.
+ *
+ * Clay event pins: rounded squares that feel like soft clay stickers
+ * pressed onto the map surface.
+ */
+
 import CreateEventWizard from "@/components/create-event-wizard";
 import EventsListModal from "@/components/events-list-modal";
 import MobileNav from "@/components/mobile-nav";
 import { NeoLoader } from "@/components/ui/neo-loader";
 import { useEvents } from "@/hooks/useEvents";
-import { joinEvent } from "@/lib/api";
+import { useEventStore } from "@/lib/stores/eventStore";
+import {
+  checkEventMembership,
+  deleteEvent,
+  getEvent,
+  joinEvent,
+  leaveEvent,
+} from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { getAvatarPublicUrl } from "@/lib/supabaseStorage";
 import { useAuthRedirect } from "@/lib/useAuthRedirect";
 import { EventProps } from "@/utils/types";
+import { getCategoryConfig } from "@/utils/categories";
+import { C } from "@/theme/clay";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import {
   Bell,
@@ -26,6 +48,8 @@ import {
   Animated,
   Dimensions,
   Image,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -34,8 +58,36 @@ import {
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-const SHEET_HEIGHT = SCREEN_HEIGHT * 0.55;
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+const SHEET_WIDTH = SCREEN_WIDTH * 0.88;
+const SHEET_LEFT = SCREEN_WIDTH * 0.06;
+const WIZARD_HEIGHT = SCREEN_HEIGHT * 0.74;
+
+// ── Time label helper ──────────────────────────────────────────────────────
+function getEventTimeLabel(startAt?: string): { day: string; countdown: string } {
+  if (!startAt) return { day: "", countdown: "" };
+  const now = new Date();
+  const start = new Date(startAt);
+  const diffMs = start.getTime() - now.getTime();
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (start.toDateString() === now.toDateString()) {
+    if (diffMs <= 0) return { day: "today", countdown: "already started" };
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 60) return { day: "today", countdown: `starts in ${mins}m` };
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return { day: "today", countdown: `starts in ${hrs}h${remMins > 0 ? ` ${remMins}m` : ""}` };
+  }
+  if (start.toDateString() === tomorrow.toDateString()) {
+    const t = start.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" });
+    return { day: "tomorrow", countdown: `at ${t}` };
+  }
+  const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const dayName = start.toLocaleDateString("en-SG", { weekday: "long" }).toLowerCase();
+  return { day: dayName, countdown: `in ${days} days` };
+}
 
 const SINGAPORE = {
   latitude: 1.3521,
@@ -44,19 +96,19 @@ const SINGAPORE = {
   longitudeDelta: 0.08,
 };
 
-const MARKER_COLORS = [
-  "#FF6B6B",
-  "#FFD93D",
-  "#C4B5FD",
-  "#6EE7B7",
-  "#93C5FD",
-  "#F472B6",
+// Clay gradient palette for event pins
+const PIN_GRADIENTS: Array<readonly [string, string]> = [
+  C.Gradients.primary,
+  C.Gradients.pink,
+  C.Gradients.blue,
+  C.Gradients.green,
+  C.Gradients.amber,
+  C.Gradients.coral,
 ];
 
 function formatEventDate(iso?: string) {
   if (!iso) return "TBD";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-SG", {
+  return new Date(iso).toLocaleDateString("en-SG", {
     month: "short",
     day: "numeric",
     weekday: "short",
@@ -65,8 +117,10 @@ function formatEventDate(iso?: string) {
 
 function formatEventTime(iso?: string) {
   if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-SG", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function resolveAvatar(url: string | null | undefined) {
@@ -87,61 +141,166 @@ export default function HomeScreen() {
   const { events, isLoading } = useEvents();
 
   const [selectedEvent, setSelectedEvent] = useState<EventProps | null>(null);
+  const [sheetParticipants, setSheetParticipants] = useState<any[]>([]);
+  const [sheetJoined, setSheetJoined] = useState(false);
+  const [sheetIsOrganizer, setSheetIsOrganizer] = useState(false);
   const [joiningId, setJoiningId] = useState<string | null>(null);
   const [eventsModalVisible, setEventsModalVisible] = useState(false);
   const [wizardVisible, setWizardVisible] = useState(false);
+  const [sheetOrganizerName, setSheetOrganizerName] = useState("");
 
-  const sheetAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const SHEET_OFF = SCREEN_HEIGHT * 0.7;
+  const sheetAnim = useRef(new Animated.Value(SHEET_OFF)).current;
+  const wizardAnim = useRef(new Animated.Value(WIZARD_HEIGHT)).current;
+
+  const openWizard = useCallback(() => {
+    setWizardVisible(true);
+    Animated.spring(wizardAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 22,
+      stiffness: 220,
+    }).start();
+  }, [wizardAnim]);
+
+  const closeWizard = useCallback(() => {
+    Animated.timing(wizardAnim, {
+      toValue: WIZARD_HEIGHT,
+      duration: 280,
+      useNativeDriver: true,
+    }).start(() => setWizardVisible(false));
+  }, [wizardAnim]);
 
   const mappableEvents = events.filter(
-    (e) => e.location_lat != null && e.location_lng != null
+    (e) => e.location_lat != null && e.location_lng != null,
   );
 
   const openSheet = useCallback(
     (event: EventProps) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setSelectedEvent(event);
+      setSheetParticipants([]);
+      setSheetJoined(false);
+      setSheetIsOrganizer(false);
+      setSheetOrganizerName("");
       Animated.spring(sheetAnim, {
         toValue: 0,
         useNativeDriver: true,
-        damping: 20,
-        stiffness: 200,
+        damping: 22,
+        stiffness: 220,
       }).start();
+      Promise.all([
+        getEvent(event.id).catch(() => null),
+        user ? checkEventMembership(user.id, event.id).catch(() => null) : null,
+      ]).then(([detail, membership]) => {
+        if (detail?.participants?.length) {
+          setSheetParticipants(detail.participants);
+          const org = detail.participants.find(
+            (p: any) => p.user_id === event.organizer_id || p.id === event.organizer_id,
+          );
+          setSheetOrganizerName(org?.username ?? org?.display_name ?? "Someone");
+        }
+        if (membership?.isMember) setSheetJoined(true);
+        if (membership?.isOrganizer) setSheetIsOrganizer(true);
+      });
     },
-    [sheetAnim]
+    [sheetAnim, user],
   );
 
   const closeSheet = useCallback(() => {
     Animated.timing(sheetAnim, {
-      toValue: SHEET_HEIGHT,
+      toValue: SHEET_OFF,
       duration: 260,
       useNativeDriver: true,
     }).start(() => setSelectedEvent(null));
-  }, [sheetAnim]);
+  }, [sheetAnim, SHEET_OFF]);
 
   const handleJoin = async () => {
     if (!user || !selectedEvent) return;
     setJoiningId(selectedEvent.id);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     try {
       await joinEvent(user.id, selectedEvent.id);
-      Alert.alert("Locked in!", `You're going to ${selectedEvent.name} 🎉`);
-      closeSheet();
+      setSheetJoined(true);
+      Alert.alert("You're in!", `See you at ${selectedEvent.name} 🎉`);
     } catch (e: any) {
-      Alert.alert("Oops", e?.message || "Could not join event.");
+      Alert.alert("Oops", e?.message || "Could not join hangout.");
     } finally {
       setJoiningId(null);
     }
   };
 
+  const handleDeleteEvent = useCallback(() => {
+    if (!user || !selectedEvent) return;
+    Alert.alert(
+      "Delete hangout?",
+      `"${selectedEvent.name}" will be permanently removed, all attendees will be kicked, and the chat will be deleted.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert("Are you sure?", "This cannot be undone.", [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Yes, delete it",
+                style: "destructive",
+                onPress: async () => {
+                  try {
+                    await deleteEvent(selectedEvent.id, user.id);
+                    // Close sheet FIRST — clears selectedEvent before the store
+                    // refreshes, preventing a re-render against the deleted event.
+                    closeSheet();
+                    useEventStore.getState().fetchEvents(true);
+                  } catch (e: any) {
+                    Alert.alert(
+                      "Error",
+                      e?.message || "Could not delete hangout.",
+                    );
+                  }
+                },
+              },
+            ]);
+          },
+        },
+      ],
+    );
+  }, [user, selectedEvent, closeSheet]);
+
+  const handleLeave = useCallback(() => {
+    if (!user || !selectedEvent) return;
+    Alert.alert(
+      "Leave hangout?",
+      `You'll be removed from ${selectedEvent.name} and its chat.`,
+      [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await leaveEvent(user.id, selectedEvent.id);
+              setSheetJoined(false);
+            } catch (e: any) {
+              Alert.alert("Error", e?.message || "Could not leave hangout.");
+            }
+          },
+        },
+      ],
+    );
+  }, [user, selectedEvent]);
+
   const handleWizardSuccess = useCallback(() => {
-    setWizardVisible(false);
-    Alert.alert("🎉 Event Created!", "Your event is now live on the map.");
-  }, []);
+    closeWizard();
+    Alert.alert("Hangout created!", "Your hangout is now live on the map.");
+  }, [closeWizard]);
 
   const avatarUrl = resolveAvatar(userProfile?.avatar_url);
 
   if (isCheckingAuth) {
     return (
-      <View style={styles.loaderContainer}>
+      <View style={styles.loader}>
         <NeoLoader />
       </View>
     );
@@ -157,8 +316,10 @@ export default function HomeScreen() {
         showsCompass={false}
         showsScale={false}
       >
-        {mappableEvents.map((event, idx) => {
-          const color = MARKER_COLORS[idx % MARKER_COLORS.length];
+        {mappableEvents.map((event) => {
+          const cat = getCategoryConfig((event as any).category);
+          const grad = cat.gradient;
+          const { Icon: CatIcon } = cat;
           return (
             <Marker
               key={event.id}
@@ -169,101 +330,125 @@ export default function HomeScreen() {
               onPress={() => openSheet(event)}
               tracksViewChanges={false}
             >
-              <View style={[styles.markerOuter, { backgroundColor: color }]}>
-                <Text style={styles.markerText}>
-                  {event.name?.charAt(0)?.toUpperCase() ?? "E"}
-                </Text>
-                <View style={styles.markerPin} />
+              <View style={styles.pinWrap}>
+                <LinearGradient
+                  colors={grad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.pinBubble}
+                >
+                  <CatIcon size={16} color="#fff" strokeWidth={2.5} />
+                </LinearGradient>
+                {/* Pin tail */}
+                <View style={[styles.pinTail, { backgroundColor: grad[1] }]} />
               </View>
             </Marker>
           );
         })}
       </MapView>
 
-      {/* ── Floating Top Navbar ── */}
+      {/* ── Floating Top Bar ── */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        {/* Avatar button */}
         <TouchableOpacity
           onPress={() => router.push("/settings")}
-          style={styles.avatarButton}
+          style={styles.avatarBtn}
           activeOpacity={0.8}
         >
           {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
           ) : (
-            <View style={styles.avatarFallback}>
+            <LinearGradient
+              colors={C.Gradients.primary}
+              style={styles.avatarFallback}
+            >
               <Text style={styles.avatarInitial}>
-                {userProfile?.username?.charAt(0)?.toUpperCase() ?? "?"}
+                {userProfile?.username?.charAt(0)?.toUpperCase() ?? "H"}
               </Text>
-            </View>
+            </LinearGradient>
           )}
           <View style={styles.onlinePip} />
         </TouchableOpacity>
 
-        <View style={styles.wordmarkContainer}>
-          <View style={styles.wordmarkBox}>
-            <Text style={styles.wordmarkText}>HANGOUT</Text>
-          </View>
+        {/* Wordmark */}
+        <View style={styles.wordmarkWrap}>
+          <LinearGradient
+            colors={["rgba(255,255,255,0.92)", "rgba(255,255,255,0.80)"]}
+            style={styles.wordmark}
+          >
+            <Image
+              source={require("../assets/images/homescreenlogo.png")}
+              style={styles.wordmarkLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.wordmarkText}>Soonest</Text>
+          </LinearGradient>
         </View>
 
+        {/* Actions */}
         <View style={styles.topActions}>
           <TouchableOpacity
-            onPress={() => router.push("/notifications")}
+            onPress={() => router.push("/notifications" as any)}
             style={styles.iconBtn}
             activeOpacity={0.8}
           >
-            <Bell size={20} color="#000" strokeWidth={3} />
-            <View style={styles.notifDot} />
+            <Bell size={18} color={C.textPrimary} strokeWidth={2.5} />
+            <View style={styles.notifPip} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push("/friends" as any)}
-            style={[styles.iconBtn, { backgroundColor: "#C4B5FD" }]}
+            style={[styles.iconBtn, { backgroundColor: C.accentMuted }]}
             activeOpacity={0.8}
           >
-            <UserPlus size={20} color="#000" strokeWidth={3} />
+            <UserPlus size={18} color={C.accent} strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ── Empty map hint ── */}
       {!isLoading && mappableEvents.length === 0 && (
-        <View style={styles.noMapEvents}>
-          <View style={styles.noMapCard}>
-            <Zap size={14} color="#000" strokeWidth={3} />
-            <Text style={styles.noMapText}>NO PINS YET — CREATE ONE!</Text>
+        <View style={styles.emptyHint}>
+          <View style={styles.emptyHintCard}>
+            <Zap size={14} color={C.accent} strokeWidth={2.5} />
+            <Text style={styles.emptyHintText}>
+              No hangouts yet — create one!
+            </Text>
           </View>
         </View>
       )}
 
-      {/* ── ALL EVENTS button + Create FAB ── */}
-      <View
-        style={[
-          styles.bottomControls,
-          { bottom: 75 + insets.bottom + 14 },
-        ]}
-      >
-        {/* ALL EVENTS pill */}
+      {/* ── Bottom Controls (ALL EVENTS + FAB) ── */}
+      <View style={[styles.bottomControls, { bottom: 88 + insets.bottom }]}>
         <TouchableOpacity
           onPress={() => setEventsModalVisible(true)}
-          style={styles.allEventsBtn}
           activeOpacity={0.85}
+          style={styles.allEventsBtn}
         >
-          <MapPin size={14} color="#000" strokeWidth={3} />
-          <Text style={styles.allEventsBtnText}>ALL EVENTS</Text>
-          {events.length > 0 && (
-            <View style={styles.allEventsBadge}>
-              <Text style={styles.allEventsBadgeText}>{events.length}</Text>
-            </View>
-          )}
+          <LinearGradient
+            colors={["rgba(255,255,255,0.95)", "rgba(250,248,255,0.90)"]}
+            style={styles.allEventsBtnInner}
+          >
+            <MapPin size={15} color={C.accent} strokeWidth={2.5} />
+            <Text style={styles.allEventsBtnText}>All Hangouts</Text>
+            {events.length > 0 && (
+              <View style={styles.eventsBadge}>
+                <Text style={styles.eventsBadgeText}>{events.length}</Text>
+              </View>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
 
-        {/* Create event FAB */}
-        <TouchableOpacity
-          onPress={() => setWizardVisible(true)}
-          style={styles.fab}
-          activeOpacity={0.85}
-        >
-          <Plus size={22} color="#000" strokeWidth={3} />
-        </TouchableOpacity>
+        {/* Create FAB */}
+        <Pressable onPress={openWizard} style={styles.fabWrap}>
+          <LinearGradient
+            colors={C.Gradients.primary}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.fab}
+          >
+            <Plus size={22} color="#fff" strokeWidth={2.5} />
+          </LinearGradient>
+        </Pressable>
       </View>
 
       {/* ── Loading overlay ── */}
@@ -271,178 +456,196 @@ export default function HomeScreen() {
         <View style={styles.mapLoader}>
           <View style={styles.mapLoaderCard}>
             <NeoLoader />
-            <Text style={styles.mapLoaderText}>LOADING DROPS...</Text>
+            <Text style={styles.mapLoaderText}>Loading hangouts…</Text>
           </View>
         </View>
       )}
 
-      {/* ── Bottom sheet tap-outside-to-close ── */}
+      {/* ── Transparent tap-outside-to-close ── */}
       {selectedEvent && (
         <TouchableOpacity
-          style={[styles.backdrop, { backgroundColor: "transparent" }]}
+          style={[StyleSheet.absoluteFillObject, { zIndex: 29 }]}
           activeOpacity={1}
           onPress={closeSheet}
         />
       )}
 
-      {/* ── Event Detail Bottom Sheet ── */}
+      {/* ── Event popup card ── */}
       <Animated.View
         style={[styles.sheet, { transform: [{ translateY: sheetAnim }] }]}
         pointerEvents={selectedEvent ? "auto" : "none"}
       >
-        {selectedEvent && (
-          <>
-            <View style={styles.sheetImageContainer}>
-              {/* Colorful fallback always visible — image loads on top, no white flash */}
-              <View
-                style={[
-                  styles.sheetImageFallback,
-                  {
-                    backgroundColor:
-                      MARKER_COLORS[
-                        events.findIndex((e) => e.id === selectedEvent.id) %
-                          MARKER_COLORS.length
-                      ],
-                  },
-                ]}
-              >
-                <Text style={styles.sheetImageInitial}>
-                  {selectedEvent.name?.charAt(0)?.toUpperCase() ?? "E"}
-                </Text>
-              </View>
-              {selectedEvent.cover_image && (
-                <Image
-                  source={{ uri: selectedEvent.cover_image }}
-                  style={[styles.sheetImage, { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }]}
-                  resizeMode="cover"
-                />
-              )}
+        {selectedEvent && (() => {
+          const catConfig = getCategoryConfig((selectedEvent as any).category);
+          const CatIcon = catConfig.Icon;
+          const { day, countdown } = getEventTimeLabel(selectedEvent.start_at);
+          return (
+            <>
+              {/* Close */}
               <TouchableOpacity onPress={closeSheet} style={styles.sheetClose}>
-                <X size={18} color="#000" strokeWidth={3} />
+                <X size={15} color={C.textSecondary} strokeWidth={2.5} />
               </TouchableOpacity>
-              {selectedEvent.is_paid && (
-                <View style={styles.sheetPriceBadge}>
-                  <Text style={styles.sheetPriceText}>
-                    ${selectedEvent.price ?? "?"}
-                  </Text>
-                </View>
-              )}
-            </View>
 
-            <View style={styles.sheetContent}>
-              <View style={styles.sheetTitleRow}>
+              {/* Category icon */}
+              <View style={styles.sheetCatRow}>
+                <LinearGradient
+                  colors={catConfig.gradient as readonly [string, string]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.sheetCatIcon}
+                >
+                  <CatIcon size={20} color="#fff" strokeWidth={2} />
+                </LinearGradient>
+                {selectedEvent.require_approval && (
+                  <View style={styles.applyBadge}>
+                    <Text style={styles.applyText}>Apply to join</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Headline */}
+              <View style={styles.sheetHeadline}>
+                <Text style={styles.sheetWantsTo} numberOfLines={1}>
+                  {sheetOrganizerName || "Someone"} wants to
+                </Text>
                 <Text style={styles.sheetTitle} numberOfLines={2}>
                   {selectedEvent.name}
                 </Text>
-                {selectedEvent.require_approval && (
-                  <View style={styles.approvalBadge}>
-                    <Text style={styles.approvalText}>APPLY</Text>
-                  </View>
+                {(day || countdown) && (
+                  <Text style={styles.sheetTimeLine}>
+                    {day}{countdown ? `  ·  ${countdown}` : ""}
+                  </Text>
                 )}
               </View>
 
-              <View style={styles.sheetMeta}>
-                <View style={styles.metaChip}>
-                  <Calendar size={11} color="#000" strokeWidth={3} />
-                  <Text style={styles.metaChipText}>
-                    {formatEventDate(selectedEvent.start_at)}
-                  </Text>
-                </View>
-                <View style={styles.metaChip}>
-                  <Clock size={11} color="#000" strokeWidth={3} />
-                  <Text style={styles.metaChipText}>
-                    {formatEventTime(selectedEvent.start_at)}
-                  </Text>
-                </View>
-                {selectedEvent.capacity != null && (
-                  <View style={[styles.metaChip, { backgroundColor: "#C4B5FD" }]}>
-                    <Users size={11} color="#000" strokeWidth={3} />
-                    <Text style={styles.metaChipText}>
-                      {selectedEvent.capacity} SPOTS
-                    </Text>
-                  </View>
-                )}
-              </View>
-
+              {/* Location */}
               {selectedEvent.location_text && (
                 <View style={styles.locationRow}>
-                  <MapPin size={13} color="#FF6B6B" strokeWidth={3} />
+                  <MapPin size={12} color={C.accentPink} strokeWidth={2.5} />
                   <Text style={styles.locationText} numberOfLines={1}>
                     {selectedEvent.location_text}
                   </Text>
                 </View>
               )}
 
-              {selectedEvent.description_md && (
-                <Text style={styles.sheetDesc} numberOfLines={2}>
-                  {selectedEvent.description_md.replace(/[#*_`]/g, "")}
+              {/* Participants */}
+              <View style={styles.sheetPeopleSection}>
+                <Text style={styles.sheetPeopleCount}>
+                  {sheetParticipants.length > 0
+                    ? `${sheetParticipants.length} ${sheetParticipants.length === 1 ? "person" : "people"} going`
+                    : "Be the first to join!"}
                 </Text>
-              )}
-
-              <View style={styles.sheetCTA}>
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push(`/events/${selectedEvent.id}` as any)
-                  }
-                  style={styles.detailBtn}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.detailBtnText}>DETAILS</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleJoin}
-                  disabled={joiningId === selectedEvent.id}
-                  style={[
-                    styles.joinBtn,
-                    joiningId === selectedEvent.id && styles.joinBtnDisabled,
-                  ]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.joinBtnText}>
-                    {joiningId === selectedEvent.id
-                      ? "JOINING..."
-                      : selectedEvent.require_approval
-                      ? "APPLY NOW"
-                      : "JOIN DROP"}
-                  </Text>
-                </TouchableOpacity>
+                {sheetParticipants.length > 0 && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.sheetPeopleList}
+                  >
+                    {sheetParticipants.map((p, i) => (
+                      <View key={p.id ?? i} style={styles.sheetPersonItem}>
+                        <LinearGradient
+                          colors={PIN_GRADIENTS[i % PIN_GRADIENTS.length]}
+                          style={styles.sheetPersonAvatar}
+                        >
+                          {p.avatar_url ? (
+                            <Image
+                              source={{ uri: p.avatar_url }}
+                              style={StyleSheet.absoluteFillObject}
+                            />
+                          ) : (
+                            <Text style={styles.sheetPersonInitial}>
+                              {p.username?.charAt(0)?.toUpperCase() ?? "?"}
+                            </Text>
+                          )}
+                        </LinearGradient>
+                        <Text style={styles.sheetPersonName} numberOfLines={1}>
+                          {p.username ?? "User"}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
               </View>
-            </View>
-          </>
-        )}
+
+              {/* CTA */}
+              {sheetIsOrganizer ? (
+                <TouchableOpacity
+                  onPress={handleDeleteEvent}
+                  style={styles.deleteCta}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.deleteCtaText}>Delete Hangout</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={
+                    sheetJoined
+                      ? () => router.push({ pathname: "/chat/[channelId]", params: { channelId: selectedEvent.id, channelName: selectedEvent.name } })
+                      : handleJoin
+                  }
+                  disabled={joiningId === selectedEvent.id}
+                  style={[styles.joinCta, joiningId === selectedEvent.id && { opacity: 0.7 }]}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={sheetJoined ? C.Gradients.green : C.Gradients.primary}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.joinCtaGrad}
+                  >
+                    <Text style={styles.joinCtaText}>
+                      {joiningId === selectedEvent.id
+                        ? "Joining…"
+                        : sheetJoined
+                          ? "Go to Chat"
+                          : selectedEvent.require_approval
+                            ? "Apply Now"
+                            : "Join Chat"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </>
+          );
+        })()}
       </Animated.View>
 
-      {/* ── Events list modal ── */}
+      {/* ── Modals ── */}
       <EventsListModal
         visible={eventsModalVisible}
         events={events}
         onClose={() => setEventsModalVisible(false)}
         onEventPress={openSheet}
       />
+      {/* Wizard — rendered as a native Animated.View so the map stays visible + interactive above it */}
+      {wizardVisible && (
+        <View style={styles.wizardWrapper} pointerEvents="box-none">
+          <Animated.View
+            style={[
+              styles.wizardAnimated,
+              { transform: [{ translateY: wizardAnim }] },
+            ]}
+          >
+            <CreateEventWizard
+              onClose={closeWizard}
+              onSuccess={handleWizardSuccess}
+            />
+          </Animated.View>
+        </View>
+      )}
 
-      {/* ── Create event wizard ── */}
-      <CreateEventWizard
-        visible={wizardVisible}
-        onClose={() => setWizardVisible(false)}
-        onSuccess={handleWizardSuccess}
-      />
-
-      {/* ── Bottom Nav ── */}
       <MobileNav active="home" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#FFFDF5",
-  },
-  loaderContainer: {
+  root: { flex: 1, backgroundColor: C.canvas },
+  loader: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFDF5",
+    backgroundColor: C.canvas,
   },
 
   // ── Top Bar ──
@@ -456,39 +659,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: "#FFFDF5",
-    borderBottomWidth: 4,
-    borderColor: "#000",
-    shadowColor: "#000",
+    paddingBottom: 10,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.08)",
+    shadowColor: "#7C3AED",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 6,
   },
-  avatarButton: { position: "relative" },
-  avatarImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 999,
-    borderWidth: 3,
-    borderColor: "#000",
+  avatarBtn: { position: "relative" },
+  avatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: C.Radii.full,
+    borderWidth: 2,
+    borderColor: "rgba(124,58,237,0.20)",
   },
   avatarFallback: {
-    width: 46,
-    height: 46,
-    borderRadius: 999,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#FFD93D",
+    width: 44,
+    height: 44,
+    borderRadius: C.Radii.full,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
+    fontFamily: C.Fonts.heading,
     fontSize: 18,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
+    color: "#fff",
   },
   onlinePip: {
     position: "absolute",
@@ -496,107 +695,91 @@ const styles = StyleSheet.create({
     right: 1,
     width: 11,
     height: 11,
-    borderRadius: 999,
-    backgroundColor: "#6EE7B7",
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentGreen,
     borderWidth: 2,
-    borderColor: "#000",
+    borderColor: "#fff",
   },
-  wordmarkContainer: {
-    flex: 1,
+  wordmarkWrap: { flex: 1, alignItems: "center" },
+  wordmark: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 4,
   },
-  wordmarkBox: {
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-    position: "relative",
+  wordmarkLogo: {
+    width: 30,
+    height: 30,
   },
   wordmarkText: {
-    fontSize: 17,
-    fontWeight: "900",
-    letterSpacing: 2,
-    color: "#000",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.heading,
+    fontSize: 26,
+    fontStyle: "italic",
+    color: C.textPrimary,
   },
-  wordmarkAccent: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: "100%",
-    height: "100%",
-    zIndex: -1,
-    borderWidth: 3,
-    borderColor: "#000",
-  },
-  topActions: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
-  },
+  topActions: { flexDirection: "row", gap: 8 },
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#FFD93D",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-    position: "relative",
-  },
-  notifDot: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 1.5,
-    borderColor: "#000",
-  },
-
-  // ── Markers ──
-  markerOuter: {
     width: 40,
     height: 40,
-    borderWidth: 3,
-    borderColor: "#000",
+    borderRadius: C.Radii.md,
+    backgroundColor: C.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    position: "relative",
   },
-  markerText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-  },
-  markerPin: {
+  notifPip: {
     position: "absolute",
-    bottom: -8,
-    width: 3,
-    height: 8,
-    backgroundColor: "#000",
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentPink,
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
 
-  // ── Empty map hint ──
-  noMapEvents: {
+  // ── Pins ──
+  pinWrap: { alignItems: "center" },
+  pinBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: C.Radii.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 2,
+    borderTopColor: "rgba(255,255,255,0.50)",
+    borderLeftColor: "rgba(255,255,255,0.30)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.08)",
+  },
+  pinText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 15,
+    color: "#fff",
+    textShadowColor: "rgba(0,0,0,0.15)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  pinTail: {
+    width: 3,
+    height: 7,
+    borderRadius: 2,
+    marginTop: 1,
+    opacity: 0.7,
+  },
+
+  // ── Empty hint ──
+  emptyHint: {
     position: "absolute",
     top: "45%",
     left: 0,
@@ -604,30 +787,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 5,
   },
-  noMapCard: {
+  emptyHintCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFD93D",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
     elevation: 6,
   },
-  noMapText: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+  emptyHintText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
 
-  // ── Bottom controls (ALL EVENTS + FAB) ──
+  // ── Bottom Controls ──
   bottomControls: {
     position: "absolute",
     left: 16,
@@ -639,56 +819,67 @@ const styles = StyleSheet.create({
   },
   allEventsBtn: {
     flex: 1,
+    borderRadius: C.Radii.xl,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+    overflow: "hidden",
+  },
+  allEventsBtnInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FFFDF5",
-    borderWidth: 4,
-    borderColor: "#000",
     paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    paddingHorizontal: 18,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.95)",
+    borderLeftColor: "rgba(255,255,255,0.70)",
+    borderRightColor: "rgba(255,255,255,0.30)",
+    borderBottomColor: "rgba(255,255,255,0.15)",
   },
   allEventsBtnText: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    letterSpacing: 0.3,
   },
-  allEventsBadge: {
-    backgroundColor: "#FF6B6B",
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 7,
+  eventsBadge: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 999,
   },
-  allEventsBadgeText: {
+  eventsBadgeText: {
+    fontFamily: C.Fonts.bodyBold,
     fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
+    color: C.accent,
+  },
+  fabWrap: {
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.32,
+    shadowRadius: 14,
+    elevation: 10,
+    borderRadius: C.Radii.full,
   },
   fab: {
     width: 56,
     height: 56,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 4,
-    borderColor: "#000",
+    borderRadius: C.Radii.full,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.50)",
+    borderLeftColor: "rgba(255,255,255,0.30)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.08)",
   },
 
-  // ── Map loader ──
+  // ── Map Loader ──
   mapLoader: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -696,207 +887,220 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   mapLoaderCard: {
-    backgroundColor: "#fff",
-    borderWidth: 4,
-    borderColor: "#000",
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: C.Radii.xl,
     padding: 24,
     alignItems: "center",
     gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 10,
   },
   mapLoaderText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
 
-  // ── Backdrop ──
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    zIndex: 29,
-  },
-
-  // ── Bottom Sheet ──
+  // ── Event popup card ──
   sheet: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: SHEET_HEIGHT,
-    backgroundColor: "#FFFDF5",
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderRightWidth: 4,
-    borderColor: "#000",
+    bottom: 92,
+    left: SHEET_LEFT,
+    width: SHEET_WIDTH,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xxl,
     zIndex: 30,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    padding: C.Space.xl,
+    gap: 12,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
     elevation: 20,
-  },
-  sheetImageContainer: {
-    height: SHEET_HEIGHT * 0.38,
-    borderBottomWidth: 4,
-    borderColor: "#000",
-    position: "relative",
-  },
-  sheetImage: { width: "100%", height: "100%" },
-  sheetImageFallback: {
-    width: "100%",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sheetImageInitial: {
-    fontSize: 64,
-    fontWeight: "900",
-    color: "#000",
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   sheetClose: {
     position: "absolute",
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#000",
+    top: 14,
+    right: 14,
+    width: 30,
+    height: 30,
+    backgroundColor: C.canvas,
+    borderRadius: C.Radii.full,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    zIndex: 1,
   },
-  sheetPriceBadge: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "#FFD93D",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-  },
-  sheetPriceText: { fontSize: 14, fontWeight: "900", color: "#000" },
-  sheetContent: { flex: 1, padding: 16, gap: 10 },
-  sheetTitleRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  sheetTitle: {
-    flex: 1,
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: -0.5,
-    lineHeight: 26,
-  },
-  approvalBadge: {
-    backgroundColor: "#C4B5FD",
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 4,
-  },
-  approvalText: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-  },
-  sheetMeta: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  metaChip: {
+  sheetCatRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: "#fff",
+    gap: 10,
+    marginTop: 4,
   },
-  metaChipText: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+  sheetCatIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: C.Radii.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  applyBadge: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  applyText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 11,
+    color: C.accent,
+  },
+  sheetHeadline: {
+    gap: 3,
+  },
+  sheetWantsTo: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.lg,
+    color: C.textSecondary,
+  },
+  sheetTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+    lineHeight: C.FontSizes.xl * 1.15,
+  },
+  sheetTimeLine: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.accent,
+    marginTop: 2,
   },
   locationRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   locationText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#444",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+  },
+  sheetPeopleSection: {
+    gap: 8,
+  },
+  sheetPeopleCount: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: C.textPrimary,
+  },
+  sheetPeopleList: {
+    gap: 12,
+    paddingVertical: 2,
+  },
+  sheetPersonItem: {
+    alignItems: "center",
+    gap: 4,
+    width: 54,
+  },
+  sheetPersonAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: C.Radii.full,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: C.surface,
+  },
+  sheetPersonInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 16,
+    color: "#fff",
+  },
+  sheetPersonName: {
+    fontFamily: C.Fonts.body,
+    fontSize: 10,
+    color: C.textSecondary,
+    textAlign: "center",
+    width: 54,
+  },
+  joinCta: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 7,
+    marginTop: 2,
+  },
+  joinCtaGrad: {
+    height: 52,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.45)",
+    borderLeftColor: "rgba(255,255,255,0.25)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  joinCtaText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
     letterSpacing: 0.3,
   },
-  sheetDesc: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#555",
-    lineHeight: 18,
+  deleteCta: {
+    height: 52,
+    borderRadius: C.Radii.xl,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
   },
-  sheetCTA: { flexDirection: "row", gap: 10, marginTop: "auto" },
-  detailBtn: {
+  deleteCtaText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.error,
+  },
+  screenContainer: {
     flex: 1,
-    borderWidth: 3,
-    borderColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: "#fff",
-    paddingVertical: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
   },
-  detailBtnText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+  rowContainer: {
+    flexDirection: "row", // Establishes a horizontal row layout
+    alignItems: "center", // Centers items vertically within the row
   },
-  joinBtn: {
-    flex: 2,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#FF6B6B",
-    paddingVertical: 14,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+  image: {
+    width: 50, // Image must have an explicit width
+    height: 50, // Image must have an explicit height
+    marginRight: 10, // Creates space between image and text
   },
-  joinBtnDisabled: {
-    backgroundColor: "#ccc",
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+  text: {
+    fontSize: 16,
+    color: "#333",
+    flexShrink: 1,
   },
-  joinBtnText: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+
+  // Wizard bottom-sheet container — pointerEvents "box-none" on the wrapper
+  // lets map touches pass through the transparent area above the sheet
+  wizardWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+  },
+  wizardAnimated: {
+    // Width/height comes from the wizard's own sheet style
+    width: "100%",
   },
 });

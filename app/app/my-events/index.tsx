@@ -59,7 +59,7 @@ export default function MyEventsScreen() {
           >
             <ArrowLeft size={24} color="#000" strokeWidth={3} />
           </TouchableOpacity>
-          <Text className="text-2xl font-black uppercase tracking-widest">My Events</Text>
+          <Text className="text-2xl font-black uppercase tracking-widest">My Hangouts</Text>
           <View className="w-10" />
         </View>
 
@@ -107,13 +107,13 @@ export default function MyEventsScreen() {
             {displayEvents.length === 0 ? (
               <View className="bg-white border-4 border-black p-8 items-center shadow-[8px_8px_0px_0px_#000] mt-8 rotate-1">
                 <Ticket size={64} color="#000" strokeWidth={1} className="mb-4 opacity-20" />
-                <Text className="font-black text-2xl uppercase text-center mb-2">No Events Found</Text>
+                <Text className="font-black text-2xl uppercase text-center mb-2">No Hangouts Found</Text>
                 <Text className="font-bold text-gray-500 text-center uppercase text-sm">
-                  {activeTab === 'upcoming' ? "You haven't joined any events yet." : "No past events to show."}
+                  {activeTab === 'upcoming' ? "You haven't joined any hangouts yet." : "No past hangouts to show."}
                 </Text>
                 {activeTab === 'upcoming' && (
                    <TouchableOpacity onPress={() => router.push('/explore')} className="mt-6 bg-neo-yellow border-4 border-black px-6 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-1">
-                      <Text className="font-black uppercase">Explore Events</Text>
+                      <Text className="font-black uppercase">Explore Hangouts</Text>
                    </TouchableOpacity>
                 )}
               </View>

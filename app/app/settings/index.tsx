@@ -1,9 +1,24 @@
+/**
+ * Profile / Settings screen — clay aesthetic.
+ *
+ * Layout:
+ *   - Gradient hero header with avatar
+ *   - Clay profile card (name, bio, interests)
+ *   - Student verification section
+ *   - Archives & settings tiles
+ */
+
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { NeoButtonLoader, NeoLoader } from "@/components/ui/neo-loader";
+import { ClayCard } from "@/components/ui/clay-card";
+import { ClayButton } from "@/components/ui/clay-button";
+import { ClayBackground } from "@/components/ui/clay-background";
+import { C } from "@/theme/clay";
 import { deleteProfile } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { getAvatarPublicUrl, uploadAvatarImage } from "@/lib/supabaseStorage";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   AlertTriangle,
@@ -11,11 +26,13 @@ import {
   Bell,
   Camera,
   ChevronLeft,
+  GraduationCap,
   LogOut,
   Pencil,
   Save,
   ShieldCheck,
-  User,
+  Star,
+  Trophy,
   X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
@@ -23,7 +40,9 @@ import {
   Alert,
   Image,
   Modal,
+  Pressable,
   ScrollView,
+  StyleSheet,
   Switch,
   Text,
   TextInput,
@@ -47,7 +66,6 @@ export default function ProfileIndex() {
   } = useAuth();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -58,17 +76,12 @@ export default function ProfileIndex() {
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    try {
-      await Promise.all([fetchUserProfile(), fetchUserSettings()]);
-    } finally {
-      setIsRefreshing(false);
-    }
+    try { await Promise.all([fetchUserProfile(), fetchUserSettings()]); }
+    finally { setIsRefreshing(false); }
   }, [fetchUserProfile, fetchUserSettings]);
 
   useEffect(() => {
-    if (!session) {
-      router.replace("/login");
-    }
+    if (!session) router.replace("/login");
   }, [session]);
 
   useEffect(() => {
@@ -94,19 +107,14 @@ export default function ProfileIndex() {
         school: form.school,
         year_of_study: form.year_of_study,
         interests: form.interests
-          ? form.interests
-              .split(",")
-              .map((s: string) => s.trim())
-              .filter(Boolean)
+          ? form.interests.split(",").map((s: string) => s.trim()).filter(Boolean)
           : [],
       });
       setIsEditing(false);
-      Alert.alert("Success", "ID Card Updated!");
+      Alert.alert("Saved!", "Your profile is updated.");
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Failed to update profile");
-    } finally {
-      setIsUpdating(false);
-    }
+    } finally { setIsUpdating(false); }
   };
 
   const handleDeleteAccount = async () => {
@@ -126,573 +134,328 @@ export default function ProfileIndex() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Sign out", "Abandon your post?", [
+    Alert.alert("Sign out", "See you later!", [
       { text: "Stay", style: "cancel" },
-      {
-        text: "Leave",
-        style: "destructive",
-        onPress: async () => {
-          await signOut();
-          router.replace("/");
-        },
-      },
+      { text: "Sign out", style: "destructive", onPress: async () => { await signOut(); router.replace("/"); } },
     ]);
   };
 
-  const handleVerify = () => {
-    router.push("/verify/singpass" as any);
-  };
+  const handleVerify = () => router.push("/verify/singpass" as any);
 
-  const resolveAvatarUrl = (avatarUrl: string | null | undefined) => {
-    if (!avatarUrl) return null;
-    if (avatarUrl.startsWith("http://") || avatarUrl.startsWith("https://")) {
-      return avatarUrl;
-    }
-
-    try {
-      return getAvatarPublicUrl(avatarUrl);
-    } catch {
-      return null;
-    }
+  const resolveAvatarUrl = (url: string | null | undefined) => {
+    if (!url) return null;
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    try { return getAvatarPublicUrl(url); } catch { return null; }
   };
 
   const handleEditImage = async () => {
-    if (!session?.user?.id) {
-      Alert.alert("Error", "No active user session.");
-      return;
-    }
-
+    if (!session?.user?.id) return;
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "Please allow photo library access to update your profile image.",
-        );
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (perm.status !== "granted") {
+        Alert.alert("Permission required", "Allow photo access to update your avatar.");
         return;
       }
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.85,
       });
-
-      if (result.canceled || !result.assets?.length) {
-        return;
-      }
-
+      if (result.canceled || !result.assets?.length) return;
       setIsUploadingAvatar(true);
-      const selectedImageUri = result.assets[0].uri;
-      const uploaded = await uploadAvatarImage(session.user.id, selectedImageUri);
-
-      await updateUserProfile({
-        avatar_url: uploaded.publicUrl,
-      });
-
-      Alert.alert("Success", "Profile image updated.");
-    } catch (error: any) {
-      Alert.alert(
-        "Upload Failed",
-        error?.message || "Could not upload profile image.",
-      );
-    } finally {
-      setIsUploadingAvatar(false);
-    }
+      const uploaded = await uploadAvatarImage(session.user.id, result.assets[0].uri);
+      await updateUserProfile({ avatar_url: uploaded.publicUrl });
+      Alert.alert("Done!", "Avatar updated.");
+    } catch (err: any) {
+      Alert.alert("Upload failed", err?.message || "Could not upload image.");
+    } finally { setIsUploadingAvatar(false); }
   };
 
   const toggleNotification = async () => {
     if (!userSettings) return;
-    try {
-      await updateUserSettings({
-        push_notifications: !userSettings.push_notifications,
-      });
-    } catch (e) {}
-  };
-
-  const needsQuiz =
-    !userProfile?.personality_answers || !userProfile?.personality_type;
-
-  const goToQuiz = () => {
-    router.push("/settings/personality-quiz" as any);
+    try { await updateUserSettings({ push_notifications: !userSettings.push_notifications }); }
+    catch {}
   };
 
   if (!userProfile) {
     return (
-      <View className="flex-1 bg-neo-bg items-center justify-center">
+      <View style={styles.loader}>
         <NeoLoader />
-        <TouchableOpacity
-          onPress={handleLogout}
-          className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
-        >
-          <LogOut size={20} color="#000" strokeWidth={3} />
-          <Text className="font-black text-lg uppercase">Log Out</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.loaderLogout}>
+          <Text style={styles.loaderLogoutText}>Sign out</Text>
         </TouchableOpacity>
       </View>
-      //   <TouchableOpacity
-      //     onPress={handleLogout}
-      //     className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
-      //   >
-      //     <LogOut size={20} color="#000" strokeWidth={3} />
-      //     <Text className="font-black text-lg uppercase">Log Out</Text>
     );
   }
 
-  const displayName = userProfile.username || "Unnamed";
-  const displaySchool = userProfile.school?.trim() || "Not provided";
-  const displayYear =
-    userProfile.year_of_study?.toString().trim() || "Not provided";
-  const displayBio = userProfile.bio?.trim() || "No bio yet.";
+  const displayName = userProfile.username || "You";
+  const displayBio = userProfile.bio?.trim() || "";
   const interestList = Array.isArray(userProfile.interests)
     ? userProfile.interests.filter(Boolean)
     : [];
   const avatarUrl = resolveAvatarUrl(userProfile.avatar_url);
-  const displayInterests = interestList.length
-    ? interestList.join(", ")
-    : "No interests added.";
+  const isVerified = userProfile.verified === "true";
+  const isPending = userProfile.verified === "pending";
+  const needsQuiz = !userProfile?.personality_answers || !userProfile?.personality_type;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#FFFDF5" }}>
-      {/* Sticky Header */}
-      <View
-        style={{ paddingTop: insets.top, zIndex: 50 }}
-        className="absolute top-0 left-0 right-0 bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
-      >
-        <View className="flex-row items-center justify-between mt-4">
-          <View className="flex-row items-center gap-3">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="border-2 bg-white border-black p-2 shadow-[2px_2px_0px_0px_#000]"
-              activeOpacity={0.8}
-            >
-              <ChevronLeft size={20} color="#000" strokeWidth={3} />
+    <ClayBackground>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
+          <ChevronLeft size={20} color={C.textPrimary} strokeWidth={2.5} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Profile</Text>
+        {isEditing ? (
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.headerActionBtn}>
+              <X size={18} color={C.textSecondary} strokeWidth={2.5} />
             </TouchableOpacity>
-            <Text className="text-5xl font-black uppercase tracking-tighter">
-              My ID
-            </Text>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isUpdating}
+              style={[styles.headerActionBtn, { backgroundColor: C.accentGreen }]}
+            >
+              {isUpdating ? <NeoButtonLoader color="#fff" /> : <Save size={18} color="#fff" strokeWidth={2.5} />}
+            </TouchableOpacity>
           </View>
-
-          {isEditing ? (
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => setIsEditing(false)}
-                className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
-              >
-                <X size={20} color="#000" strokeWidth={3} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSave}
-                disabled={isUpdating}
-                className="bg-green-500 border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
-              >
-                {isUpdating ? (
-                  <NeoButtonLoader color="#000" />
-                ) : (
-                  <Save size={20} color="#000" strokeWidth={3} />
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              onPress={() => setIsEditing(true)}
-              className="border-2 bg-white border-black p-2 shadow-[2px_2px_0px_0px_#000] rotate-2"
-            >
-              <Pencil size={20} color="#000" strokeWidth={3} />
-            </TouchableOpacity>
-          )}
-        </View>
+        ) : (
+          <TouchableOpacity onPress={() => setIsEditing(true)} style={styles.headerActionBtn}>
+            <Pencil size={18} color={C.textSecondary} strokeWidth={2.5} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView
-        contentContainerStyle={{
-          paddingTop: insets.top + 110,
-          paddingBottom: 60,
-          paddingHorizontal: 20,
-        }}
-        refreshControl={
-          <PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />
-        }
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 72 }]}
+        refreshControl={<PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />}
+        showsVerticalScrollIndicator={false}
       >
-        {/* ID Card */}
-        <View className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] relative mb-8">
-          {/* Hole Punch Visual */}
-          <View className="absolute -top-6 left-[45%] w-8 h-8 bg-neo-bg rounded-full border-4 border-black z-10" />
-
-          <View className="border-b-4 border-black pb-4 mb-4 flex-row justify-between items-end">
-            <Text className="text-3xl font-black uppercase text-neo-blue tracking-widest">
-              STUDENT
-            </Text>
-            <Text className="font-bold text-xs uppercase opacity-50">
-              Valid thru 2026
-            </Text>
-          </View>
-
-          <View className="flex-row gap-6 mb-6">
-            <View
-              className="w-24 h-32 bg-gray-200 border-2 border-black relative"
-              style={{ overflow: "visible" }}
-            >
-              {avatarUrl ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  className="w-full h-full"
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="flex-1 items-center justify-center">
-                  <User size={40} color="#000" />
-                </View>
-              )}
-              {isEditing && (
-                <TouchableOpacity
-                  onPress={handleEditImage}
-                  disabled={isUploadingAvatar}
-                  className="absolute inset-0 bg-black/30 items-center justify-center"
-                  activeOpacity={0.8}
-                >
-                  {isUploadingAvatar ? (
-                    <NeoButtonLoader color="#fff" />
-                  ) : (
-                    <Camera size={24} color="#fff" />
-                  )}
-                </TouchableOpacity>
-              )}
-              {/* Personality badge */}
-              <View
-                className="absolute -top-4 -right-4 bg-[#FF6B6B] border-3 border-black px-2 py-1 rotate-12 shadow-[4px_4px_0px_0px_#000]"
-                style={{ zIndex: 99 }}
+        {/* ── Avatar + Name Hero ── */}
+        <View style={styles.avatarHero}>
+          <Pressable onPress={isEditing ? handleEditImage : undefined} style={styles.avatarWrap}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <LinearGradient
+                colors={C.Gradients.primary}
+                style={styles.avatar}
               >
-                <Text className="font-black text-[10px] uppercase tracking-tight text-white">
-                  {userProfile.personality_type || "Take Quiz"}
+                <Text style={styles.avatarInitial}>
+                  {displayName.charAt(0).toUpperCase()}
                 </Text>
+              </LinearGradient>
+            )}
+            {isEditing && (
+              <View style={styles.avatarEditOverlay}>
+                {isUploadingAvatar
+                  ? <NeoButtonLoader color="#fff" />
+                  : <Camera size={20} color="#fff" strokeWidth={2.5} />}
               </View>
-              {userProfile.verified === "true" ? (
-                <View className="absolute bottom-0 w-full bg-neo-yellow border-t-2 border-black py-1 flex-row items-center justify-center gap-1">
-                  <BadgeCheck size={10} color="black" />
-                  <Text className="text-[8px] font-black text-center uppercase">
-                    Verified
-                  </Text>
-                </View>
-              ) : userProfile.verified === "pending" ? (
-                <View className="absolute bottom-0 w-full bg-[#FB923C] border-t-2 border-black py-1 flex-row items-center justify-center gap-1">
-                  <ShieldCheck size={10} color="white" />
-                  <Text className="text-[8px] font-black text-center uppercase text-white">
-                    In Review
-                  </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={handleVerify}
-                  className="absolute bottom-0 w-full bg-neo-red border-t-2 border-black py-1 flex-row items-center justify-center gap-1"
-                >
-                  <AlertTriangle size={10} color="white" />
-                  <Text className="text-[8px] font-black text-center uppercase text-white">
-                    Verify Now
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            )}
+            {/* Verification pip */}
+            {isVerified && (
+              <View style={styles.verifiedPip}>
+                <BadgeCheck size={14} color="#fff" strokeWidth={2.5} />
+              </View>
+            )}
+          </Pressable>
 
-            <View className="flex-1 gap-3">
-              <View>
-                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
-                  Name
-                </Text>
-                {isEditing ? (
-                  <TextInput
-                    value={form.username}
-                    onChangeText={(t) => setForm({ ...form, username: t })}
-                    className="border-b-2 border-black font-black text-xl py-0"
-                  />
-                ) : (
-                  <Text className="text-xl font-black uppercase leading-5">
-                    {displayName}
-                  </Text>
-                )}
-              </View>
-              <View>
-                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
-                  School
-                </Text>
-                {isEditing ? (
-                  <TextInput
-                    value={form.school}
-                    onChangeText={(t) => setForm({ ...form, school: t })}
-                    className="border-b-2 border-black font-bold text-base py-0"
-                  />
-                ) : (
-                  <Text className="text-base font-bold uppercase leading-5">
-                    {displaySchool}
-                  </Text>
-                )}
-              </View>
-              <View>
-                <Text className="text-[10px] font-bold uppercase text-gray-500 mb-1">
-                  Year
-                </Text>
-                {isEditing ? (
-                  <TextInput
-                    value={form.year_of_study}
-                    onChangeText={(t) => setForm({ ...form, year_of_study: t })}
-                    className="border-b-2 border-black font-bold text-base py-0"
-                  />
-                ) : (
-                  <Text className="text-base font-bold uppercase leading-5">
-                    {displayYear}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          {/* Bio Section */}
-          <View className="bg-neo-bg border-2 border-black p-2 relative">
-            <Text className="absolute -top-3 left-2 bg-black text-white px-1 text-[10px] font-bold uppercase">
-              Notes
-            </Text>
+          <View style={styles.heroText}>
             {isEditing ? (
               <TextInput
-                value={form.bio}
-                onChangeText={(t) => setForm({ ...form, bio: t })}
-                multiline
-                className="font-medium text-sm pt-2"
+                value={form.username}
+                onChangeText={(t) => setForm({ ...form, username: t })}
+                style={styles.nameInput}
+                placeholder="Your name"
+                placeholderTextColor={C.textTertiary}
               />
             ) : (
-              <Text className="font-medium text-sm text-black pt-1">
-                {displayBio}
-              </Text>
+              <Text style={styles.nameText}>{displayName}</Text>
             )}
-          </View>
-
-          {/* Interests */}
-          <View className="bg-white border-2 border-black p-3 mt-4 shadow-[4px_4px_0px_0px_#000]">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-black uppercase">Interests</Text>
-              <Text className="text-[10px] font-bold uppercase text-gray-500">
-                {interestList.length} saved
-              </Text>
-            </View>
-            {isEditing ? (
-              <TextInput
-                value={form.interests}
-                onChangeText={(t) => setForm({ ...form, interests: t })}
-                placeholder="e.g. Art, Food, Tech"
-                className="border-b-2 border-black font-medium text-sm py-1"
-              />
-            ) : interestList.length ? (
-              <View className="flex-row flex-wrap gap-2">
-                {interestList.map((tag) => (
-                  <View
-                    key={tag}
-                    className="px-3 py-1 border-2 border-black bg-[#E0F2FE]"
-                  >
-                    <Text className="font-bold text-xs uppercase">{tag}</Text>
-                  </View>
-                ))}
+            {userProfile.personality_type && (
+              <View style={styles.personalityBadge}>
+                <Text style={styles.personalityText}>{userProfile.personality_type}</Text>
               </View>
-            ) : (
-              <Text className="font-medium text-sm text-gray-600">
-                {displayInterests}
-              </Text>
             )}
           </View>
+        </View>
 
-          {/* Footer Barcode */}
-          <View className="mt-4 pt-2 border-t-2 border-dashed border-black items-center">
-            <View
-              className="h-8 w-full bg-black mask-image-linear-gradient"
-              style={{ opacity: 0.8 }}
+        {/* ── Bio Card ── */}
+        <ClayCard style={styles.section} elevated>
+          <Text style={styles.sectionLabel}>About</Text>
+          {isEditing ? (
+            <TextInput
+              value={form.bio}
+              onChangeText={(t) => setForm({ ...form, bio: t })}
+              multiline
+              style={styles.bioInput}
+              placeholder="Tell people about yourself…"
+              placeholderTextColor={C.textTertiary}
             />
-            <Text className="text-[8px] font-mono tracking-[4px] mt-1">
-              {session?.user?.id.substring(0, 12).toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Verification Banner */}
-        {userProfile.verified == "pending" ? (
-          <View className="mb-8 bg-[#FB923C] border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000]">
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 mr-4">
-                <View className="flex-row items-center gap-2 mb-1">
-                  <ShieldCheck size={24} color="white" />
-                  <Text className="text-xl font-black uppercase text-white">
-                    Under Review
-                  </Text>
-                </View>
-                <Text className="font-bold text-xs text-white/90 uppercase mb-3">
-                  Your documents have been submitted. We'll notify you once verified.
-                </Text>
-                <View className="bg-white px-3 py-1 self-start border-2 border-black">
-                  <Text className="font-black text-xs uppercase">Pending Approval</Text>
-                </View>
-              </View>
-              <View className="bg-black/20 p-2 rounded border-2 border-white/50 rotate-3">
-                <ShieldCheck size={36} color="white" />
-              </View>
-            </View>
-          </View>
-        ) : userProfile.verified == "false" ? (
-          <TouchableOpacity
-            onPress={handleVerify}
-            className="mb-8 bg-neo-red border-4 border-black p-4 shadow-[8px_8px_0px_0px_#000] active:translate-y-1 active:shadow-none"
-            activeOpacity={1}
-          >
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1 mr-4">
-                <View className="flex-row items-center gap-2 mb-1">
-                  <ShieldCheck size={24} color="white" fill="black" />
-                  <Text className="text-xl font-black uppercase text-white">
-                    Unverified
-                  </Text>
-                </View>
-                <Text className="font-bold text-xs text-white/90 uppercase mb-3">
-                  Verification is required to join communities and events.
-                </Text>
-                <View className="bg-white px-3 py-1 self-start border-2 border-black rotate-1">
-                  <Text className="font-black text-xs uppercase">
-                    Verify Identity &rarr;
-                  </Text>
-                </View>
-              </View>
-              <View className="bg-black/20 p-2 rounded border-2 border-white/50 rotate-3">
-                <AlertTriangle size={36} color="white" />
-              </View>
-            </View>
-          </TouchableOpacity>
-        ) : null}
-
-        {/* My Stuff Section */}
-        <View className="mb-8">
-          <Text className="text-2xl font-black uppercase mb-4">Archives</Text>
-
-          <View className="flex-row flex-wrap gap-4">
-            <TouchableOpacity
-              onPress={() => router.push("/my-events")}
-              className="flex-1 bg-[#FFD93D] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none min-w-[45%]"
-            >
-              <Text className="font-black text-lg uppercase mb-1">
-                My Events
-              </Text>
-              <Text className="font-bold text-xs uppercase bg-white px-1">
-                42 Records
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert("Coming Soon", "Testimonials module loading...")
-              }
-              className="flex-1 bg-[#C4B5FD] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none min-w-[45%]"
-            >
-              <Text className="font-black text-lg uppercase mb-1">
-                Testimonials
-              </Text>
-              <Text className="font-bold text-xs uppercase bg-white px-1">
-                5 Stars
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push("/host/dashboard" as any)}
-              className="w-full bg-[#4ADE80] border-[3px] border-black p-4 items-center shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
-            >
-              <Text className="font-black text-lg uppercase mb-1">
-                Host Dashboard
-              </Text>
-              <Text className="font-bold text-xs uppercase bg-white px-1">
-                Manage Events & Guests
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Settings Control Panel */}
-        <View>
-          <Text className="text-2xl font-black uppercase mb-4">
-            Control Panel
-          </Text>
-          {needsQuiz && (
-            <TouchableOpacity
-              onPress={goToQuiz}
-              className="bg-[#FF6B6B] border-4 border-black p-4 flex-row items-center justify-between shadow-[6px_6px_0px_0px_#000] active:translate-y-1 active:shadow-none mb-4"
-            >
-              <View className="flex-1 pr-3">
-                <Text className="font-black text-lg uppercase">
-                  Complete Vibe Quiz
-                </Text>
-                <Text className="font-bold text-xs uppercase text-black/70">
-                  Unlock personality type and social preference.
-                </Text>
-              </View>
-              <View className="bg-white border-2 border-black px-3 py-2">
-                <Text className="font-black text-sm uppercase">Start</Text>
-              </View>
-            </TouchableOpacity>
+          ) : (
+            <Text style={styles.bioText}>{displayBio || "No bio yet."}</Text>
           )}
 
-          <View className="bg-white border-2 border-black p-4 mb-4 shadow-[4px_4px_0px_0px_#000]">
-            <View className="flex-row items-center justify-between mb-4">
-              <View className="flex-row items-center gap-3">
-                <View className="bg-neo-violet p-2 border-2 border-black">
-                  <Bell size={20} color="#fff" />
+          {/* Interests */}
+          <Text style={[styles.sectionLabel, { marginTop: C.Space.xl }]}>Interests</Text>
+          {isEditing ? (
+            <TextInput
+              value={form.interests}
+              onChangeText={(t) => setForm({ ...form, interests: t })}
+              style={styles.interestInput}
+              placeholder="Art, Music, Tech, …"
+              placeholderTextColor={C.textTertiary}
+            />
+          ) : interestList.length > 0 ? (
+            <View style={styles.tagsRow}>
+              {interestList.map((tag) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
                 </View>
-                <Text className="font-bold text-lg uppercase">
-                  Notifications
-                </Text>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.bioText}>No interests added yet.</Text>
+          )}
+        </ClayCard>
+
+        {/* ── Student verification section ── */}
+        {isVerified ? (
+          <View style={styles.verifiedBanner}>
+            <LinearGradient colors={C.Gradients.green} style={styles.verifiedBannerGrad}>
+              <BadgeCheck size={24} color="#fff" strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.verifiedBannerTitle}>Student Verified</Text>
+                <Text style={styles.verifiedBannerSub}>Student-only spaces are unlocked</Text>
               </View>
-              <Switch
-                value={userSettings?.push_notifications ?? false}
-                onValueChange={toggleNotification}
-                trackColor={{ false: "#eee", true: "#000" }}
-                thumbColor={userSettings?.push_notifications ? "#fff" : "#000"}
-              />
-            </View>
-            <View className="h-2 bg-gray-100 w-full mb-2">
-              <View className="h-full bg-neo-green" style={{ width: "75%" }} />
-            </View>
-            <Text className="text-xs font-bold uppercase text-gray-400">
-              System Status: Nominal
-            </Text>
+            </LinearGradient>
           </View>
-
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="bg-neo-red border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none"
-          >
-            <LogOut size={20} color="#000" strokeWidth={3} />
-            <Text className="font-black text-lg uppercase">Log Out</Text>
+        ) : isPending ? (
+          <View style={styles.pendingBanner}>
+            <ShieldCheck size={22} color={C.accentAmber} strokeWidth={2} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pendingTitle}>Verification in review</Text>
+              <Text style={styles.pendingBody}>We'll notify you once approved.</Text>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity onPress={handleVerify} activeOpacity={0.85} style={styles.studentCTA}>
+            <ClayCard elevated radius={C.Radii.xxl} padding={C.Space.xl}>
+              <View style={styles.studentCTAInner}>
+                <View style={styles.studentCTAIcon}>
+                  <GraduationCap size={24} color={C.accent} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.studentCTATitle}>Are you a student?</Text>
+                  <Text style={styles.studentCTABody}>
+                    Verify your student status to unlock exclusive hangouts and safer spaces.
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.studentCTABtn}>
+                <Text style={styles.studentCTABtnText}>Get verified →</Text>
+              </View>
+            </ClayCard>
           </TouchableOpacity>
+        )}
 
+        {/* ── Personality quiz nudge ── */}
+        {needsQuiz && (
+          <TouchableOpacity
+            onPress={() => router.push("/settings/personality-quiz" as any)}
+            activeOpacity={0.85}
+            style={{ marginHorizontal: C.Space.xl, marginBottom: C.Space.lg }}
+          >
+            <LinearGradient
+              colors={C.Gradients.pink}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.quizBanner}
+            >
+              <Star size={22} color="#fff" strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quizTitle}>Discover your vibe</Text>
+                <Text style={styles.quizBody}>Take the personality quiz to unlock your type.</Text>
+              </View>
+              <Text style={styles.quizArrow}>→</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* ── Archive tiles ── */}
+        <Text style={styles.sectionHeading}>My Space</Text>
+        <View style={styles.tilesRow}>
+          {[
+            { label: "Hangouts", icon: Trophy, color: C.Gradients.amber, onPress: () => router.push("/my-events" as any) },
+            { label: "Host", icon: Star, color: C.Gradients.primary, onPress: () => router.push("/host/dashboard" as any) },
+          ].map((tile) => (
+            <TouchableOpacity key={tile.label} onPress={tile.onPress} style={styles.tile} activeOpacity={0.85}>
+              <LinearGradient colors={tile.color} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tileGrad}>
+                <tile.icon size={24} color="#fff" strokeWidth={2} />
+                <Text style={styles.tileLabel}>{tile.label}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Settings ── */}
+        <Text style={styles.sectionHeading}>Settings</Text>
+        <ClayCard style={styles.settingsCard}>
+          <View style={styles.settingRow}>
+            <View style={styles.settingIconWrap}>
+              <Bell size={18} color={C.accent} strokeWidth={2} />
+            </View>
+            <Text style={styles.settingLabel}>Push notifications</Text>
+            <Switch
+              value={userSettings?.push_notifications ?? false}
+              onValueChange={toggleNotification}
+              trackColor={{ false: "#E5E7EB", true: C.accentLight }}
+              thumbColor={userSettings?.push_notifications ? C.accent : "#9CA3AF"}
+            />
+          </View>
+        </ClayCard>
+
+        {/* ── Danger zone ── */}
+        <View style={styles.dangerZone}>
+          <ClayButton
+            onPress={handleLogout}
+            variant="secondary"
+            fullWidth
+            size="md"
+            style={{ marginBottom: 10 }}
+          >
+            <LogOut size={16} color={C.textPrimary} strokeWidth={2} />
+            {"  "}Sign Out
+          </ClayButton>
           <TouchableOpacity
             onPress={() => setShowDeleteModal(true)}
-            className="mt-3 border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none bg-black"
+            style={styles.deleteBtn}
           >
-            <AlertTriangle size={20} color="#fff" strokeWidth={3} />
-            <Text className="font-black text-lg uppercase text-white">Delete Account</Text>
+            <AlertTriangle size={14} color={C.error} strokeWidth={2} />
+            <Text style={styles.deleteBtnText}>Delete account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Delete Account Confirmation Modal */}
+      {/* ── Delete confirmation modal ── */}
       <Modal
         visible={showDeleteModal}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          setShowDeleteModal(false);
-          setDeleteConfirmText("");
-        }}
+        onRequestClose={() => { setShowDeleteModal(false); setDeleteConfirmText(""); }}
       >
-        <View className="flex-1 bg-black/60 items-center justify-center px-6">
-          <View className="bg-white border-4 border-black w-full p-6 shadow-[8px_8px_0px_0px_#000]">
-            <Text className="text-2xl font-black uppercase mb-1">Delete Account</Text>
-            <Text className="text-sm font-bold text-gray-500 uppercase mb-4">
-              This action is permanent and cannot be undone.
-            </Text>
-            <Text className="font-bold mb-2">
-              Type <Text className="text-red-600 font-black">delete</Text> to confirm:
+        <View style={styles.modalOverlay}>
+          <ClayCard elevated radius={C.Radii.xxl} padding={C.Space.xxl} style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete account</Text>
+            <Text style={styles.modalBody}>This is permanent and cannot be undone.</Text>
+            <Text style={styles.modalPrompt}>
+              Type <Text style={{ color: C.error, fontFamily: C.Fonts.bodyBold }}>delete</Text> to confirm:
             </Text>
             <TextInput
               value={deleteConfirmText}
@@ -700,41 +463,410 @@ export default function ProfileIndex() {
               placeholder="delete"
               autoCapitalize="none"
               autoCorrect={false}
-              className="border-2 border-black p-3 font-mono text-base mb-6"
+              style={styles.modalInput}
             />
-            <View className="flex-row gap-3">
+            <View style={styles.modalActions}>
               <TouchableOpacity
-                onPress={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmText("");
-                }}
-                className="flex-1 bg-white border-2 border-black p-3 items-center shadow-[3px_3px_0px_0px_#000]"
+                onPress={() => { setShowDeleteModal(false); setDeleteConfirmText(""); }}
+                style={styles.modalCancelBtn}
               >
-                <Text className="font-black uppercase">Cancel</Text>
+                <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleDeleteAccount}
                 disabled={deleteConfirmText.toLowerCase() !== "delete" || isDeleting}
-                className="flex-1 border-2 border-black p-3 items-center shadow-[3px_3px_0px_0px_#000]"
-                style={{
-                  backgroundColor:
-                    deleteConfirmText.toLowerCase() === "delete" ? "#000" : "#ccc",
-                }}
+                style={[
+                  styles.modalConfirmBtn,
+                  { opacity: deleteConfirmText.toLowerCase() === "delete" ? 1 : 0.4 },
+                ]}
               >
-                <Text
-                  className="font-black uppercase"
-                  style={{
-                    color:
-                      deleteConfirmText.toLowerCase() === "delete" ? "#fff" : "#888",
-                  }}
-                >
-                  {isDeleting ? "Deleting..." : "Confirm Delete"}
+                <Text style={styles.modalConfirmText}>
+                  {isDeleting ? "Deleting…" : "Delete"}
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ClayCard>
         </View>
       </Modal>
-    </View>
+    </ClayBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  loader: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.canvas, gap: 20 },
+  loaderLogout: { paddingHorizontal: 24, paddingVertical: 12, backgroundColor: C.accentMuted, borderRadius: C.Radii.lg },
+  loaderLogoutText: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.base, color: C.accent },
+
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: C.Space.xl,
+    paddingBottom: 14,
+    backgroundColor: "rgba(244,241,250,0.92)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.08)",
+  },
+  headerTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: C.Radii.md,
+    backgroundColor: C.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  headerActionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: C.Radii.md,
+    backgroundColor: C.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  scroll: {
+    paddingBottom: 60,
+  },
+
+  // ── Avatar Hero ──
+  avatarHero: {
+    alignItems: "center",
+    paddingTop: C.Space.xxl,
+    paddingBottom: C.Space.xl,
+    gap: C.Space.lg,
+  },
+  avatarWrap: { position: "relative" },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: C.Radii.full,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: C.surface,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  avatarInitial: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 38,
+    color: "#fff",
+  },
+  avatarEditOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: C.Radii.full,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifiedPip: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 26,
+    height: 26,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentGreen,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: C.surface,
+  },
+  heroText: { alignItems: "center", gap: 6 },
+  nameText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xxl,
+    color: C.textPrimary,
+  },
+  nameInput: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xxl,
+    color: C.textPrimary,
+    textAlign: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: C.accentLight,
+    paddingVertical: 4,
+    minWidth: 160,
+  },
+  personalityBadge: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  personalityText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: C.accent,
+    letterSpacing: 0.5,
+  },
+
+  // ── Bio card ──
+  section: {
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+  },
+  sectionLabel: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  bioText: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    lineHeight: C.FontSizes.base * 1.6,
+  },
+  bioInput: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    lineHeight: C.FontSizes.base * 1.6,
+    backgroundColor: "#F0EBF8",
+    borderRadius: C.Radii.md,
+    padding: C.Space.md,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  interestInput: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    backgroundColor: "#F0EBF8",
+    borderRadius: C.Radii.md,
+    padding: C.Space.md,
+  },
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  tagText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.accent,
+  },
+
+  // ── Student section ──
+  verifiedBanner: {
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: C.accentGreen,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  verifiedBannerGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: C.Space.xl,
+    gap: C.Space.lg,
+  },
+  verifiedBannerTitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.lg, color: "#fff" },
+  verifiedBannerSub: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: "rgba(255,255,255,0.8)" },
+  pendingBanner: {
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+    backgroundColor: C.amberMuted,
+    borderRadius: C.Radii.xl,
+    padding: C.Space.xl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: C.Space.lg,
+  },
+  pendingTitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.base, color: C.textPrimary },
+  pendingBody: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: C.textSecondary },
+  studentCTA: {
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+  },
+  studentCTAInner: { flexDirection: "row", alignItems: "flex-start", gap: C.Space.lg, marginBottom: C.Space.lg },
+  studentCTAIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: C.Radii.md,
+    backgroundColor: C.accentMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  studentCTATitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.lg, color: C.textPrimary },
+  studentCTABody: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: C.textSecondary, lineHeight: C.FontSizes.sm * 1.5 },
+  studentCTABtn: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    alignSelf: "flex-start",
+  },
+  studentCTABtnText: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.sm, color: C.accent },
+
+  // ── Quiz banner ──
+  quizBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: C.Space.lg,
+    borderRadius: C.Radii.xl,
+    padding: C.Space.xl,
+    shadowColor: C.accentPink,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.20,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  quizTitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.base, color: "#fff" },
+  quizBody: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: "rgba(255,255,255,0.8)" },
+  quizArrow: { fontFamily: C.Fonts.heading, fontSize: 24, color: "#fff" },
+
+  // ── Tiles ──
+  sectionHeading: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.lg,
+    color: C.textPrimary,
+    paddingHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+    marginTop: C.Space.lg,
+  },
+  tilesRow: {
+    flexDirection: "row",
+    paddingHorizontal: C.Space.xl,
+    gap: C.Space.lg,
+    marginBottom: C.Space.lg,
+  },
+  tile: {
+    flex: 1,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  tileGrad: {
+    padding: C.Space.xl,
+    alignItems: "center",
+    gap: C.Space.sm,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.50)",
+    borderLeftColor: "rgba(255,255,255,0.30)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  tileLabel: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.sm, color: "#fff" },
+
+  // ── Settings ──
+  settingsCard: {
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: C.Space.lg,
+  },
+  settingIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: C.Radii.md,
+    backgroundColor: C.accentMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingLabel: {
+    flex: 1,
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+
+  // ── Danger ──
+  dangerZone: {
+    paddingHorizontal: C.Space.xl,
+    paddingBottom: 40,
+    gap: 8,
+    alignItems: "center",
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+  },
+  deleteBtnText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.error,
+  },
+
+  // ── Delete modal ──
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(51,47,58,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  modalCard: { width: "100%" },
+  modalTitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.xl, color: C.textPrimary, marginBottom: 4 },
+  modalBody: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: C.textSecondary, marginBottom: 16 },
+  modalPrompt: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.base, color: C.textPrimary, marginBottom: 8 },
+  modalInput: {
+    backgroundColor: "#EFEBF5",
+    borderRadius: C.Radii.lg,
+    padding: C.Space.lg,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    marginBottom: 20,
+  },
+  modalActions: { flexDirection: "row", gap: 10 },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: C.Radii.lg,
+    backgroundColor: "#EFEBF5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelText: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.base, color: C.textSecondary },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: C.Radii.lg,
+    backgroundColor: C.error,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalConfirmText: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.base, color: "#fff" },
+});

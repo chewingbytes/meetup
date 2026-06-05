@@ -268,7 +268,7 @@ export default function CreateEvent() {
       .then(async () => {
         const { fetchEvents } = useEventStore.getState();
         await fetchEvents(true);
-        Alert.alert("SUCCESS", "Event created!");
+        Alert.alert("SUCCESS", "Hangout created!");
         router.push("/");
       })
       .catch((e: any) => setError(e?.message || "Failed to create event."))
@@ -587,7 +587,7 @@ export default function CreateEvent() {
 
           {/* Paid */}
           <View className="flex-row justify-between items-center mb-4 pb-4 border-b-2 border-gray-200">
-            <Text className="font-black uppercase">Paid Event</Text>
+            <Text className="font-black uppercase">Paid Hangout</Text>
             <Switch
               value={isPaid}
               onValueChange={setIsPaid}
@@ -683,7 +683,7 @@ export default function CreateEvent() {
             <NeoButtonLoader />
           ) : (
             <Text className="font-black uppercase text-2xl text-white">
-              🚀 Launch Event
+              🚀 Launch Hangout
             </Text>
           )}
         </TouchableOpacity>

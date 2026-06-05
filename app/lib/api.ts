@@ -135,6 +135,11 @@ export const createEvent = (body: any) =>
     body: body instanceof FormData ? body : JSON.stringify(body),
   });
 
+export const deleteEvent = (event_id: string, user_id: string) =>
+  request(`/events/${event_id}?user_id=${encodeURIComponent(user_id)}`, {
+    method: "DELETE",
+  });
+
 export const joinEvent = (user_id: string, event_id: string) =>
   request("/events/join", {
     method: "POST",

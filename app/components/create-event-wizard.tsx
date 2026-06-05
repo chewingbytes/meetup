@@ -1,48 +1,33 @@
 /**
- * CreateEventWizard
+ * CreateEventWizard — simplified 4-step event creation.
  *
- * Step-by-step event creation flow rendered as a full-screen overlay.
+ * Steps: Basics → When → Where → Review & Launch
  *
- * Steps:
- *  1 — Basics   (title, community, cover)
- *  2 — When     (start/end date + time)
- *  3 — Where    (map-pin drop OR Nominatim address search)
- *  4 — Details  (description, capacity, paid, approval)
- *  5 — Review   (summary → launch)
- *
- * Coordinates requirement:
- *   Events need location_lat + location_lng to show as map pins.
- *   This wizard collects those via MapView tap (step 3).
- *   The existing createEvent API payload is extended with
- *   location_lat + location_lng fields.
+ * Removed: community picker, paid toggle, visibility toggle, capacity.
+ * Description is optional. All styled with the clay design system.
  */
 
-import { NeoButtonLoader } from "@/components/ui/neo-loader";
-import { createEvent as createEventApi, getCommunities } from "@/lib/api";
+import { createEvent as createEventApi } from "@/lib/api";
+import { CATEGORIES } from "@/utils/categories";
 import { useAuth } from "@/lib/authContext";
 import { useEventStore } from "@/lib/stores/eventStore";
+import { C } from "@/theme/clay";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
+import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
+import { LinearGradient } from "expo-linear-gradient";
 import {
-  Camera,
   Check,
   ChevronLeft,
   ChevronRight,
   Clock,
-  DollarSign,
   MapPin,
   Search,
   Upload,
-  Users,
   X,
 } from "lucide-react-native";
-import React, {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -52,6 +37,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -60,10 +46,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+// Note: Modal is kept for the internal time-picker only. The wizard root is NOT a Modal.
 import MapView, { Marker } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width: W, height: H } = Dimensions.get("window");
+const { width: W, height: SCREEN_H } = Dimensions.get("window");
+const SHEET_H = SCREEN_H * 0.74;
 
 const SINGAPORE = {
   latitude: 1.3521,
@@ -81,27 +69,22 @@ interface AddressSuggestion {
 
 interface WizardForm {
   name: string;
-  communityId: string | null;
+  category: string;
   cover: string | null;
-  startDate: Date | null;      // which day (today … +6 days)
-  startAnytime: boolean;       // true = no specific time
-  startTime: Date | null;      // only used when !startAnytime
+  startDate: Date | null;
+  startAnytime: boolean;
+  startTime: Date | null;
   locationLat: number | null;
   locationLng: number | null;
   locationText: string;
   locationInstructions: string;
   description: string;
   requireApproval: boolean;
-  isPaid: boolean;
-  price: string;
-  isPublic: boolean;
-  unlimited: boolean;
-  capacity: string;
 }
 
 const BLANK: WizardForm = {
   name: "",
-  communityId: null,
+  category: "",
   cover: null,
   startDate: null,
   startAnytime: true,
@@ -112,17 +95,11 @@ const BLANK: WizardForm = {
   locationInstructions: "",
   description: "",
   requireApproval: false,
-  isPaid: false,
-  price: "0",
-  isPublic: true,
-  unlimited: true,
-  capacity: "",
 };
 
 const TOTAL_STEPS = 5;
-const STEP_LABELS = ["BASICS", "WHEN", "WHERE", "DETAILS", "REVIEW"];
+const STEP_LABELS = ["Basics", "Type", "When", "Where", "Review"];
 
-// ── Nominatim geocode search (no API key needed) ──────────────────────────────
 async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
   if (query.trim().length < 3) return [];
   try {
@@ -153,32 +130,23 @@ async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
 }
 
 interface Props {
-  visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function CreateEventWizard({
-  visible,
-  onClose,
-  onSuccess,
-}: Props) {
+export default function CreateEventWizard({ onClose, onSuccess }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardForm>(BLANK);
-  const [communities, setCommunities] = useState<{ id: string; name: string }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // time picker modal (date is chosen via 7-day chips; only need a time modal)
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempTime, setTempTime] = useState<Date>(new Date());
 
-  // location step state
   const [locationTab, setLocationTab] = useState<"map" | "search">("map");
-  // Uncontrolled map: read position via ref, not state (avoids stale-closure issues)
   const mapViewRef = useRef<any>(null);
   const mapRegionRef = useRef(SINGAPORE);
   const [pinCoords, setPinCoords] = useState<{
@@ -188,37 +156,40 @@ export default function CreateEventWizard({
   const [reverseAddr, setReverseAddr] = useState<string>("");
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [addrQuery, setAddrQuery] = useState("");
-  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>([]);
+  const [addrSuggestions, setAddrSuggestions] = useState<AddressSuggestion[]>(
+    [],
+  );
   const [addrSearching, setAddrSearching] = useState(false);
   const addrTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // slide animation between steps
   const slideX = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(1 / TOTAL_STEPS)).current;
 
-  // Load communities when wizard opens
+  // Reset every time the component mounts (parent only renders it when opening)
   useEffect(() => {
-    if (!visible) return;
     setStep(1);
     setForm(BLANK);
     setSubmitError(null);
     setPinCoords(null);
+    setReverseAddr("");
     setAddrQuery("");
     setAddrSuggestions([]);
+    progressAnim.setValue(1 / TOTAL_STEPS);
+  }, []);
 
-    getCommunities()
-      .then((data: any) => {
-        const list = Array.isArray(data) ? data : data?.communities ?? [];
-        setCommunities(list);
-      })
-      .catch(() => setCommunities([]));
-  }, [visible]);
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: step / TOTAL_STEPS,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [step]);
 
-  // Animate to next/prev step
   const animateStep = useCallback(
     (direction: 1 | -1, nextStep: number) => {
-      const outTo = -direction * W;
+      Haptics.selectionAsync();
       Animated.timing(slideX, {
-        toValue: outTo,
+        toValue: -direction * W,
         duration: 220,
         useNativeDriver: true,
       }).start(() => {
@@ -232,7 +203,7 @@ export default function CreateEventWizard({
         }).start();
       });
     },
-    [slideX]
+    [slideX],
   );
 
   function goNext() {
@@ -243,18 +214,18 @@ export default function CreateEventWizard({
     if (step > 1) animateStep(-1, step - 1);
   }
 
-  // ── Validation per step ───────────────────────────────────────────────────
   function stepValid(s: number): boolean {
-    if (s === 1)
-      return form.name.trim().length >= 3 && form.communityId !== null;
-    if (s === 2)
-      return form.startDate !== null && (form.startAnytime || form.startTime !== null);
-    if (s === 3) return form.locationLat !== null;
-    if (s === 4) return form.description.trim().length >= 10;
-    return true;
+    if (s === 1) return form.name.trim().length >= 3;
+    if (s === 2) return form.category !== "";
+    if (s === 3)
+      return (
+        form.startDate !== null &&
+        (form.startAnytime || form.startTime !== null)
+      );
+    if (s === 4) return form.locationLat !== null;
+    return true; // Review step: always can launch
   }
 
-  // ── Map pin drop ─────────────────────────────────────────────────────────
   async function confirmMapPin() {
     const lat = mapRegionRef.current.latitude;
     const lng = mapRegionRef.current.longitude;
@@ -265,12 +236,7 @@ export default function CreateEventWizard({
         latitude: lat,
         longitude: lng,
       });
-      const addr = [
-        place.name,
-        place.street,
-        place.subregion,
-        place.city,
-      ]
+      const addr = [place.name, place.street, place.subregion, place.city]
         .filter(Boolean)
         .join(", ");
       const displayAddr = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -295,7 +261,6 @@ export default function CreateEventWizard({
     }
   }
 
-  // ── Nominatim address search ──────────────────────────────────────────────
   function handleAddrChange(text: string) {
     setAddrQuery(text);
     if (addrTimerRef.current) clearTimeout(addrTimerRef.current);
@@ -332,7 +297,6 @@ export default function CreateEventWizard({
     setReverseAddr(suggestion.shortName || suggestion.displayName);
   }
 
-  // ── Image picker ─────────────────────────────────────────────────────────
   async function pickCover() {
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -343,7 +307,6 @@ export default function CreateEventWizard({
     if (!r.canceled) setForm((f) => ({ ...f, cover: r.assets[0].uri }));
   }
 
-  // ── Time picker helpers ───────────────────────────────────────────────────
   function openTimePicker() {
     setTempTime(form.startTime ?? new Date());
     setShowTimePicker(true);
@@ -354,55 +317,51 @@ export default function CreateEventWizard({
     setShowTimePicker(false);
   }
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit() {
     setIsSubmitting(true);
     setSubmitError(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const community = communities.find((c) => c.id === form.communityId);
-      if (!community) throw new Error("Community not found.");
-
-      // Build start_at from chosen day + time (or start of day if anytime)
       let start_at: string | undefined;
-      let end_at: string | undefined;
-      if (form.startDate) {
-        const d = new Date(form.startDate);
-        if (!form.startAnytime && form.startTime) {
-          d.setHours(form.startTime.getHours(), form.startTime.getMinutes(), 0, 0);
-        } else {
-          d.setHours(0, 0, 0, 0);
-        }
-        start_at = d.toISOString();
-        const endD = new Date(form.startDate);
-        endD.setHours(23, 59, 0, 0);
-        end_at = endD.toISOString();
-      }
+      // let end_at: string | undefined;
+      // if (form.startDate) {
+      //   const d = new Date(form.startDate);
+      //   if (!form.startAnytime && form.startTime) {
+      //     d.setHours(form.startTime.getHours(), form.startTime.getMinutes(), 0, 0);
+      //   } else {
+      //     d.setHours(0, 0, 0, 0);
+      //   }
+      //   start_at = d.toISOString();
+      //   const endD = new Date(form.startDate);
+      //   endD.setHours(23, 59, 0, 0);
+      //   end_at = endD.toISOString();
+      // }
+
+      console.log("creating form:", form);
 
       const payload: any = {
-        communityId: community.id,
         organizerId: user?.id ?? null,
         name: form.name.trim(),
         cover_url: form.cover ?? undefined,
         start_at,
-        end_at,
+        end_at: null,
         location_text: form.locationText,
         location_lat: form.locationLat,
         location_lng: form.locationLng,
         location_instructions: form.locationInstructions.trim() || undefined,
-        description: form.description,
+        category: form.category,
+        description: form.description.trim() || undefined,
         require_approval: form.requireApproval,
-        is_paid: form.isPaid,
-        price: form.isPaid ? Number(form.price) : 0,
-        visibility: form.isPublic ? "public" : "private",
-        capacity: form.unlimited ? null : Number(form.capacity) || null,
+        is_paid: false,
+        price: 0,
+        visibility: "public",
+        capacity: null,
       };
 
       await createEventApi(payload);
-
-      // Force-refresh the event store so the new pin appears immediately
       const { fetchEvents } = useEventStore.getState();
       await fetchEvents(true);
-
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onSuccess();
     } catch (e: any) {
       setSubmitError(e?.message ?? "Failed to create event.");
@@ -414,14 +373,14 @@ export default function CreateEventWizard({
   function fmtStartDate() {
     if (!form.startDate) return "—";
     return form.startDate.toLocaleDateString("en-SG", {
-      weekday: "short",
-      month: "short",
+      weekday: "long",
+      month: "long",
       day: "numeric",
     });
   }
 
   function fmtStartTime() {
-    if (form.startAnytime) return "Anytime";
+    if (form.startAnytime) return "Anytime during the day";
     if (!form.startTime) return "—";
     return form.startTime.toLocaleTimeString("en-SG", {
       hour: "2-digit",
@@ -429,27 +388,32 @@ export default function CreateEventWizard({
     });
   }
 
-  // ── Render each step ──────────────────────────────────────────────────────
   function renderStep() {
     switch (step) {
       case 1:
-        return <Step1Basics form={form} setForm={setForm} communities={communities} pickCover={pickCover} />;
-      case 2:
         return (
-          <Step2When
+          <Step1Basics form={form} setForm={setForm} pickCover={pickCover} />
+        );
+      case 2:
+        return <Step2Category form={form} setForm={setForm} />;
+      case 3:
+        return (
+          <Step3When
             form={form}
             setForm={setForm}
             onOpenTimePicker={openTimePicker}
           />
         );
-      case 3:
+      case 4:
         return (
-          <Step3Where
+          <Step4Where
             form={form}
             locationTab={locationTab}
             setLocationTab={setLocationTab}
             mapViewRef={mapViewRef}
-            onRegionChange={(r: any) => { mapRegionRef.current = r; }}
+            onRegionChange={(r: any) => {
+              mapRegionRef.current = r;
+            }}
             pinCoords={pinCoords}
             reverseAddr={reverseAddr}
             isReverseGeocoding={isReverseGeocoding}
@@ -462,13 +426,11 @@ export default function CreateEventWizard({
             setForm={setForm}
           />
         );
-      case 4:
-        return <Step4Details form={form} setForm={setForm} />;
       case 5:
         return (
           <Step5Review
             form={form}
-            communities={communities}
+            setForm={setForm}
             startDateStr={fmtStartDate()}
             startTimeStr={fmtStartTime()}
             submitError={submitError}
@@ -479,194 +441,302 @@ export default function CreateEventWizard({
     }
   }
 
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={onClose}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
     >
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={step === 1 ? onClose : goBack} style={styles.headerBtn}>
-            {step === 1 ? (
-              <X size={20} color="#000" strokeWidth={3} />
-            ) : (
-              <ChevronLeft size={20} color="#000" strokeWidth={3} />
-            )}
-          </TouchableOpacity>
+      {/* Drag handle */}
+      <View style={styles.sheetHandle} />
 
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>{STEP_LABELS[step - 1]}</Text>
-            <View style={styles.stepDots}>
-              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-                <View
-                  key={i}
-                  style={[styles.dot, i + 1 === step && styles.dotActive, i + 1 < step && styles.dotDone]}
-                />
-              ))}
-            </View>
-          </View>
+      {/* ── Header ── */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={step === 1 ? onClose : goBack}
+          style={styles.headerBtn}
+          activeOpacity={0.7}
+        >
+          {step === 1 ? (
+            <X size={18} color={C.textPrimary} strokeWidth={2.5} />
+          ) : (
+            <ChevronLeft size={18} color={C.textPrimary} strokeWidth={2.5} />
+          )}
+        </TouchableOpacity>
 
-          <View style={styles.headerBtn}>
-            <Text style={styles.stepCounter}>{step}/{TOTAL_STEPS}</Text>
-          </View>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerStep}>Step {step} of {TOTAL_STEPS}</Text>
+          <Text style={styles.headerTitle}>{STEP_LABELS[step - 1]}</Text>
         </View>
 
-        {/* ── Step content ── */}
-        <Animated.View style={[styles.stepWrap, { transform: [{ translateX: slideX }] }]}>
-          {renderStep()}
-        </Animated.View>
+        <View style={styles.stepPill}>
+          <Text style={styles.stepPillText}>{step}/{TOTAL_STEPS}</Text>
+        </View>
+      </View>
 
-        {/* ── Footer nav ── */}
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-          {step < TOTAL_STEPS ? (
-            <TouchableOpacity
-              onPress={goNext}
-              disabled={!stepValid(step)}
-              style={[styles.nextBtn, !stepValid(step) && styles.nextBtnDisabled]}
-              activeOpacity={0.8}
+      {/* Progress bar */}
+      <View style={styles.progressTrack}>
+        <Animated.View style={[styles.progressFill, { width: progressWidth as any }]} />
+      </View>
+
+      {/* ── Step content ── */}
+      <Animated.View style={[styles.stepWrap, { transform: [{ translateX: slideX }] }]}>
+        {renderStep()}
+      </Animated.View>
+
+      {/* ── Footer ── */}
+      <View style={styles.footer}>
+        {step < TOTAL_STEPS ? (
+          <Pressable
+            onPress={stepValid(step) ? goNext : undefined}
+            style={({ pressed }) => [
+              styles.nextBtn,
+              !stepValid(step) && styles.nextBtnDisabled,
+              pressed && stepValid(step) && { opacity: 0.85 },
+            ]}
+          >
+            <LinearGradient
+              colors={stepValid(step) ? C.Gradients.primary : (["#E5E1F0", "#E5E1F0"] as const)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.nextBtnGrad}
             >
-              <Text style={styles.nextBtnText}>
-                NEXT: {STEP_LABELS[step] ?? "REVIEW"}
+              <Text style={[styles.nextBtnText, !stepValid(step) && styles.nextBtnTextDisabled]}>
+                Next: {STEP_LABELS[step]}
               </Text>
-              <ChevronRight size={18} color="#000" strokeWidth={3} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              style={[styles.launchBtn, isSubmitting && styles.launchBtnDisabled]}
-              activeOpacity={0.8}
+              <ChevronRight size={18} color={stepValid(step) ? "#fff" : C.textTertiary} strokeWidth={2.5} />
+            </LinearGradient>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={isSubmitting ? undefined : handleSubmit}
+            style={({ pressed }) => [styles.launchBtn, pressed && { opacity: 0.88 }]}
+          >
+            <LinearGradient
+              colors={C.Gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.launchBtnGrad}
             >
               {isSubmitting ? (
-                <NeoButtonLoader color="#000" />
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <Check size={20} color="#000" strokeWidth={3} />
-                  <Text style={styles.launchBtnText}>LAUNCH EVENT</Text>
+                  <Check size={20} color="#fff" strokeWidth={2.5} />
+                  <Text style={styles.launchBtnText}>Launch Hangout</Text>
                 </>
               )}
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Time picker modal — shown over the wizard */}
-        <Modal visible={showTimePicker} transparent animationType="fade">
-          <View style={styles.timePickerOverlay}>
-            <View style={styles.timePickerSheet}>
-              <View style={styles.timePickerHeader}>
-                <TouchableOpacity onPress={() => setShowTimePicker(false)} style={styles.timePickerBtn}>
-                  <Text style={styles.timePickerCancel}>CANCEL</Text>
-                </TouchableOpacity>
-                <Text style={styles.timePickerTitle}>SET TIME</Text>
-                <TouchableOpacity onPress={confirmTime} style={styles.timePickerBtn}>
-                  <Text style={styles.timePickerDone}>DONE</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={tempTime}
-                mode="time"
-                display="spinner"
-                onChange={(_, val) => { if (val) setTempTime(val); }}
-              />
-            </View>
-          </View>
-        </Modal>
+            </LinearGradient>
+          </Pressable>
+        )}
       </View>
-    </Modal>
+
+      {/* ── Internal time-picker modal ── */}
+      <Modal visible={showTimePicker} transparent animationType="fade">
+        <View style={styles.timePickerOverlay}>
+          <View style={styles.timePickerSheet}>
+            <View style={styles.timePickerHeader}>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={styles.timePickerActionBtn}>
+                <Text style={styles.timePickerCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.timePickerTitle}>Set time</Text>
+              <TouchableOpacity onPress={confirmTime} style={styles.timePickerActionBtn}>
+                <Text style={styles.timePickerDone}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempTime}
+              mode="time"
+              display="spinner"
+              onChange={(_, val) => { if (val) setTempTime(val); }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step sub-components
+// Step 1 — Basics
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Step1Basics({
   form,
   setForm,
-  communities,
   pickCover,
 }: {
   form: WizardForm;
   setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
-  communities: { id: string; name: string }[];
   pickCover: () => void;
 }) {
   return (
     <ScrollView
-      contentContainerStyle={stepStyles.scroll}
+      contentContainerStyle={step.scroll}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      {/* Cover image */}
-      <TouchableOpacity onPress={pickCover} style={stepStyles.coverPicker} activeOpacity={0.8}>
+      {/* <TouchableOpacity onPress={pickCover} style={step.coverBtn} activeOpacity={0.85}>
         {form.cover ? (
-          <Image source={{ uri: form.cover }} style={stepStyles.coverImage} resizeMode="cover" />
+          <>
+            <Image source={{ uri: form.cover }} style={step.coverImg} resizeMode="cover" />
+            <TouchableOpacity
+              onPress={(e) => { e.stopPropagation(); setForm((f) => ({ ...f, cover: null })); }}
+              style={step.coverRemoveBtn}
+            >
+              <X size={14} color="#fff" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </>
         ) : (
-          <View style={stepStyles.coverPlaceholder}>
-            <Camera size={32} color="#000" strokeWidth={2.5} />
-            <Text style={stepStyles.coverPlaceholderText}>ADD COVER IMAGE</Text>
-            <Text style={stepStyles.coverPlaceholderSub}>Optional — 16:9 recommended</Text>
-          </View>
+          <LinearGradient colors={["#EDE9FE", "#F4F1FA"]} style={step.coverPlaceholder}>
+            <View style={step.coverIconWrap}>
+              <Upload size={24} color={C.accent} strokeWidth={2} />
+            </View>
+            <Text style={step.coverPlaceholderTitle}>Add cover photo</Text>
+            <Text style={step.coverPlaceholderSub}>Optional · 16:9 recommended</Text>
+          </LinearGradient>
         )}
-        {form.cover && (
-          <TouchableOpacity
-            onPress={(e) => { e.stopPropagation(); setForm((f) => ({ ...f, cover: null })); }}
-            style={stepStyles.coverRemove}
-          >
-            <X size={14} color="#000" strokeWidth={3} />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
-      <Label>Event Title *</Label>
+      {/* Title */}
+      <FieldLabel>hangout name *</FieldLabel>
       <TextInput
         value={form.name}
         onChangeText={(t) => setForm((f) => ({ ...f, name: t }))}
         placeholder="e.g. Friday Night Rooftop"
-        placeholderTextColor="#999"
-        style={stepStyles.textInput}
+        placeholderTextColor={C.textTertiary}
+        style={step.textInput}
         autoCapitalize="words"
+        returnKeyType="done"
       />
       {form.name.trim().length > 0 && form.name.trim().length < 3 && (
-        <Text style={stepStyles.hint}>Min 3 characters</Text>
+        <Text style={step.hint}>At least 3 characters</Text>
       )}
-
-      <Label>Host Community *</Label>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-        {communities.length === 0 ? (
-          <View style={stepStyles.noCommunityCard}>
-            <Text style={stepStyles.noCommunityText}>No communities found</Text>
-          </View>
-        ) : (
-          communities.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              onPress={() => setForm((f) => ({ ...f, communityId: c.id }))}
-              style={[
-                stepStyles.communityPill,
-                form.communityId === c.id && stepStyles.communityPillActive,
-              ]}
-            >
-              <Text
-                style={[
-                  stepStyles.communityPillText,
-                  form.communityId === c.id && stepStyles.communityPillTextActive,
-                ]}
-              >
-                {c.name}
-              </Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
     </ScrollView>
   );
 }
 
-function Step2When({
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 2 — Category
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Step2Category({
+  form,
+  setForm,
+}: {
+  form: WizardForm;
+  setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
+}) {
+  return (
+    <ScrollView
+      contentContainerStyle={step.scroll}
+      showsVerticalScrollIndicator={false}
+    >
+      <Text style={catStyles.title}>What kind of hangout is this?</Text>
+      <View style={catStyles.grid}>
+        {CATEGORIES.map((cat) => {
+          const isSelected = form.category === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => setForm((f) => ({ ...f, category: cat.id }))}
+              style={catStyles.tile}
+              activeOpacity={0.8}
+            >
+              {isSelected ? (
+                <LinearGradient
+                  colors={cat.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={catStyles.tileInner}
+                >
+                  <cat.Icon size={22} color="#fff" strokeWidth={2} />
+                  <Text style={catStyles.tileLabelActive}>{cat.label}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={catStyles.tileInnerInactive}>
+                  <cat.Icon size={22} color={C.textSecondary} strokeWidth={2} />
+                  <Text style={catStyles.tileLabel}>{cat.label}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
+}
+
+const catStyles = StyleSheet.create({
+  title: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.lg,
+    color: C.textPrimary,
+    marginBottom: C.Space.xl,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  tile: {
+    width: "48%",
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  tileInner: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    gap: 6,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.45)",
+    borderLeftColor: "rgba(255,255,255,0.25)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  tileInnerInactive: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
+  },
+  tileLabel: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    textAlign: "center",
+  },
+  tileLabelActive: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: "#fff",
+    textAlign: "center",
+  },
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 — When
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Step3When({
   form,
   setForm,
   onOpenTimePicker,
@@ -675,7 +745,6 @@ function Step2When({
   setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
   onOpenTimePicker: () => void;
 }) {
-  // Generate today + next 6 days
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -692,102 +761,149 @@ function Step2When({
     );
   }
 
-  const selectedDay = form.startDate;
-
   return (
-    <ScrollView contentContainerStyle={stepStyles.scroll} showsVerticalScrollIndicator={false}>
-      <Label>Pick a Day</Label>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-        {days.map((day, i) => {
-          const isSelected = selectedDay ? isSameDay(selectedDay, day) : false;
-          const isToday = i === 0;
-          const dayName = isToday
-            ? "TODAY"
-            : day.toLocaleDateString("en-SG", { weekday: "short" }).toUpperCase();
-          const dayNum = day.getDate();
-          const monthName = day.toLocaleDateString("en-SG", { month: "short" }).toUpperCase();
+    <ScrollView
+      contentContainerStyle={step.scroll}
+      showsVerticalScrollIndicator={false}
+    >
+      <FieldLabel>Pick a day</FieldLabel>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginBottom: 24 }}
+      >
+        <View style={{ flexDirection: "row", gap: 10, paddingRight: 16 }}>
+          {days.map((day, i) => {
+            const isSelected = form.startDate
+              ? isSameDay(form.startDate, day)
+              : false;
+            const isToday = i === 0;
+            const dayLabel = isToday
+              ? "Today"
+              : day.toLocaleDateString("en-SG", { weekday: "short" });
+            const dayNum = day.getDate();
+            const monthLabel = day.toLocaleDateString("en-SG", {
+              month: "short",
+            });
 
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => setForm((f) => ({ ...f, startDate: day }))}
-              style={[step2Styles.dayChip, isSelected && step2Styles.dayChipSelected]}
-              activeOpacity={0.8}
-            >
-              <Text style={[step2Styles.dayName, isSelected && step2Styles.dayNameSelected]}>
-                {dayName}
-              </Text>
-              <Text style={[step2Styles.dayNum, isSelected && step2Styles.dayNumSelected]}>
-                {dayNum}
-              </Text>
-              <Text style={[step2Styles.dayMonth, isSelected && step2Styles.dayMonthSelected]}>
-                {monthName}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={i}
+                onPress={() => setForm((f) => ({ ...f, startDate: day }))}
+                style={[when.dayChip, isSelected && when.dayChipActive]}
+                activeOpacity={0.8}
+              >
+                {isSelected ? (
+                  <LinearGradient
+                    colors={C.Gradients.primary}
+                    style={when.dayChipGrad}
+                  >
+                    <Text style={when.dayLabelActive}>{dayLabel}</Text>
+                    <Text style={when.dayNumActive}>{dayNum}</Text>
+                    <Text style={when.dayMonthActive}>{monthLabel}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={when.dayChipInner}>
+                    <Text style={when.dayLabel}>{dayLabel}</Text>
+                    <Text style={when.dayNum}>{dayNum}</Text>
+                    <Text style={when.dayMonth}>{monthLabel}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
 
-      <Label>Start Time</Label>
-      <View style={step2Styles.timeToggle}>
+      <FieldLabel>Start time</FieldLabel>
+      <View style={when.timeToggle}>
         <TouchableOpacity
           onPress={() => setForm((f) => ({ ...f, startAnytime: true }))}
-          style={[step2Styles.timeOption, form.startAnytime && step2Styles.timeOptionActive]}
+          style={[when.timeOption, form.startAnytime && when.timeOptionActive]}
           activeOpacity={0.8}
         >
-          <Text style={[step2Styles.timeOptionText, form.startAnytime && step2Styles.timeOptionTextActive]}>
-            ANYTIME
-          </Text>
-          <Text style={[step2Styles.timeOptionSub, form.startAnytime && { color: "#000" }]}>
-            No fixed time
-          </Text>
+          {form.startAnytime ? (
+            <LinearGradient
+              colors={C.Gradients.primary}
+              style={when.timeOptionGrad}
+            >
+              <Text style={when.timeOptionTextActive}>Anytime</Text>
+              <Text style={when.timeOptionSubActive}>No fixed time</Text>
+            </LinearGradient>
+          ) : (
+            <View style={when.timeOptionInner}>
+              <Text style={when.timeOptionText}>Anytime</Text>
+              <Text style={when.timeOptionSub}>No fixed time</Text>
+            </View>
+          )}
         </TouchableOpacity>
-
         <TouchableOpacity
           onPress={() => setForm((f) => ({ ...f, startAnytime: false }))}
-          style={[step2Styles.timeOption, !form.startAnytime && step2Styles.timeOptionActive]}
+          style={[when.timeOption, !form.startAnytime && when.timeOptionActive]}
           activeOpacity={0.8}
         >
-          <Text style={[step2Styles.timeOptionText, !form.startAnytime && step2Styles.timeOptionTextActive]}>
-            SPECIFIC
-          </Text>
-          <Text style={[step2Styles.timeOptionSub, !form.startAnytime && { color: "#000" }]}>
-            Set a time
-          </Text>
+          {!form.startAnytime ? (
+            <LinearGradient
+              colors={C.Gradients.primary}
+              style={when.timeOptionGrad}
+            >
+              <Text style={when.timeOptionTextActive}>Specific time</Text>
+              <Text style={when.timeOptionSubActive}>Pick a time</Text>
+            </LinearGradient>
+          ) : (
+            <View style={when.timeOptionInner}>
+              <Text style={when.timeOptionText}>Specific time</Text>
+              <Text style={when.timeOptionSub}>Pick a time</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
       {!form.startAnytime && (
         <TouchableOpacity
           onPress={onOpenTimePicker}
-          style={step2Styles.timeBtn}
+          style={when.timeBtn}
           activeOpacity={0.8}
         >
-          <Clock size={18} color="#000" strokeWidth={3} />
-          <Text style={step2Styles.timeBtnText}>
+          <Clock size={18} color={C.accent} strokeWidth={2} />
+          <Text style={when.timeBtnText}>
             {form.startTime
-              ? form.startTime.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })
-              : "TAP TO SET TIME"}
+              ? form.startTime.toLocaleTimeString("en-SG", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Tap to set time"}
           </Text>
+          <ChevronRight size={16} color={C.textSecondary} strokeWidth={2} />
         </TouchableOpacity>
       )}
 
-      {selectedDay && (
-        <View style={stepStyles.successCard}>
-          <Check size={14} color="#000" strokeWidth={3} />
-          <Text style={stepStyles.successText}>
-            {selectedDay.toLocaleDateString("en-SG", { weekday: "long", month: "long", day: "numeric" })}
-            {!form.startAnytime && form.startTime
-              ? ` at ${form.startTime.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}`
-              : " — Anytime"}
-          </Text>
+      {form.startDate && (
+        <View style={when.successCard}>
+          <LinearGradient colors={C.Gradients.green} style={when.successGrad}>
+            <Check size={14} color="#fff" strokeWidth={2.5} />
+            <Text style={when.successText}>
+              {form.startDate.toLocaleDateString("en-SG", {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+              })}
+              {!form.startAnytime && form.startTime
+                ? ` · ${form.startTime.toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}`
+                : " · Anytime"}
+            </Text>
+          </LinearGradient>
         </View>
       )}
     </ScrollView>
   );
 }
 
-function Step3Where({
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 3 — Where
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Step4Where({
   form,
   locationTab,
   setLocationTab,
@@ -820,35 +936,44 @@ function Step3Where({
   onSelectSuggestion: (s: AddressSuggestion) => void;
   setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
 }) {
-  const MAP_HEIGHT = H * 0.42;
+  const MAP_HEIGHT = 160;
 
   return (
     <View style={{ flex: 1 }}>
       {/* Tab selector */}
-      <View style={step3Styles.tabs}>
-        <TouchableOpacity
-          onPress={() => setLocationTab("map")}
-          style={[step3Styles.tab, locationTab === "map" && step3Styles.tabActive]}
-        >
-          <MapPin size={14} color={locationTab === "map" ? "#fff" : "#000"} strokeWidth={3} />
-          <Text style={[step3Styles.tabText, locationTab === "map" && step3Styles.tabTextActive]}>
-            DROP PIN
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setLocationTab("search")}
-          style={[step3Styles.tab, locationTab === "search" && step3Styles.tabActive]}
-        >
-          <Search size={14} color={locationTab === "search" ? "#fff" : "#000"} strokeWidth={3} />
-          <Text style={[step3Styles.tabText, locationTab === "search" && step3Styles.tabTextActive]}>
-            SEARCH ADDRESS
-          </Text>
-        </TouchableOpacity>
+      <View style={where.tabs}>
+        {(["map", "search"] as const).map((tab) => {
+          const isActive = locationTab === tab;
+          const label = tab === "map" ? "Drop pin" : "Search address";
+          const Icon = tab === "map" ? MapPin : Search;
+          return (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setLocationTab(tab)}
+              style={[where.tab, isActive && where.tabActive]}
+              activeOpacity={0.8}
+            >
+              {isActive ? (
+                <LinearGradient
+                  colors={C.Gradients.primary}
+                  style={where.tabGrad}
+                >
+                  <Icon size={14} color="#fff" strokeWidth={2.5} />
+                  <Text style={where.tabTextActive}>{label}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={where.tabInner}>
+                  <Icon size={14} color={C.textSecondary} strokeWidth={2} />
+                  <Text style={where.tabText}>{label}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {locationTab === "map" ? (
         <View style={{ flex: 1 }}>
-          {/* Map with crosshair */}
           <View style={{ height: MAP_HEIGHT, position: "relative" }}>
             <MapView
               ref={mapViewRef}
@@ -860,115 +985,142 @@ function Step3Where({
             >
               {pinCoords && (
                 <Marker
-                  coordinate={{ latitude: pinCoords.lat, longitude: pinCoords.lng }}
+                  coordinate={{
+                    latitude: pinCoords.lat,
+                    longitude: pinCoords.lng,
+                  }}
                   tracksViewChanges={false}
                 >
-                  <View style={step3Styles.confirmedPin}>
-                    <MapPin size={20} color="#FF6B6B" strokeWidth={3} />
+                  <View style={where.confirmedPin}>
+                    <LinearGradient
+                      colors={C.Gradients.primary}
+                      style={where.pinGrad}
+                    >
+                      <MapPin size={16} color="#fff" strokeWidth={2.5} />
+                    </LinearGradient>
                   </View>
                 </Marker>
               )}
             </MapView>
-
             {/* Crosshair */}
-            <View style={step3Styles.crosshairWrap} pointerEvents="none">
-              <View style={step3Styles.crosshairH} />
-              <View style={step3Styles.crosshairV} />
-              <View style={step3Styles.crosshairCenter} />
+            <View style={where.crosshairWrap} pointerEvents="none">
+              <View style={where.crosshairH} />
+              <View style={where.crosshairV} />
+              <View style={where.crosshairDot} />
             </View>
-
-            {/* Instruction badge */}
-            <View style={step3Styles.mapHint}>
-              <Text style={step3Styles.mapHintText}>DRAG MAP TO POSITION</Text>
+            <View style={where.mapHint}>
+              <Text style={where.mapHintText}>Drag to position</Text>
             </View>
           </View>
 
-          {/* Confirm button + reverse geocode result */}
-          <View style={step3Styles.confirmArea}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={where.confirmArea}
+            keyboardShouldPersistTaps="handled"
+          >
             {reverseAddr ? (
-              <View style={step3Styles.addrResult}>
-                <MapPin size={12} color="#FF6B6B" strokeWidth={3} />
-                <Text style={step3Styles.addrResultText} numberOfLines={2}>
+              <View style={where.addrResult}>
+                <MapPin size={13} color={C.accentPink} strokeWidth={2.5} />
+                <Text style={where.addrResultText} numberOfLines={2}>
                   {reverseAddr}
                 </Text>
                 <TouchableOpacity
-                  onPress={() => {
-                    setForm((f) => ({ ...f, locationLat: null, locationLng: null, locationText: "" }));
-                  }}
+                  onPress={() =>
+                    setForm((f) => ({
+                      ...f,
+                      locationLat: null,
+                      locationLng: null,
+                      locationText: "",
+                    }))
+                  }
                 >
-                  <X size={14} color="#666" strokeWidth={3} />
+                  <X size={14} color={C.textSecondary} strokeWidth={2.5} />
                 </TouchableOpacity>
               </View>
             ) : null}
 
-            <TouchableOpacity
+            <Pressable
               onPress={onConfirmPin}
               disabled={isReverseGeocoding}
-              style={step3Styles.confirmBtn}
-              activeOpacity={0.85}
+              style={({ pressed }) => [
+                where.confirmBtn,
+                pressed && { opacity: 0.85 },
+              ]}
             >
-              {isReverseGeocoding ? (
-                <ActivityIndicator color="#000" size="small" />
-              ) : (
-                <>
-                  <Check size={16} color="#000" strokeWidth={3} />
-                  <Text style={step3Styles.confirmBtnText}>
-                    {form.locationLat ? "UPDATE PIN" : "SET THIS LOCATION"}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <LinearGradient
+                colors={
+                  form.locationLat ? C.Gradients.green : C.Gradients.primary
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={where.confirmBtnGrad}
+              >
+                {isReverseGeocoding ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Check size={16} color="#fff" strokeWidth={2.5} />
+                    <Text style={where.confirmBtnText}>
+                      {form.locationLat ? "Update pin" : "Set this location"}
+                    </Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
 
             <TextInput
               value={form.locationInstructions}
-              onChangeText={(t) => setForm((f) => ({ ...f, locationInstructions: t }))}
-              placeholder="Optional: directions, landmark, floor..."
-              placeholderTextColor="#aaa"
-              style={step3Styles.instructionsInput}
+              onChangeText={(t) =>
+                setForm((f) => ({ ...f, locationInstructions: t }))
+              }
+              placeholder="Optional: directions, floor, landmark…"
+              placeholderTextColor={C.textTertiary}
+              style={where.instructionsInput}
               multiline
             />
-          </View>
+          </ScrollView>
         </View>
       ) : (
-        /* ── Address search tab ── */
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={step3Styles.searchScroll}
+            contentContainerStyle={where.searchScroll}
             keyboardShouldPersistTaps="handled"
           >
-            <View style={step3Styles.searchInputWrap}>
-              <Search size={16} color="#000" strokeWidth={3} />
+            <View style={where.searchInputWrap}>
+              <Search size={16} color={C.textSecondary} strokeWidth={2} />
               <TextInput
                 value={addrQuery}
                 onChangeText={onAddrChange}
-                placeholder="Type an address or place name..."
-                placeholderTextColor="#aaa"
-                style={step3Styles.searchInput}
+                placeholder="Type an address or place…"
+                placeholderTextColor={C.textTertiary}
+                style={where.searchInput}
                 autoFocus
               />
-              {addrSearching && <ActivityIndicator color="#000" size="small" />}
+              {addrSearching && (
+                <ActivityIndicator color={C.accent} size="small" />
+              )}
             </View>
 
             {addrSuggestions.length > 0 && (
-              <View style={step3Styles.suggestionList}>
+              <View style={where.suggestionList}>
                 {addrSuggestions.map((s, i) => (
                   <TouchableOpacity
                     key={i}
                     onPress={() => onSelectSuggestion(s)}
                     style={[
-                      step3Styles.suggestionItem,
-                      i < addrSuggestions.length - 1 && step3Styles.suggestionBorder,
+                      where.suggestionItem,
+                      i < addrSuggestions.length - 1 && where.suggestionBorder,
                     ]}
                   >
-                    <MapPin size={12} color="#FF6B6B" strokeWidth={2.5} />
+                    <MapPin size={12} color={C.accentPink} strokeWidth={2.5} />
                     <View style={{ flex: 1 }}>
-                      <Text style={step3Styles.suggestionName} numberOfLines={1}>
+                      <Text style={where.suggestionName} numberOfLines={1}>
                         {s.shortName || s.displayName}
                       </Text>
-                      <Text style={step3Styles.suggestionFull} numberOfLines={1}>
+                      <Text style={where.suggestionFull} numberOfLines={1}>
                         {s.displayName}
                       </Text>
                     </View>
@@ -978,20 +1130,27 @@ function Step3Where({
             )}
 
             {form.locationLat !== null && (
-              <View style={step3Styles.selectedAddr}>
-                <Check size={14} color="#000" strokeWidth={3} />
-                <Text style={step3Styles.selectedAddrText} numberOfLines={2}>
-                  {form.locationText}
-                </Text>
+              <View style={where.selectedAddr}>
+                <LinearGradient
+                  colors={C.Gradients.green}
+                  style={where.selectedAddrGrad}
+                >
+                  <Check size={14} color="#fff" strokeWidth={2.5} />
+                  <Text style={where.selectedAddrText} numberOfLines={2}>
+                    {form.locationText}
+                  </Text>
+                </LinearGradient>
               </View>
             )}
 
             <TextInput
               value={form.locationInstructions}
-              onChangeText={(t) => setForm((f) => ({ ...f, locationInstructions: t }))}
-              placeholder="Optional: directions, landmark, floor..."
-              placeholderTextColor="#aaa"
-              style={step3Styles.instructionsInput}
+              onChangeText={(t) =>
+                setForm((f) => ({ ...f, locationInstructions: t }))
+              }
+              placeholder="Optional: directions, floor, landmark…"
+              placeholderTextColor={C.textTertiary}
+              style={where.instructionsInput}
               multiline
             />
           </ScrollView>
@@ -1001,1107 +1160,917 @@ function Step3Where({
   );
 }
 
-function Step4Details({
-  form,
-  setForm,
-}: {
-  form: WizardForm;
-  setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
-}) {
-  return (
-    <ScrollView
-      contentContainerStyle={stepStyles.scroll}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-    >
-      <Label>Description * (min 10 chars)</Label>
-      <TextInput
-        value={form.description}
-        onChangeText={(t) => setForm((f) => ({ ...f, description: t }))}
-        placeholder="What's the vibe? Markdown supported."
-        placeholderTextColor="#aaa"
-        style={[stepStyles.textInput, { minHeight: 120, textAlignVertical: "top" }]}
-        multiline
-      />
-      {form.description.trim().length > 0 && form.description.trim().length < 10 && (
-        <Text style={stepStyles.hint}>At least 10 characters required</Text>
-      )}
-
-      <ToggleRow
-        label="Require Approval"
-        value={form.requireApproval}
-        onToggle={() => setForm((f) => ({ ...f, requireApproval: !f.requireApproval }))}
-        color="#C4B5FD"
-      />
-
-      <ToggleRow
-        label="Paid Event"
-        value={form.isPaid}
-        onToggle={() => setForm((f) => ({ ...f, isPaid: !f.isPaid }))}
-        color="#FFD93D"
-      />
-
-      {form.isPaid && (
-        <View style={stepStyles.priceRow}>
-          <DollarSign size={18} color="#000" strokeWidth={2.5} />
-          <TextInput
-            value={form.price}
-            onChangeText={(t) => setForm((f) => ({ ...f, price: t }))}
-            keyboardType="decimal-pad"
-            style={stepStyles.priceInput}
-            placeholder="0.00"
-          />
-        </View>
-      )}
-
-      <Label>Visibility</Label>
-      <View style={stepStyles.segmented}>
-        {(["public", "private"] as const).map((opt) => {
-          const active = opt === "public" ? form.isPublic : !form.isPublic;
-          return (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setForm((f) => ({ ...f, isPublic: opt === "public" }))}
-              style={[stepStyles.segment, active && stepStyles.segmentActive]}
-            >
-              <Text style={[stepStyles.segmentText, active && stepStyles.segmentTextActive]}>
-                {opt.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <Label>Capacity</Label>
-      <View style={stepStyles.segmented}>
-        {(["unlimited", "limited"] as const).map((opt) => {
-          const active = opt === "unlimited" ? form.unlimited : !form.unlimited;
-          return (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setForm((f) => ({ ...f, unlimited: opt === "unlimited" }))}
-              style={[stepStyles.segment, active && stepStyles.segmentActive]}
-            >
-              <Text style={[stepStyles.segmentText, active && stepStyles.segmentTextActive]}>
-                {opt.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {!form.unlimited && (
-        <View style={stepStyles.priceRow}>
-          <Users size={18} color="#000" strokeWidth={2.5} />
-          <TextInput
-            value={form.capacity}
-            onChangeText={(t) => setForm((f) => ({ ...f, capacity: t }))}
-            keyboardType="number-pad"
-            placeholder="Max attendees"
-            style={stepStyles.priceInput}
-          />
-        </View>
-      )}
-    </ScrollView>
-  );
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Step 4 — Review & Launch
+// ─────────────────────────────────────────────────────────────────────────────
 
 function Step5Review({
   form,
-  communities,
+  setForm,
   startDateStr,
   startTimeStr,
   submitError,
 }: {
   form: WizardForm;
-  communities: { id: string; name: string }[];
+  setForm: React.Dispatch<React.SetStateAction<WizardForm>>;
   startDateStr: string;
   startTimeStr: string;
   submitError: string | null;
 }) {
-  const community = communities.find((c) => c.id === form.communityId);
-
   const rows = [
-    { label: "EVENT", value: form.name },
-    { label: "COMMUNITY", value: community?.name ?? "—" },
-    { label: "DATE", value: startDateStr },
-    { label: "TIME", value: startTimeStr },
-    { label: "LOCATION", value: form.locationText || "—" },
-    {
-      label: "COORDS",
-      value:
-        form.locationLat !== null
-          ? `${form.locationLat.toFixed(4)}, ${form.locationLng?.toFixed(4)}`
-          : "No pin set",
-    },
-    { label: "CAPACITY", value: form.unlimited ? "Unlimited" : form.capacity || "—" },
-    { label: "VISIBILITY", value: form.isPublic ? "Public" : "Private" },
-    { label: "PAID", value: form.isPaid ? `$${form.price}` : "Free" },
-    { label: "APPROVAL", value: form.requireApproval ? "Required" : "Auto" },
+    { label: "Event", value: form.name, icon: "🎉" },
+    { label: "Date", value: startDateStr, icon: "📅" },
+    { label: "Time", value: startTimeStr, icon: "⏰" },
+    { label: "Location", value: form.locationText || "—", icon: "📍" },
   ];
 
   return (
-    <ScrollView contentContainerStyle={stepStyles.scroll} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={step.scroll}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Cover preview */}
       {form.cover && (
         <Image
           source={{ uri: form.cover }}
-          style={{ width: "100%", height: 160, borderWidth: 3, borderColor: "#000", marginBottom: 16 }}
+          style={review.coverPreview}
           resizeMode="cover"
         />
       )}
 
-      <View style={reviewStyles.card}>
-        <View style={reviewStyles.cardHeader}>
-          <Text style={reviewStyles.cardHeaderText}>LAUNCH CHECKLIST</Text>
-        </View>
+      {/* Summary card */}
+      <View style={review.card}>
         {rows.map((row, i) => (
           <View
             key={row.label}
-            style={[reviewStyles.row, i < rows.length - 1 && reviewStyles.rowBorder]}
+            style={[review.row, i < rows.length - 1 && review.rowBorder]}
           >
-            <Text style={reviewStyles.rowLabel}>{row.label}</Text>
-            <Text style={reviewStyles.rowValue} numberOfLines={2}>
-              {row.value}
-            </Text>
+            <Text style={review.rowIcon}>{row.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={review.rowLabel}>{row.label}</Text>
+              <Text style={review.rowValue} numberOfLines={2}>
+                {row.value}
+              </Text>
+            </View>
           </View>
         ))}
       </View>
 
-      {form.locationLat !== null && (
-        <View style={reviewStyles.mapPin}>
-          <MapPin size={14} color="#FF6B6B" strokeWidth={3} />
-          <Text style={reviewStyles.mapPinText}>
-            This event will appear as a pin on the map ✓
-          </Text>
-        </View>
-      )}
+      {/* Optional description */}
+      <FieldLabel>Description (optional)</FieldLabel>
+      <TextInput
+        value={form.description}
+        onChangeText={(t) => setForm((f) => ({ ...f, description: t }))}
+        placeholder="Tell people what to expect…"
+        placeholderTextColor={C.textTertiary}
+        style={[step.textInput, { minHeight: 100, textAlignVertical: "top" }]}
+        multiline
+      />
 
-      {form.description.trim().length > 0 && (
-        <View style={reviewStyles.descCard}>
-          <Text style={reviewStyles.descLabel}>DESCRIPTION PREVIEW</Text>
-          <Text style={reviewStyles.descText} numberOfLines={4}>
-            {form.description}
+      {/* Require approval toggle */}
+      <View style={review.toggleRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={review.toggleLabel}>Require approval</Text>
+          <Text style={review.toggleSub}>
+            Review each attendee before they join
           </Text>
         </View>
-      )}
+        <Switch
+          value={form.requireApproval}
+          onValueChange={(v) => setForm((f) => ({ ...f, requireApproval: v }))}
+          trackColor={{ false: "#E5E1F0", true: C.accentLight }}
+          thumbColor={form.requireApproval ? C.accent : "#A78BFA"}
+        />
+      </View>
 
       {submitError && (
-        <View style={reviewStyles.errorCard}>
-          <Text style={reviewStyles.errorText}>⚠ {submitError}</Text>
+        <View style={review.errorCard}>
+          <Text style={review.errorText}>{submitError}</Text>
         </View>
       )}
     </ScrollView>
   );
 }
 
-// ── Tiny shared UI helpers ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <Text style={stepStyles.label}>{children}</Text>;
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <Text style={step.label}>{children}</Text>;
 }
 
-function ToggleRow({
-  label,
-  value,
-  onToggle,
-  color,
-}: {
-  label: string;
-  value: boolean;
-  onToggle: () => void;
-  color: string;
-}) {
-  return (
-    <TouchableOpacity onPress={onToggle} style={stepStyles.toggleRow} activeOpacity={0.8}>
-      <View style={[stepStyles.toggleDot, value && { backgroundColor: color }]} />
-      <Text style={stepStyles.toggleLabel}>{label}</Text>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: "#ddd", true: "#000" }}
-        thumbColor={value ? "#fff" : "#000"}
-      />
-    </TouchableOpacity>
-  );
-}
-
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// StyleSheets
+// ─────────────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  // ── Transparent overlay layout ──
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "transparent",
+  },
+  overlayDismiss: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  sheet: {
+    backgroundColor: C.canvas,
+    borderTopLeftRadius: C.Radii.xxl,
+    borderTopRightRadius: C.Radii.xxl,
+    maxHeight: SHEET_H,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 32,
+    elevation: 24,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.80)",
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(124,58,237,0.20)",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 4,
+  },
+
+  // Keep root for legacy ref
   root: {
     flex: 1,
-    backgroundColor: "#FFFDF5",
+    backgroundColor: C.canvas,
   },
+
+  // ── Header ──
   header: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FFD93D",
-    borderBottomWidth: 4,
-    borderColor: "#000",
     paddingHorizontal: 16,
     paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
-    zIndex: 10,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.08)",
+    backgroundColor: "rgba(244,241,250,0.98)",
   },
   headerBtn: {
-    width: 44,
-    height: 44,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
+    width: 40,
+    height: 40,
+    borderRadius: C.Radii.md,
+    backgroundColor: C.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: "center",
-    gap: 6,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
+  headerCenter: { flex: 1, gap: 1 },
+  headerStep: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: 11,
+    color: C.accent,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
   },
-  stepDots: {
-    flexDirection: "row",
-    gap: 6,
+  headerTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: "#ccc",
-    borderWidth: 1.5,
-    borderColor: "#000",
+  stepPill: {
+    backgroundColor: C.accentMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
-  dotActive: {
-    backgroundColor: "#FF6B6B",
-    width: 20,
-    borderRadius: 4,
+  stepPillText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 12,
+    color: C.accent,
   },
-  dotDone: {
-    backgroundColor: "#000",
+
+  // ── Progress bar ──
+  progressTrack: {
+    height: 3,
+    backgroundColor: "rgba(124,58,237,0.10)",
   },
-  stepCounter: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
+  progressFill: {
+    height: 3,
+    backgroundColor: C.accent,
+    borderRadius: 2,
   },
+
+  // ── Step wrap ──
   stepWrap: {
     flex: 1,
   },
+
+  // ── Footer ──
   footer: {
-    borderTopWidth: 4,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    backgroundColor: "rgba(244,241,250,0.98)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(124,58,237,0.08)",
   },
   nextBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FFD93D",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingVertical: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 6,
   },
   nextBtnDisabled: {
-    backgroundColor: "#e5e7eb",
-    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
     elevation: 0,
   },
-  nextBtnText: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-  launchBtn: {
+  nextBtnGrad: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    height: 54,
     gap: 8,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingVertical: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.40)",
+    borderLeftColor: "rgba(255,255,255,0.25)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
-  launchBtnDisabled: {
-    backgroundColor: "#e5e7eb",
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+  nextBtnText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
+    letterSpacing: 0.3,
+  },
+  nextBtnTextDisabled: { color: C.textTertiary },
+
+  launchBtn: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  launchBtnGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 54,
+    gap: 10,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.45)",
+    borderLeftColor: "rgba(255,255,255,0.25)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
   launchBtnText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.md,
+    color: "#fff",
+    letterSpacing: 0.3,
   },
-  // ── Time picker modal ──
+
+  // ── Time picker ──
   timePickerOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(51,47,58,0.45)",
     justifyContent: "flex-end",
   },
   timePickerSheet: {
-    backgroundColor: "#000",
-    borderTopWidth: 4,
-    borderLeftWidth: 4,
-    borderRightWidth: 4,
-    borderColor: "#000",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 12,
+    backgroundColor: C.surface,
+    borderTopLeftRadius: C.Radii.xxl,
+    borderTopRightRadius: C.Radii.xxl,
+    paddingBottom: 32,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 16,
   },
   timePickerHeader: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#FFD93D",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.08)",
   },
-  timePickerBtn: {
-    minWidth: 60,
-  },
+  timePickerActionBtn: { paddingHorizontal: 8, paddingVertical: 4 },
   timePickerCancel: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#555",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.base,
+    color: C.textSecondary,
   },
   timePickerTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
   timePickerDone: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    textAlign: "right",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.accent,
   },
- datetimepicker: {
-    color: "#000"
-  }
 });
 
-const stepStyles = StyleSheet.create({
+// Shared step styles
+const step = StyleSheet.create({
   scroll: {
     padding: 20,
     paddingBottom: 40,
   },
   label: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
     marginBottom: 8,
-    marginTop: 8,
+    marginTop: 4,
   },
   textInput: {
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    marginBottom: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.lg,
+    paddingHorizontal: C.Space.lg,
+    paddingVertical: 14,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    marginBottom: 8,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   hint: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#FF6B6B",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
     marginBottom: 8,
   },
-  communityPill: {
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    marginRight: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  communityPillActive: {
-    backgroundColor: "#FF6B6B",
-  },
-  communityPillText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  communityPillTextActive: {
-    color: "#000",
-  },
-  noCommunityCard: {
-    borderWidth: 2,
-    borderColor: "#ccc",
-    padding: 12,
-    backgroundColor: "#f5f5f5",
-  },
-  noCommunityText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#999",
-    textTransform: "uppercase",
-  },
-  coverPicker: {
-    height: 160,
-    borderWidth: 3,
-    borderColor: "#000",
-    borderStyle: "dashed",
-    backgroundColor: "#fff",
-    marginBottom: 16,
+
+  // Cover picker
+  coverBtn: {
+    marginBottom: 24,
+    borderRadius: C.Radii.xl,
     overflow: "hidden",
     position: "relative",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 4,
   },
-  coverImage: {
+  coverImg: {
     width: "100%",
-    height: "100%",
+    aspectRatio: 16 / 9,
   },
   coverPlaceholder: {
-    flex: 1,
+    width: "100%",
+    aspectRatio: 16 / 9,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 8,
   },
-  coverPlaceholderText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+  coverIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: C.Radii.full,
+    backgroundColor: "rgba(124,58,237,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverPlaceholderTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.accent,
   },
   coverPlaceholderSub: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#999",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
   },
-  coverRemove: {
+  coverRemoveBtn: {
     position: "absolute",
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    backgroundColor: "#fff",
-    borderWidth: 2,
-    borderColor: "#000",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: C.Radii.full,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
-  },
-  dateRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
-  },
-  datePill: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  datePillEmpty: {
-    backgroundColor: "#FFFDF5",
-    borderStyle: "dashed",
-  },
-  datePillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-  },
-  errorCard: {
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 12,
-    marginTop: 8,
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-  },
-  successCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#6EE7B7",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 10,
-    marginTop: 8,
-  },
-  successText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 14,
-    backgroundColor: "#fff",
-    marginBottom: 10,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 3,
-  },
-  toggleDot: {
-    width: 14,
-    height: 14,
-    borderWidth: 2,
-    borderColor: "#000",
-    borderRadius: 2,
-    backgroundColor: "#fff",
-  },
-  toggleLabel: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    backgroundColor: "#FFFDF5",
-    marginBottom: 10,
-    gap: 8,
-  },
-  priceInput: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000",
-    paddingVertical: 8,
-  },
-  segmented: {
-    flexDirection: "row",
-    borderWidth: 3,
-    borderColor: "#000",
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "#fff",
-  },
-  segmentActive: {
-    backgroundColor: "#000",
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  segmentTextActive: {
-    color: "#FFD93D",
   },
 });
 
-const step2Styles = StyleSheet.create({
+// When step
+const when = StyleSheet.create({
   dayChip: {
-    width: 62,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    alignItems: "center",
-    paddingVertical: 10,
-    marginRight: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
   },
-  dayChipSelected: {
-    backgroundColor: "#FFD93D",
-    shadowOffset: { width: 4, height: 4 },
-    elevation: 5,
+  dayChipActive: {
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
   },
-  dayName: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#888",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginBottom: 4,
+  dayChipGrad: {
+    width: 64,
+    paddingVertical: 14,
+    alignItems: "center",
+    gap: 2,
+    borderRadius: C.Radii.xl,
   },
-  dayNameSelected: { color: "#000" },
-  dayNum: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#000",
-    lineHeight: 26,
+  dayChipInner: {
+    width: 64,
+    paddingVertical: 14,
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
-  dayNumSelected: { color: "#000" },
-  dayMonth: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#aaa",
-    textTransform: "uppercase",
-    marginTop: 2,
+  dayLabel: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 10,
+    color: C.textSecondary,
+    letterSpacing: 0.3,
   },
-  dayMonthSelected: { color: "#555" },
+  dayLabelActive: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: 0.3,
+  },
+  dayNum: { fontFamily: C.Fonts.heading, fontSize: 20, color: C.textPrimary },
+  dayNumActive: { fontFamily: C.Fonts.heading, fontSize: 20, color: "#fff" },
+  dayMonth: { fontFamily: C.Fonts.body, fontSize: 10, color: C.textSecondary },
+  dayMonthActive: {
+    fontFamily: C.Fonts.body,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+  },
+
   timeToggle: {
     flexDirection: "row",
-    borderWidth: 3,
-    borderColor: "#000",
-    marginBottom: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    gap: 10,
+    marginBottom: 16,
   },
   timeOption: {
     flex: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRightWidth: 1,
-    borderColor: "#e5e7eb",
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   timeOptionActive: {
-    backgroundColor: "#000",
+    shadowOpacity: 0.2,
+    elevation: 5,
+  },
+  timeOptionGrad: {
+    paddingVertical: 16,
+    alignItems: "center",
+    gap: 3,
+    borderRadius: C.Radii.xl,
+  },
+  timeOptionInner: {
+    paddingVertical: 16,
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   timeOptionText: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: C.textPrimary,
   },
-  timeOptionTextActive: { color: "#FFD93D" },
+  timeOptionTextActive: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: "#fff",
+  },
   timeOptionSub: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#aaa",
-    textTransform: "uppercase",
-    marginTop: 2,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
   },
+  timeOptionSubActive: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: "rgba(255,255,255,0.75)",
+  },
+
   timeBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#FFFDF5",
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    paddingHorizontal: C.Space.lg,
+    paddingVertical: 14,
+    marginBottom: 16,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   timeBtnText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    flex: 1,
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+
+  successCard: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: C.accentGreen,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 4,
+    marginTop: 4,
+  },
+  successGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: C.Space.lg,
+    paddingVertical: 12,
+    borderRadius: C.Radii.xl,
+  },
+  successText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: "#fff",
+    flex: 1,
   },
 });
 
-const step3Styles = StyleSheet.create({
+// Where step
+const where = StyleSheet.create({
   tabs: {
     flexDirection: "row",
-    borderBottomWidth: 4,
-    borderColor: "#000",
-    backgroundColor: "#fff",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  tab: {
-    flex: 1,
+  tab: { flex: 1, borderRadius: C.Radii.xl, overflow: "hidden" },
+  tabActive: {},
+  tabGrad: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 14,
-    borderRightWidth: 2,
-    borderColor: "#000",
-    backgroundColor: "#fff",
+    paddingVertical: 10,
+    borderRadius: C.Radii.xl,
   },
-  tabActive: {
-    backgroundColor: "#000",
+  tabInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 6,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
   tabTextActive: {
-    color: "#FFD93D",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: "#fff",
   },
+
+  confirmedPin: { alignItems: "center" },
+  pinGrad: {
+    width: 36,
+    height: 36,
+    borderRadius: C.Radii.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   crosshairWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
   },
   crosshairH: {
     position: "absolute",
-    width: 40,
+    width: 28,
     height: 2,
-    backgroundColor: "#FF6B6B",
+    backgroundColor: C.accent,
+    opacity: 0.7,
   },
   crosshairV: {
     position: "absolute",
     width: 2,
-    height: 40,
-    backgroundColor: "#FF6B6B",
+    height: 28,
+    backgroundColor: C.accent,
+    opacity: 0.7,
   },
-  crosshairCenter: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    borderWidth: 3,
-    borderColor: "#FF6B6B",
-    backgroundColor: "#fff",
+  crosshairDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: C.accent,
+    borderWidth: 2,
+    borderColor: "#fff",
   },
+
   mapHint: {
     position: "absolute",
-    top: 12,
-    left: 12,
-    right: 12,
-    alignItems: "center",
+    bottom: 12,
+    alignSelf: "center",
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
   },
   mapHintText: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#fff",
-    letterSpacing: 1.5,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: 11,
+    color: C.textSecondary,
   },
-  confirmedPin: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  confirmArea: {
-    padding: 16,
-    gap: 10,
-    backgroundColor: "#FFFDF5",
-  },
+
+  confirmArea: { padding: 16, gap: 12 },
+
   addrResult: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#6EE7B7",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 10,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.lg,
+    padding: C.Space.lg,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   addrResultText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
+
   confirmBtn: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  confirmBtnGrad: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#FFD93D",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingVertical: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    height: 50,
+    borderRadius: C.Radii.xl,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.45)",
+    borderLeftColor: "rgba(255,255,255,0.25)",
+    borderRightColor: "rgba(0,0,0,0.05)",
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
   confirmBtnText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
   },
+
   instructionsInput: {
-    borderWidth: 2,
-    borderColor: "#ccc",
-    backgroundColor: "#fff",
-    padding: 10,
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#000",
-    minHeight: 48,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.lg,
+    paddingHorizontal: C.Space.lg,
+    paddingVertical: 12,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    minHeight: 72,
     textAlignVertical: "top",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  searchScroll: {
-    padding: 16,
-    gap: 12,
-  },
+
+  searchScroll: { padding: 16, gap: 12 },
   searchInputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    paddingHorizontal: 12,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    gap: 10,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    paddingHorizontal: C.Space.lg,
+    height: 50,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
+
   suggestionList: {
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
   suggestionItem: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    padding: 12,
-    gap: 8,
+    alignItems: "center",
+    gap: 10,
+    padding: C.Space.lg,
   },
   suggestionBorder: {
     borderBottomWidth: 1,
-    borderColor: "#e5e7eb",
+    borderBottomColor: "rgba(124,58,237,0.06)",
   },
   suggestionName: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textPrimary,
   },
   suggestionFull: {
-    fontSize: 10,
-    fontWeight: "500",
-    color: "#888",
-    marginTop: 2,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
   },
+
   selectedAddr: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: C.accentGreen,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  selectedAddrGrad: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#6EE7B7",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 12,
+    padding: C.Space.lg,
+    borderRadius: C.Radii.xl,
   },
   selectedAddrText: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: "#fff",
   },
 });
 
-const reviewStyles = StyleSheet.create({
-  card: {
-    borderWidth: 4,
-    borderColor: "#000",
-    backgroundColor: "#fff",
+// Review step
+const review = StyleSheet.create({
+  coverPreview: {
+    width: "100%",
+    height: 160,
+    borderRadius: C.Radii.xl,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+  },
+  card: {
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
     overflow: "hidden",
-  },
-  cardHeader: {
-    backgroundColor: "#FFD93D",
-    borderBottomWidth: 3,
-    borderColor: "#000",
-    padding: 12,
-  },
-  cardHeaderText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    marginBottom: 20,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   row: {
     flexDirection: "row",
-    padding: 12,
-    gap: 12,
+    alignItems: "center",
+    padding: C.Space.lg,
+    gap: C.Space.md,
   },
   rowBorder: {
     borderBottomWidth: 1,
-    borderColor: "#e5e7eb",
+    borderBottomColor: "rgba(124,58,237,0.06)",
   },
+  rowIcon: { fontSize: 18, width: 28, textAlign: "center" },
   rowLabel: {
-    width: 80,
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#888",
-    letterSpacing: 1,
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    letterSpacing: 0.5,
     textTransform: "uppercase",
-    paddingTop: 2,
+    marginBottom: 1,
   },
   rowValue: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
-  mapPin: {
+
+  toggleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "#6EE7B7",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    padding: C.Space.lg,
+    gap: C.Space.lg,
+    marginBottom: 16,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  mapPinText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-    textTransform: "uppercase",
+  toggleLabel: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
-  descCard: {
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
-    marginBottom: 12,
+  toggleSub: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    marginTop: 2,
   },
-  descLabel: {
-    backgroundColor: "#C4B5FD",
-    borderBottomWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
-  },
-  descText: {
-    padding: 12,
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#444",
-    lineHeight: 20,
-  },
+
   errorCard: {
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    padding: 14,
+    backgroundColor: "#FEE2E2",
+    borderRadius: C.Radii.lg,
+    padding: C.Space.lg,
     marginBottom: 12,
   },
   errorText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.error,
   },
 });

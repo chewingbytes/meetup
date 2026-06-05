@@ -1,23 +1,89 @@
-import EventCard from "@/components/event-card";
+/**
+ * Explore screen — clay aesthetic.
+ *
+ * Layout:
+ *   - Sticky header with search pill
+ *   - "Hot Drops" — horizontal event card scroll
+ *   - "Communities" — 2-column clay grid
+ *   - "Discover" — vertical event list
+ */
+
 import MobileNav from "@/components/mobile-nav";
-import { PullToRefresh } from "@/components/pull-to-refresh";
-import SearchModal from "@/components/searchmodal";
+import { ClayBackground } from "@/components/ui/clay-background";
 import { NeoLoader } from "@/components/ui/neo-loader";
+import { C } from "@/theme/clay";
 import { useCommunities } from "@/hooks/useCommunities";
 import { useEvents } from "@/hooks/useEvents";
 import { useAuthRedirect } from "@/lib/useAuthRedirect";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { Flame, Map, Search, Ticket, Users, Zap } from "lucide-react-native";
+import { Flame, Hash, Search, Users, Zap } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PullToRefresh } from "@/components/pull-to-refresh";
+
+const EVENT_GRADIENTS: Array<readonly [string, string]> = [
+  C.Gradients.primary,
+  C.Gradients.pink,
+  C.Gradients.blue,
+  C.Gradients.green,
+  C.Gradients.amber,
+];
+
+const COMMUNITY_GRADIENTS: Array<readonly [string, string]> = [
+  C.Gradients.blue,
+  C.Gradients.coral,
+  C.Gradients.green,
+  C.Gradients.amber,
+];
+
+function EventMiniCard({ event, index, onPress }: { event: any; index: number; onPress: () => void }) {
+  const grad = EVENT_GRADIENTS[index % EVENT_GRADIENTS.length];
+  return (
+    <TouchableOpacity onPress={onPress} style={styles.eventCard} activeOpacity={0.85}>
+      {event.cover_image ? (
+        <Image source={{ uri: event.cover_image }} style={styles.eventCardImg} resizeMode="cover" />
+      ) : (
+        <LinearGradient colors={grad} style={styles.eventCardImg}>
+          <Text style={styles.eventCardInitial}>
+            {event.name?.charAt(0)?.toUpperCase() ?? "E"}
+          </Text>
+        </LinearGradient>
+      )}
+      <View style={styles.eventCardBody}>
+        <Text style={styles.eventCardName} numberOfLines={2}>{event.name}</Text>
+        {event.location_text && (
+          <Text style={styles.eventCardLocation} numberOfLines={1}>{event.location_text}</Text>
+        )}
+        <View style={styles.eventCardMeta}>
+          {event.is_paid && event.price > 0 ? (
+            <View style={[styles.eventCardBadge, { backgroundColor: C.amberMuted }]}>
+              <Text style={[styles.eventCardBadgeText, { color: C.accentAmber }]}>${event.price}</Text>
+            </View>
+          ) : (
+            <View style={[styles.eventCardBadge, { backgroundColor: C.greenMuted }]}>
+              <Text style={[styles.eventCardBadgeText, { color: C.accentGreen }]}>Free</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function ExploreScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
-
   const { user, isCheckingAuth } = useAuthRedirect("/main");
 
   const {
@@ -27,8 +93,6 @@ export default function ExploreScreen() {
     refresh: refreshEvents,
   } = useEvents();
 
-  // console.log("EVENTS:", events);
-
   const {
     communities,
     isLoading: communitiesLoading,
@@ -37,242 +101,470 @@ export default function ExploreScreen() {
   } = useCommunities();
 
   const isRefreshing = eventsRefreshing || communitiesRefreshing;
-
   const handleRefresh = async () => {
     await Promise.all([refreshEvents(), refreshCommunities()]);
   };
 
-  // Filter and Sort
-  const featuredEvents = useMemo(() => {
-    return events
-      .filter((ev) => !ev.end_at || new Date(ev.end_at) >= new Date())
-      .sort((a, b) => (b.capacity || 0) - (a.capacity || 0))
-      .slice(0, 5);
-  }, [events]);
+  const featuredEvents = useMemo(() =>
+    events.filter((ev) => !ev.end_at || new Date(ev.end_at) >= new Date()).slice(0, 6),
+    [events]
+  );
 
-  const trendingCommunities = useMemo(() => {
-    return communities.slice(0, 4);
-  }, [communities]);
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return events.filter((e) =>
+      e.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.location_text?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [events, searchQuery]);
+
+  const filteredCommunities = useMemo(() => {
+    if (!searchQuery.trim()) return communities.slice(0, 4);
+    return communities.filter((c) =>
+      c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [communities, searchQuery]);
 
   if (isCheckingAuth) {
     return (
-      <View className="flex-1 bg-neo-bg items-center justify-center">
+      <View style={styles.loader}>
         <NeoLoader />
-        <Text className="text-black font-black uppercase mt-4 animate-pulse">
-          Authenticating...
-        </Text>
       </View>
     );
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: "#FFFDF5" }}>
-      {/* Header & Search - Fixed at Top */}
-      <View
-        className="bg-[#FFD93D] pb-6 border-b-4 border-black z-50 absolute top-0 left-0 right-0"
-        style={{ paddingTop: insets.top + 10 }}
-      >
-        <View className="flex-row items-center justify-between mb-4 px-4">
-          <Text className="text-5xl font-black uppercase text-black tracking-tighter">
-            Explore
-          </Text>
-          {/* <TouchableOpacity
-            onPress={() => router.push("/map" as any)}
-            activeOpacity={1}
-            className="bg-white border-2 border-black p-3 rotate-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
-          >
-            <Map size={24} color="#000" strokeWidth={3} />
-          </TouchableOpacity> */}
-        </View>
+  const showSearch = searchQuery.trim().length > 0;
 
-        <View className="relative mt-2 px-4 shadow-none">
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => setSearchSheetOpen(true)}
-            className="bg-white border-2 border-black flex-row items-center px-4 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
-          >
-            <Search size={24} color="#000" strokeWidth={3} />
-            <Text
-              className="flex-1 ml-3 font-bold text-lg text-grey-500"
-              style={{ fontFamily: "SpaceGrotesk-Bold" }}
-            >
-              {searchQuery || "Search for chaos..."}
-            </Text>
-          </TouchableOpacity>
+  return (
+    <ClayBackground>
+      {/* Sticky header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Text style={styles.title}>Explore</Text>
+        <View style={styles.searchWrap}>
+          <Search size={18} color={C.textSecondary} strokeWidth={2} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search hangouts & communities…"
+            placeholderTextColor={C.textTertiary}
+            style={styles.searchInput}
+            autoCapitalize="none"
+          />
         </View>
       </View>
 
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100, paddingTop: 210 }}
-          refreshControl={
-            <PullToRefresh
-              isRefreshing={isRefreshing}
-              onRefresh={handleRefresh}
-            />
-          }
-        >
-          {/* Tags / Categories - Sticker Style
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mb-8"
-            contentContainerStyle={{
-              paddingLeft: 16,
-              paddingRight: 20,
-              gap: 12,
-              alignItems: "center",
-              height: 60,
-            }}
-          >
-            {[
-              {
-                label: "Trending",
-                icon: Flame,
-                color: "bg-neo-red",
-                text: "text-white",
-              },
-              {
-                label: "New",
-                icon: Zap,
-                color: "bg-neo-yellow",
-                text: "text-black",
-              },
-              {
-                label: "Events",
-                icon: Ticket,
-                color: "bg-neo-blue",
-                text: "text-white",
-              },
-              {
-                label: "Groups",
-                icon: Users,
-                color: "bg-neo-violet",
-                text: "text-white",
-              },
-            ].map((tag, i) => (
-              <TouchableOpacity
-                key={tag.label}
-                className={`${tag.color} border-2 border-black px-4 py-2 flex-row items-center gap-2 active:translate-y-1 ${i % 2 === 0 ? "-rotate-2" : "rotate-1"}`}
-              >
-                <Text className={`${tag.text} font-black uppercase`}>
-                  {tag.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView> 
-
-          {/* Featured - "Hot Drops" */}
-          <View className="mb-8">
-            <View className="bg-black self-start px-4 py-2 -rotate-2 mb-4 ml-4">
-              <Text className="text-white font-black uppercase text-xl">
-                Hot Drops
-              </Text>
-            </View>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{
-                gap: 16,
-                paddingRight: 20,
-                paddingLeft: 16,
-              }}
-            >
-              {featuredEvents.map((event, index) => (
-                <View
-                  key={event.id}
-                  className={`w-[280px] ${index % 2 === 0 ? "rotate-1" : "-rotate-1"}`}
-                >
-                  <EventCard
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 140 }]}
+        refreshControl={<PullToRefresh isRefreshing={isRefreshing} onRefresh={handleRefresh} />}
+      >
+        {showSearch ? (
+          /* ── Search results ── */
+          <>
+            {filteredEvents.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Events</Text>
+                {filteredEvents.map((event, i) => (
+                  <EventMiniCard
+                    key={event.id}
                     event={event}
+                    index={i}
                     onPress={() => router.push(`/events/${event.id}` as any)}
                   />
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Community Spotlight - "The Crew" */}
-          {trendingCommunities.length > 0 && (
-            <View className="px-4 mb-2">
-              <View className="bg-neo-violet border-2 border-black self-end px-4 py-1 rotate-1 mb-4">
-                <Text className="text-white font-black uppercase text-xl">
-                  The Crew
-                </Text>
+                ))}
               </View>
-
-              <View
-                className="flex-row flex-wrap justify-between"
-                style={{ gap: 8 }}
-              >
-                {trendingCommunities.map((comm, i) => (
+            )}
+            {filteredCommunities.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Communities</Text>
+                {filteredCommunities.map((comm, i) => (
                   <TouchableOpacity
                     key={comm.id}
-                    activeOpacity={1}
                     onPress={() => router.push(`/community/${comm.id}` as any)}
-                    style={{ width: "48%" }}
-                    className={`mb-6 bg-white border-2 border-black p-2 ${i % 2 === 0 ? "-rotate-1" : "rotate-1"} active:translate-y-[2px]`}
+                    style={styles.commRow}
+                    activeOpacity={0.8}
                   >
-                    <View className="aspect-square bg-neo-bg border-2 border-black mb-2 overflow-hidden bg-white">
-                      {comm.profile_image ? (
-                        <Image
-                          source={{ uri: comm.profile_image }}
-                          className="w-full h-full"
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View className="flex-1 items-center justify-center bg-gray-200">
-                          <Text className="text-2xl"></Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text
-                      className="font-black text-lg uppercase leading-5 mb-1"
-                      numberOfLines={2}
+                    <LinearGradient
+                      colors={COMMUNITY_GRADIENTS[i % COMMUNITY_GRADIENTS.length]}
+                      style={styles.commRowIcon}
                     >
-                      {comm.name}
-                    </Text>
-                    <Text className="text-xs font-bold text-gray-500 uppercase">
-                      {comm._count?.members || 0} Member(s)
-                    </Text>
+                      {comm.profile_image ? (
+                        <Image source={{ uri: String(comm.profile_image) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                      ) : (
+                        <Hash size={18} color="#fff" strokeWidth={2.5} />
+                      )}
+                    </LinearGradient>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.commRowName} numberOfLines={1}>{comm.name}</Text>
+                      <Text style={styles.commRowMeta}>{comm._count?.members ?? 0} members</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
-          )}
+            )}
+            {filteredEvents.length === 0 && filteredCommunities.length === 0 && (
+              <View style={styles.emptySearch}>
+                <Text style={styles.emptySearchText}>No results for "{searchQuery}"</Text>
+              </View>
+            )}
+          </>
+        ) : (
+          /* ── Default discover view ── */
+          <>
+            {/* Filter chips */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chips}
+            >
+              {[
+                { label: "All", icon: Zap, active: true },
+                { label: "Trending", icon: Flame, active: false },
+                { label: "Free", icon: Hash, active: false },
+                { label: "Groups", icon: Users, active: false },
+              ].map((chip) => (
+                <TouchableOpacity key={chip.label} style={[styles.chip, chip.active && styles.chipActive]}>
+                  <chip.icon
+                    size={13}
+                    color={chip.active ? "#fff" : C.textSecondary}
+                    strokeWidth={2.5}
+                  />
+                  <Text style={[styles.chipText, chip.active && styles.chipTextActive]}>
+                    {chip.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-          {/* Discover More Feed */}
-          <View className="bg-black py-8 mt-4">
-            <Text className="text-neo-yellow text-center text-4xl font-black uppercase mb-6 italic tracking-widest">
-              Don't Miss Out
-            </Text>
-            <View className="px-4 gap-6">
-              {events.slice(5, 10).map((event, i) => (
-                <View
-                  key={event.id}
-                  className={`${i % 2 === 0 ? "rotate-1 pl-2" : "-rotate-1 pr-2"}`}
+            {/* Hot Drops */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Hot Drops</Text>
+                <View style={styles.sectionBadge}>
+                  <Flame size={12} color={C.accentPink} strokeWidth={2.5} />
+                  <Text style={styles.sectionBadgeText}>New</Text>
+                </View>
+              </View>
+              {eventsLoading ? (
+                <View style={styles.miniLoader}><NeoLoader /></View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 12, paddingRight: 20 }}
                 >
-                  <EventCard
+                  {featuredEvents.map((event, i) => (
+                    <EventMiniCard
+                      key={event.id}
+                      event={event}
+                      index={i}
+                      onPress={() => router.push(`/events/${event.id}` as any)}
+                    />
+                  ))}
+                </ScrollView>
+              )}
+            </View>
+
+            {/* Communities */}
+            {communities.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Communities</Text>
+                <View style={styles.commGrid}>
+                  {communities.slice(0, 4).map((comm, i) => (
+                    <TouchableOpacity
+                      key={comm.id}
+                      onPress={() => router.push(`/community/${comm.id}` as any)}
+                      style={styles.commCard}
+                      activeOpacity={0.85}
+                    >
+                      <LinearGradient
+                        colors={COMMUNITY_GRADIENTS[i % COMMUNITY_GRADIENTS.length]}
+                        style={styles.commCardImg}
+                      >
+                        {comm.profile_image ? (
+                          <Image source={{ uri: String(comm.profile_image) }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+                        ) : (
+                          <Text style={styles.commCardInitial}>
+                            {comm.name?.charAt(0)?.toUpperCase() ?? "#"}
+                          </Text>
+                        )}
+                      </LinearGradient>
+                      <Text style={styles.commCardName} numberOfLines={2}>{comm.name}</Text>
+                      <Text style={styles.commCardMeta}>{comm._count?.members ?? 0} members</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* All events */}
+            {events.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>All Hangouts</Text>
+                {events.slice(0, 12).map((event, i) => (
+                  <EventMiniCard
+                    key={event.id}
                     event={event}
+                    index={i}
                     onPress={() => router.push(`/events/${event.id}` as any)}
                   />
-                </View>
-              ))}
-            </View>
-          </View>
-        </ScrollView>
-      </View>
-      <MobileNav active="explore" />
+                ))}
+              </View>
+            )}
+          </>
+        )}
+      </ScrollView>
 
-      <SearchModal
-        searchSheetOpen={searchSheetOpen}
-        setSearchSheetOpen={setSearchSheetOpen}
-        events={events}
-        communities={communities}
-        router={router}
-      />
-    </View>
+      <MobileNav active="explore" />
+    </ClayBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  loader: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.canvas },
+
+  header: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+    paddingHorizontal: C.Space.xl,
+    paddingBottom: C.Space.xl,
+    backgroundColor: "rgba(244,241,250,0.95)",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(124,58,237,0.08)",
+    gap: C.Space.lg,
+  },
+  title: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xxxl,
+    color: C.textPrimary,
+  },
+  searchWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: C.Space.md,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    paddingHorizontal: C.Space.lg,
+    height: 50,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+
+  scroll: { paddingBottom: 110, paddingHorizontal: C.Space.xl },
+
+  chips: {
+    gap: 8,
+    paddingRight: 8,
+    marginBottom: C.Space.xl,
+  },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  chipActive: {
+    backgroundColor: C.accent,
+    shadowOpacity: 0.22,
+  },
+  chipText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+  },
+  chipTextActive: { color: "#fff" },
+
+  section: { marginBottom: C.Space.xxl },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: C.Space.lg },
+  sectionTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+    marginBottom: C.Space.lg,
+  },
+  sectionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: C.pinkMuted,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: C.Space.lg,
+  },
+  sectionBadgeText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 10,
+    color: C.accentPink,
+  },
+  miniLoader: { alignItems: "center", paddingVertical: 24 },
+
+  // Event card (horizontal scroll + vertical list)
+  eventCard: {
+    width: 220,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.10,
+    shadowRadius: 14,
+    elevation: 5,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
+    marginBottom: 10,
+  },
+  eventCardImg: {
+    height: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eventCardInitial: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 40,
+    color: "rgba(255,255,255,0.75)",
+  },
+  eventCardBody: {
+    padding: C.Space.lg,
+    gap: 4,
+  },
+  eventCardName: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    lineHeight: C.FontSizes.base * 1.3,
+  },
+  eventCardLocation: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+  },
+  eventCardMeta: { flexDirection: "row", marginTop: 4 },
+  eventCardBadge: {
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  eventCardBadgeText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 10,
+  },
+
+  // Community grid
+  commGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  commCard: {
+    width: "47%",
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
+    marginBottom: 4,
+  },
+  commCardImg: {
+    height: 90,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  commCardInitial: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 32,
+    color: "rgba(255,255,255,0.8)",
+  },
+  commCardName: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+    paddingHorizontal: C.Space.md,
+    paddingTop: C.Space.md,
+    lineHeight: C.FontSizes.base * 1.3,
+  },
+  commCardMeta: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    paddingHorizontal: C.Space.md,
+    paddingBottom: C.Space.md,
+    paddingTop: 2,
+  },
+
+  // Community list row (search results)
+  commRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: C.Space.lg,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    padding: C.Space.lg,
+    marginBottom: 8,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  commRowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: C.Radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  commRowName: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+  commRowMeta: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+  },
+
+  emptySearch: {
+    paddingTop: 60,
+    alignItems: "center",
+  },
+  emptySearchText: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textSecondary,
+  },
+});

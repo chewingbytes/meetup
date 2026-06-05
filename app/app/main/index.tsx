@@ -51,7 +51,7 @@ export default function WelcomeScreen() {
           </Text>
           <View className="bg-white border-4 border-black p-4 rotate-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mt-4">
             <Text className="text-black text-xl font-bold leading-tight">
-              Find events and join new communities{" "}
+              Find hangouts and join new communities{" "}
               <Text className="text-red-500">safely and securely.</Text>
             </Text>
           </View>

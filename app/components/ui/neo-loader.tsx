@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, Easing, Text, StyleSheet } from 'react-native';
+import { View, Animated, Easing, Text, StyleSheet, Image } from 'react-native';
 
 export function NeoLoader() {
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -24,11 +24,15 @@ export function NeoLoader() {
     <View style={styles.container}>
       <Animated.View
         style={[
-          styles.box,
+          styles.logoContainer,
           { transform: [{ rotate: spin }] },
         ]}
       >
-        <View style={styles.innerBox} />
+        <Image
+          source={require('../../assets/images/transparentbackgroundlogo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </Animated.View>
       <Text style={styles.label}>LOADING...</Text>
     </View>
@@ -76,26 +80,15 @@ const styles = StyleSheet.create({
     gap: 20,
     padding: 20,
   },
-  box: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#FFD93D', // Neo-yellow
-    borderWidth: 4,
-    borderColor: '#000',
-    shadowColor: '#000',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 0, // No soft elevation
+  logoContainer: {
+    width: 64,
+    height: 64,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  innerBox: {
-    width: 20,
-    height: 20,
-    backgroundColor: '#FF6B6B', // Neo-red
-    borderWidth: 2,
-    borderColor: '#000',
+  logo: {
+    width: 64,
+    height: 64,
   },
   label: {
     fontSize: 16,

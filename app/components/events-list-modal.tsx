@@ -1,14 +1,11 @@
+/**
+ * EventsListModal — clay-styled bottom sheet showing all events.
+ */
+
+import { C } from "@/theme/clay";
 import { EventProps } from "@/utils/types";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Search,
-  SlidersHorizontal,
-  Users,
-  X,
-  Zap,
-} from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Calendar, Clock, MapPin, Search, X, Zap } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
   Dimensions,
@@ -27,13 +24,21 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 type DateFilter = "all" | "upcoming" | "today" | "week" | "weekend";
 
-const ACCENT_COLORS = [
-  "#FF6B6B",
-  "#FFD93D",
-  "#C4B5FD",
-  "#6EE7B7",
-  "#93C5FD",
-  "#F472B6",
+const CARD_GRADIENTS: Array<readonly [string, string]> = [
+  C.Gradients.primary,
+  C.Gradients.pink,
+  C.Gradients.blue,
+  C.Gradients.green,
+  C.Gradients.amber,
+  C.Gradients.coral,
+];
+
+const DATE_CHIPS: { id: DateFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "today", label: "Today" },
+  { id: "week", label: "This week" },
+  { id: "weekend", label: "Weekend" },
 ];
 
 function fmtDate(iso?: string) {
@@ -51,31 +56,6 @@ function fmtTime(iso?: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function isToday(iso?: string) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getDate() === now.getDate() &&
-    d.getMonth() === now.getMonth() &&
-    d.getFullYear() === now.getFullYear()
-  );
-}
-
-function isThisWeek(iso?: string) {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
-  const diff = d.getTime() - now.getTime();
-  return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000;
-}
-
-function isWeekend(iso?: string) {
-  if (!iso) return false;
-  const day = new Date(iso).getDay();
-  return day === 0 || day === 6;
 }
 
 interface Props {
@@ -96,534 +76,445 @@ export default function EventsListModal({
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
 
   const filtered = useMemo(() => {
-    // "all" shows every event — no date gate so past events are still visible
-    let list = [...events];
+    const now = new Date();
+    let list = events;
 
+    // Date filter
+    if (dateFilter === "upcoming") {
+      list = list.filter((e) => !e.end_at || new Date(e.end_at) >= now);
+    } else if (dateFilter === "today") {
+      list = list.filter((e) => {
+        if (!e.start_at) return false;
+        const d = new Date(e.start_at);
+        return d.toDateString() === now.toDateString();
+      });
+    } else if (dateFilter === "week") {
+      const end = new Date(now);
+      end.setDate(end.getDate() + 7);
+      list = list.filter((e) => {
+        if (!e.start_at) return false;
+        const d = new Date(e.start_at);
+        return d >= now && d <= end;
+      });
+    } else if (dateFilter === "weekend") {
+      list = list.filter((e) => {
+        if (!e.start_at) return false;
+        const day = new Date(e.start_at).getDay();
+        return day === 0 || day === 6;
+      });
+    }
+
+    // Text search
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(
         (e) =>
           e.name?.toLowerCase().includes(q) ||
-          e.location_text?.toLowerCase().includes(q)
+          e.location_text?.toLowerCase().includes(q),
       );
     }
 
-    if (dateFilter === "upcoming")
-      list = list.filter((e) => !e.end_at || new Date(e.end_at) >= new Date());
-    if (dateFilter === "today") list = list.filter((e) => isToday(e.start_at));
-    if (dateFilter === "week") list = list.filter((e) => isThisWeek(e.start_at));
-    if (dateFilter === "weekend")
-      list = list.filter(
-        (e) => isThisWeek(e.start_at) && isWeekend(e.start_at)
-      );
-
-    return list.sort(
-      (a, b) =>
-        new Date(a.start_at || 0).getTime() -
-        new Date(b.start_at || 0).getTime()
-    );
-  }, [events, query, dateFilter]);
-
-  const DATE_CHIPS: { id: DateFilter; label: string }[] = [
-    { id: "all", label: "ALL" },
-    { id: "upcoming", label: "UPCOMING" },
-    { id: "today", label: "TODAY" },
-    { id: "week", label: "THIS WEEK" },
-    { id: "weekend", label: "WEEKEND" },
-  ];
+    return list;
+  }, [events, dateFilter, query]);
 
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      transparent
       onRequestClose={onClose}
     >
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
+      <View style={styles.overlay}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom }]}>
+          {/* Handle */}
+          <View style={styles.handle} />
+
+          {/* Header */}
+          <View style={styles.header}>
             <View>
-              <Text style={styles.headerTitle}>ALL DROPS</Text>
-              <Text style={styles.headerSub}>
-                {filtered.length} EVENT{filtered.length !== 1 ? "S" : ""} FOUND
-              </Text>
+              <Text style={styles.title}>Hangouts</Text>
+              <Text style={styles.sub}>{filtered.length} found</Text>
             </View>
-            <TouchableOpacity
-              onPress={onClose}
-              style={styles.closeBtn}
-              activeOpacity={0.8}
-            >
-              <X size={20} color="#000" strokeWidth={3} />
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <X size={18} color={C.textSecondary} strokeWidth={2.5} />
             </TouchableOpacity>
           </View>
 
           {/* Search */}
-          <View style={styles.searchRow}>
-            <Search size={16} color="#000" strokeWidth={3} />
+          <View style={styles.searchWrap}>
+            <Search size={16} color={C.textSecondary} strokeWidth={2} />
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="SEARCH BY NAME OR LOCATION..."
-              placeholderTextColor="#999"
+              placeholder="Search hangouts…"
+              placeholderTextColor={C.textTertiary}
               style={styles.searchInput}
               autoCapitalize="none"
             />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery("")}>
-                <X size={14} color="#666" strokeWidth={3} />
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Date filter chips */}
-          <View style={styles.chipRow}>
-            <SlidersHorizontal
-              size={14}
-              color="#000"
-              strokeWidth={3}
-              style={{ marginRight: 6 }}
-            />
-            {DATE_CHIPS.map((chip) => (
-              <TouchableOpacity
-                key={chip.id}
-                onPress={() => setDateFilter(chip.id)}
-                style={[
-                  styles.chip,
-                  dateFilter === chip.id && styles.chipActive,
-                ]}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.chipText,
-                    dateFilter === chip.id && styles.chipTextActive,
-                  ]}
-                >
-                  {chip.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ── List ── */}
-        {filtered.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconBox}>
-                <Zap size={28} color="#000" strokeWidth={3} />
-              </View>
-              <Text style={styles.emptyTitle}>NOTHING HERE</Text>
-              <Text style={styles.emptyBody}>
-                {query
-                  ? `No events match "${query}"`
-                  : "No events found for this filter. Try a different date range."}
-              </Text>
-            </View>
-          </View>
-        ) : (
           <FlatList
-            data={filtered}
+            data={DATE_CHIPS}
+            horizontal
+            showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            renderItem={({ item, index }) => {
-              const color = ACCENT_COLORS[index % ACCENT_COLORS.length];
+            contentContainerStyle={styles.chipsRow}
+            renderItem={({ item }) => {
+              const isActive = item.id === dateFilter;
               return (
                 <TouchableOpacity
-                  onPress={() => {
-                    onEventPress(item);
-                    onClose();
-                  }}
-                  style={styles.card}
-                  activeOpacity={0.85}
+                  onPress={() => setDateFilter(item.id)}
+                  style={[styles.chip, isActive && styles.chipActive]}
+                  activeOpacity={0.8}
                 >
-                  {/* Cover */}
-                  <View style={styles.cardImageWrap}>
-                    {item.cover_image ? (
-                      <Image
-                        source={{ uri: item.cover_image }}
-                        style={styles.cardImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View
-                        style={[styles.cardImageFallback, { backgroundColor: color }]}
-                      >
-                        <Text style={styles.cardInitial}>
-                          {item.name?.charAt(0)?.toUpperCase() ?? "E"}
-                        </Text>
-                      </View>
-                    )}
-                    {item.is_paid && (
-                      <View style={styles.paidBadge}>
-                        <Text style={styles.paidText}>${item.price ?? "?"}</Text>
-                      </View>
-                    )}
-                    {item.location_lat != null && (
-                      <View style={styles.mapPinBadge}>
-                        <MapPin size={8} color="#000" strokeWidth={3} />
-                        <Text style={styles.mapPinText}>MAP</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Body */}
-                  <View style={styles.cardBody}>
-                    <Text style={styles.cardName} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-
-                    <View style={styles.metaRow}>
-                      <View style={styles.metaItem}>
-                        <Calendar size={10} color="#555" strokeWidth={2.5} />
-                        <Text style={styles.metaText}>
-                          {fmtDate(item.start_at)}
-                        </Text>
-                      </View>
-                      <View style={styles.metaItem}>
-                        <Clock size={10} color="#555" strokeWidth={2.5} />
-                        <Text style={styles.metaText}>
-                          {fmtTime(item.start_at)}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {item.location_text && (
-                      <View style={styles.metaItem}>
-                        <MapPin size={10} color="#FF6B6B" strokeWidth={2.5} />
-                        <Text style={styles.locationText} numberOfLines={1}>
-                          {item.location_text}
-                        </Text>
-                      </View>
-                    )}
-
-                    <View style={styles.cardFooter}>
-                      {item.capacity != null && (
-                        <View style={styles.capacityChip}>
-                          <Users size={9} color="#000" strokeWidth={2.5} />
-                          <Text style={styles.capacityText}>
-                            {item.capacity} spots
-                          </Text>
-                        </View>
-                      )}
-                      <View
-                        style={[styles.viewBtn, { backgroundColor: color }]}
-                      >
-                        <Text style={styles.viewBtnText}>VIEW →</Text>
-                      </View>
-                    </View>
-                  </View>
+                  <Text
+                    style={[styles.chipText, isActive && styles.chipTextActive]}
+                  >
+                    {item.label}
+                  </Text>
                 </TouchableOpacity>
               );
             }}
           />
-        )}
+
+          {/* Event list */}
+          {filtered.length === 0 ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIconWrap}>
+                <Zap size={24} color={C.accent} strokeWidth={2} />
+              </View>
+              <Text style={styles.emptyTitle}>No hangouts found</Text>
+              <Text style={styles.emptySub}>Try adjusting your filters.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.list}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              renderItem={({ item, index }) => {
+                const grad = CARD_GRADIENTS[index % CARD_GRADIENTS.length];
+                return (
+                  <TouchableOpacity
+                    onPress={() => {
+                      onClose();
+                      setTimeout(() => onEventPress(item), 350);
+                    }}
+                    style={styles.card}
+                    activeOpacity={0.85}
+                  >
+                    {/* Gradient thumbnail */}
+                    <View style={styles.cardThumb}>
+                      {item.cover_image ? (
+                        <Image
+                          source={{ uri: item.cover_image }}
+                          style={styles.cardThumbImg}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={grad}
+                          style={styles.cardThumbImg}
+                        >
+                          <Text style={styles.cardThumbInitial}>
+                            {item.name?.charAt(0)?.toUpperCase() ?? "E"}
+                          </Text>
+                        </LinearGradient>
+                      )}
+                    </View>
+
+                    {/* Content */}
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <View style={styles.cardMetaRow}>
+                        {item.start_at && (
+                          <View style={styles.cardMeta}>
+                            <Calendar
+                              size={10}
+                              color={C.accent}
+                              strokeWidth={2.5}
+                            />
+                            <Text style={styles.cardMetaText}>
+                              {fmtDate(item.start_at)}
+                            </Text>
+                          </View>
+                        )}
+                        {item.start_at && fmtTime(item.start_at) && (
+                          <View style={styles.cardMeta}>
+                            <Clock
+                              size={10}
+                              color={C.accent}
+                              strokeWidth={2.5}
+                            />
+                            <Text style={styles.cardMetaText}>
+                              {fmtTime(item.start_at)}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      {item.location_text && (
+                        <View style={styles.cardMeta}>
+                          <MapPin
+                            size={10}
+                            color={C.accentPink}
+                            strokeWidth={2.5}
+                          />
+                          <Text
+                            style={[styles.cardMetaText, { flex: 1 }]}
+                            numberOfLines={1}
+                          >
+                            {item.location_text}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Price badge */}
+                    <View
+                      style={[
+                        styles.priceBadge,
+                        item.is_paid && item.price && item.price > 0
+                          ? { backgroundColor: C.amberMuted }
+                          : { backgroundColor: C.greenMuted },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.priceText,
+                          {
+                            color:
+                              item.is_paid && item.price && item.price > 0
+                                ? C.accentAmber
+                                : C.accentGreen,
+                          },
+                        ]}
+                      >
+                        {item.is_paid && item.price && item.price > 0
+                          ? `$${item.price}`
+                          : "Free"}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  overlay: {
     flex: 1,
-    backgroundColor: "#FFFDF5",
+    justifyContent: "flex-end",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
   },
-
-  // Header
+  sheet: {
+    backgroundColor: C.canvas,
+    borderTopLeftRadius: C.Radii.xxl,
+    borderTopRightRadius: C.Radii.xxl,
+    maxHeight: SCREEN_HEIGHT * 0.92,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 24,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.85)",
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(124,58,237,0.20)",
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 8,
+  },
   header: {
-    backgroundColor: "#FFD93D",
-    borderBottomWidth: 4,
-    borderColor: "#000",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
-  },
-  headerTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingHorizontal: C.Space.xl,
+    paddingVertical: C.Space.lg,
   },
-  headerTitle: {
-    fontSize: 38,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 40,
-    textTransform: "uppercase",
+  title: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xxl,
+    color: C.textPrimary,
   },
-  headerSub: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    opacity: 0.65,
+  sub: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
     marginTop: 2,
   },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderWidth: 3,
-    borderColor: "#000",
-    backgroundColor: "#fff",
+    width: 36,
+    height: 36,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  searchRow: {
+  searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 12,
-    gap: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    gap: C.Space.sm,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    paddingHorizontal: C.Space.lg,
+    height: 46,
+    marginHorizontal: C.Space.xl,
+    marginBottom: C.Space.lg,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 10,
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 0.3,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
-  chipRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
+  chipsRow: {
+    paddingHorizontal: C.Space.xl,
+    gap: 8,
+    paddingBottom: C.Space.lg,
   },
   chip: {
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: "#fff",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.surface,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   chipActive: {
-    backgroundColor: "#000",
+    backgroundColor: C.accent,
+    shadowOpacity: 0.22,
   },
   chipText: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
-  chipTextActive: {
-    color: "#FFD93D",
+  chipTextActive: { color: "#fff" },
+  list: {
+    paddingHorizontal: C.Space.xl,
+    paddingBottom: 20,
   },
-
-  // Empty
-  emptyWrap: {
-    flex: 1,
+  empty: {
     alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  emptyCard: {
-    backgroundColor: "#fff",
-    borderWidth: 4,
-    borderColor: "#000",
-    padding: 28,
-    alignItems: "center",
-    maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 8, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
+    paddingVertical: 48,
     gap: 10,
   },
-  emptyIconBox: {
-    width: 60,
-    height: 60,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
+  emptyIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentMuted,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    marginBottom: 4,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: -0.5,
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.lg,
+    color: C.textPrimary,
   },
-  emptyBody: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#666",
-    textAlign: "center",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-    lineHeight: 18,
-  },
-
-  // List
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
+  emptySub: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
   card: {
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#000",
     flexDirection: "row",
-    shadowColor: "#000",
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+    alignItems: "stretch",
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
     overflow: "hidden",
+    height: 82,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
-  cardImageWrap: {
-    width: 90,
-    borderRightWidth: 3,
-    borderColor: "#000",
-    position: "relative",
+  cardThumb: {
+    width: 82,
   },
-  cardImage: {
+  cardThumbImg: {
     width: "100%",
     height: "100%",
-  },
-  cardImageFallback: {
-    width: "100%",
-    height: "100%",
-    minHeight: 90,
     alignItems: "center",
     justifyContent: "center",
   },
-  cardInitial: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: "#000",
-  },
-  paidBadge: {
-    position: "absolute",
-    top: 6,
-    left: 6,
-    backgroundColor: "#FFD93D",
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  paidText: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#000",
-  },
-  mapPinBadge: {
-    position: "absolute",
-    bottom: 6,
-    left: 6,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    backgroundColor: "#6EE7B7",
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  mapPinText: {
-    fontSize: 7,
-    fontWeight: "900",
-    color: "#000",
+  cardThumbInitial: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 24,
+    color: "rgba(255,255,255,0.8)",
   },
   cardBody: {
     flex: 1,
-    padding: 12,
-    gap: 5,
+    paddingHorizontal: C.Space.lg,
+    paddingVertical: C.Space.md,
+    gap: 3,
+    justifyContent: "center",
+    overflow: "hidden",
   },
   cardName: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.2,
-    lineHeight: 18,
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
-  metaRow: {
+  cardMetaRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
   },
-  metaItem: {
+  cardMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
   },
-  metaText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#555",
-    textTransform: "uppercase",
+  cardMetaText: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
   },
-  locationText: {
-    flex: 1,
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#777",
-    textTransform: "uppercase",
+  priceBadge: {
+    borderRadius: C.Radii.md,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: C.Space.lg,
   },
-  cardFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  capacityChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: "#FFFDF5",
-  },
-  capacityText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#000",
-    textTransform: "uppercase",
-  },
-  viewBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  viewBtnText: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+  priceText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 11,
   },
 });

@@ -56,7 +56,7 @@ export default function HostDashboard() {
       setEvents(hosted);
     } catch (e: any) {
       console.error("Failed to fetch events:", e);
-      Alert.alert("Error", "Could not load your hosted events.");
+      Alert.alert("Error", "Could not load your hosted hangouts.");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export default function HostDashboard() {
 
   useEffect(() => {
     console.log(
-      "Event details updated:",
+      "Hangout details updated:",
       JSON.stringify(eventDetails, null, 2),
     );
   }, [events]);

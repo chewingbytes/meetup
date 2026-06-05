@@ -62,7 +62,7 @@ export default function VerificationIntro() {
             Get{"\n"}Verified
           </Text>
           <Text className="font-bold text-center text-gray-600 max-w-[250px]">
-            Unlock creating events, private groups, and the "Verified" badge on
+            Unlock creating hangouts, private groups, and the "Verified" badge on
             your profile.
           </Text>
         </View>

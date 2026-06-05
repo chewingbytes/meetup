@@ -1,9 +1,16 @@
+/**
+ * Messages / Chats screen — clay aesthetic.
+ */
+
 import MobileNav from "@/components/mobile-nav";
+import { ClayBackground } from "@/components/ui/clay-background";
 import { NeoLoader } from "@/components/ui/neo-loader";
+import { C } from "@/theme/clay";
 import { getMyEvents } from "@/lib/api";
 import { useAuth } from "@/lib/authContext";
 import { supabase } from "@/lib/supabase";
 import { useChatNotificationStore } from "@/lib/stores/chatNotificationStore";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   Hash,
@@ -32,7 +39,14 @@ interface ChatEntry {
   lastAt?: string;
 }
 
-const ACCENT_COLORS = ["#FF6B6B", "#FFD93D", "#C4B5FD", "#6EE7B7", "#93C5FD", "#F472B6"];
+const CHANNEL_GRADIENTS: Array<readonly [string, string]> = [
+  C.Gradients.primary,
+  C.Gradients.pink,
+  C.Gradients.blue,
+  C.Gradients.green,
+  C.Gradients.amber,
+  C.Gradients.coral,
+];
 
 function relativeTime(iso?: string) {
   if (!iso) return "";
@@ -59,30 +73,19 @@ export default function MessagesScreen() {
     if (!user) return;
     setIsLoading(true);
     try {
-      // 1. Fetch user's joined events
       const myEvents: any[] = await getMyEvents(user.id).catch(() => []);
       const validEvents = Array.isArray(myEvents) ? myEvents : [];
-
-      // 2. Collect event IDs from the user's joined events
       const eventIds = validEvents.map((e: any) => e.id).filter(Boolean) as string[];
 
-      if (eventIds.length === 0) {
-        setChats([]);
-        return;
-      }
+      if (eventIds.length === 0) { setChats([]); return; }
 
-      // 3. Fetch channels linked directly to those events
       const { data: channels, error: chanErr } = await supabase
         .from("channels")
         .select("id, name, community_id, event_id")
         .in("event_id", eventIds);
 
-      if (chanErr || !channels?.length) {
-        setChats([]);
-        return;
-      }
+      if (chanErr || !channels?.length) { setChats([]); return; }
 
-      // 4. For each channel, get the last message
       const entries: ChatEntry[] = await Promise.all(
         channels.map(async (ch: any) => {
           const { data: msgs } = await supabase
@@ -91,12 +94,8 @@ export default function MessagesScreen() {
             .eq("channel_id", ch.id)
             .order("created_at", { ascending: false })
             .limit(1);
-
           const last = msgs?.[0];
-
-          // Match the event this channel belongs to
           const relatedEvent = validEvents.find((e: any) => e.id === ch.event_id);
-
           return {
             channelId: ch.id,
             channelName: ch.name,
@@ -108,18 +107,12 @@ export default function MessagesScreen() {
           } as ChatEntry;
         })
       );
-
       setChats(entries);
-    } catch (e) {
-      setChats([]);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { setChats([]); }
+    finally { setIsLoading(false); }
   }, [user]);
 
-  useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+  useEffect(() => { loadChats(); }, [loadChats]);
 
   const filtered = chats.filter(
     (c) =>
@@ -130,69 +123,60 @@ export default function MessagesScreen() {
   const totalUnread = Object.values(unreadByChannel).reduce((a, b) => a + b, 0);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.headerTitle}>CHATS</Text>
-            <Text style={styles.headerSub}>
-              {chats.length} ACTIVE CHANNELS
-            </Text>
+    <ClayBackground style={{ flex: 1 }}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <View style={styles.headerTitle}>
+          <Text style={styles.title}>Chats</Text>
+          <View style={styles.titleMeta}>
+            <Text style={styles.titleSub}>{chats.length} active</Text>
+            {totalUnread > 0 && (
+              <View style={styles.totalUnreadBadge}>
+                <Text style={styles.totalUnreadText}>{totalUnread}</Text>
+              </View>
+            )}
           </View>
-          {totalUnread > 0 && (
-            <View style={styles.totalUnreadBadge}>
-              <Text style={styles.totalUnreadText}>{totalUnread}</Text>
-            </View>
-          )}
         </View>
 
-        {/* Search bar */}
-        <View style={styles.searchWrapper}>
-          <Search size={16} color="#000" strokeWidth={3} style={{ marginLeft: 12 }} />
+        {/* Search */}
+        <View style={styles.searchWrap}>
+          <Search size={16} color={C.textSecondary} strokeWidth={2} style={{ marginLeft: 4 }} />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="SEARCH CHANNELS..."
-            placeholderTextColor="#999"
+            placeholder="Search channels…"
+            placeholderTextColor={C.textTertiary}
             style={styles.searchInput}
             autoCapitalize="none"
           />
         </View>
       </View>
 
-      {/* ── Content ── */}
       {isLoading ? (
-        <View style={styles.loaderWrap}>
+        <View style={styles.center}>
           <NeoLoader />
-          <Text style={styles.loaderText}>LOADING CHATS...</Text>
+          <Text style={styles.loadingText}>Loading chats…</Text>
         </View>
       ) : filtered.length === 0 ? (
-        <View style={styles.emptyWrap}>
-          {/* Decorative shapes */}
-          <View style={styles.emptyShape1} />
-          <View style={styles.emptyShape2} />
-
+        <View style={styles.center}>
           <View style={styles.emptyCard}>
-            <View style={styles.emptyIconBox}>
-              <MessageSquare size={32} color="#000" strokeWidth={3} />
+            <View style={styles.emptyIconWrap}>
+              <MessageSquare size={28} color={C.accent} strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>
-              {query ? "NO RESULTS" : "RADIO SILENCE"}
+              {query ? "No results" : "No chats yet"}
             </Text>
             <Text style={styles.emptyBody}>
               {query
                 ? "Try a different search term."
-                : "Join an event to unlock its chat channel and connect with attendees."}
+                : "Join a hangout to unlock its chat channel."}
             </Text>
             {!query && (
               <TouchableOpacity
                 onPress={() => router.push("/explore")}
                 style={styles.emptyBtn}
-                activeOpacity={0.8}
               >
-                <Zap size={14} color="#000" strokeWidth={3} />
-                <Text style={styles.emptyBtnText}>FIND EVENTS</Text>
+                <Zap size={14} color="#fff" strokeWidth={2.5} />
+                <Text style={styles.emptyBtnText}>Find Hangouts</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -201,51 +185,41 @@ export default function MessagesScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.channelId}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           renderItem={({ item, index }) => {
-            const color = ACCENT_COLORS[index % ACCENT_COLORS.length];
+            const grad = CHANNEL_GRADIENTS[index % CHANNEL_GRADIENTS.length];
             const unread = unreadByChannel[item.channelId] ?? 0;
-
             return (
               <TouchableOpacity
                 onPress={() =>
                   router.push({
                     pathname: "/chat/[channelId]",
-                    params: {
-                      channelId: item.channelId,
-                      channelName: item.channelName,
-                    },
+                    params: { channelId: item.channelId, channelName: item.channelName },
                   })
                 }
                 style={styles.chatCard}
                 activeOpacity={0.85}
               >
-                {/* Color accent strip */}
-                <View style={[styles.cardStrip, { backgroundColor: color }]}>
-                  <Hash size={18} color="#000" strokeWidth={3} />
-                </View>
+                {/* Gradient icon strip */}
+                <LinearGradient
+                  colors={grad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.cardStrip}
+                >
+                  <Hash size={16} color="#fff" strokeWidth={2.5} />
+                </LinearGradient>
 
-                {/* Body */}
                 <View style={styles.cardBody}>
                   <View style={styles.cardTopRow}>
                     <Text style={styles.cardEventName} numberOfLines={1}>
                       {item.eventName}
                     </Text>
-                    <Text style={styles.cardTime}>
-                      {relativeTime(item.lastAt)}
-                    </Text>
+                    <Text style={styles.cardTime}>{relativeTime(item.lastAt)}</Text>
                   </View>
-
-                  <View style={styles.cardChannelRow}>
-                    <View style={styles.channelPill}>
-                      <Text style={styles.channelPillText}>
-                        #{item.channelName}
-                      </Text>
-                    </View>
-                  </View>
-
+                  <Text style={styles.cardChannelPill}>#{item.channelName}</Text>
                   <Text style={styles.cardLastMsg} numberOfLines={1}>
                     {item.lastMessage
                       ? `${item.lastAuthor ? item.lastAuthor + ": " : ""}${item.lastMessage}`
@@ -253,7 +227,6 @@ export default function MessagesScreen() {
                   </Text>
                 </View>
 
-                {/* Unread badge */}
                 {unread > 0 && (
                   <View style={styles.unreadBadge}>
                     <Text style={styles.unreadText}>
@@ -268,233 +241,161 @@ export default function MessagesScreen() {
       )}
 
       <MobileNav active="messages" />
-    </View>
+    </ClayBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#FFFDF5",
-  },
-
-  // ── Header ──
   header: {
-    backgroundColor: "#FFD93D",
-    borderBottomWidth: 4,
-    borderColor: "#000",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 14,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
-    zIndex: 10,
-  },
-  headerTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
+    paddingHorizontal: C.Space.xl,
+    paddingBottom: C.Space.xl,
+    gap: C.Space.lg,
   },
   headerTitle: {
-    fontSize: 40,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: -1,
-    lineHeight: 44,
-    textTransform: "uppercase",
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
   },
-  headerSub: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    opacity: 0.6,
+  title: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xxxl,
+    color: C.textPrimary,
+  },
+  titleMeta: { flexDirection: "row", alignItems: "center", gap: 8, paddingBottom: 4 },
+  titleSub: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
   },
   totalUnreadBadge: {
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
-    marginTop: 4,
+    backgroundColor: C.accentPink,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   totalUnreadText: {
-    fontSize: 16,
-    fontWeight: "900",
-    color: "#000",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 12,
+    color: "#fff",
   },
-  searchWrapper: {
+  searchWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#000",
-    shadowColor: "#000",
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    gap: 8,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    paddingHorizontal: C.Space.lg,
+    height: 48,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 10,
+    elevation: 3,
   },
   searchInput: {
     flex: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#000",
-    letterSpacing: 0.5,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
   },
-
-  // ── Loader ──
-  loaderWrap: {
+  center: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    paddingHorizontal: 32,
   },
-  loaderText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 2,
-  },
-
-  // ── Empty state ──
-  emptyWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  emptyShape1: {
-    position: "absolute",
-    top: 40,
-    left: 20,
-    width: 60,
-    height: 60,
-    backgroundColor: "#C4B5FD",
-    borderWidth: 3,
-    borderColor: "#000",
-    transform: [{ rotate: "-12deg" }],
-  },
-  emptyShape2: {
-    position: "absolute",
-    bottom: 80,
-    right: 24,
-    width: 40,
-    height: 40,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    borderRadius: 999,
+  loadingText: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    marginTop: 12,
   },
   emptyCard: {
-    backgroundColor: "#fff",
-    borderWidth: 4,
-    borderColor: "#000",
-    padding: 28,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xxl,
+    padding: 32,
     alignItems: "center",
-    maxWidth: 320,
-    shadowColor: "#000",
-    shadowOffset: { width: 8, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 8,
     gap: 10,
+    maxWidth: 300,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.10,
+    shadowRadius: 24,
+    elevation: 8,
   },
-  emptyIconBox: {
-    width: 64,
-    height: 64,
-    backgroundColor: "#FFD93D",
-    borderWidth: 3,
-    borderColor: "#000",
+  emptyIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentMuted,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
     marginBottom: 4,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: -0.5,
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+    textAlign: "center",
   },
   emptyBody: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#555",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
     textAlign: "center",
-    textTransform: "uppercase",
-    lineHeight: 18,
-    letterSpacing: 0.3,
+    lineHeight: C.FontSizes.sm * 1.6,
   },
   emptyBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FF6B6B",
-    borderWidth: 3,
-    borderColor: "#000",
-    paddingHorizontal: 20,
+    backgroundColor: C.accent,
+    borderRadius: C.Radii.lg,
+    paddingHorizontal: C.Space.xl,
     paddingVertical: 12,
-    marginTop: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    marginTop: 4,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
   },
   emptyBtnText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#000",
-    letterSpacing: 1.5,
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
   },
-
-  // ── Chat list ──
-  listContent: {
-    padding: 16,
+  list: {
+    padding: C.Space.xl,
     paddingBottom: 120,
   },
   chatCard: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#000",
-    shadowColor: "#000",
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+    alignItems: "center",
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
     overflow: "hidden",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 5,
+    borderWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.90)",
+    borderLeftColor: "rgba(255,255,255,0.55)",
+    borderRightColor: "rgba(255,255,255,0.20)",
+    borderBottomColor: "rgba(255,255,255,0.10)",
   },
   cardStrip: {
-    width: 52,
-    borderRightWidth: 3,
-    borderColor: "#000",
+    width: 56,
+    alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
   },
   cardBody: {
     flex: 1,
-    padding: 12,
-    gap: 4,
+    padding: C.Space.lg,
+    gap: 3,
   },
   cardTopRow: {
     flexDirection: "row",
@@ -503,57 +404,40 @@ const styles = StyleSheet.create({
   },
   cardEventName: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#000",
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
     marginRight: 8,
   },
   cardTime: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#888",
-    textTransform: "uppercase",
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: C.textTertiary,
   },
-  cardChannelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  channelPill: {
-    backgroundColor: "#FFFDF5",
-    borderWidth: 2,
-    borderColor: "#000",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  channelPillText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#555",
-    letterSpacing: 0.5,
+  cardChannelPill: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.xs,
+    color: C.accent,
   },
   cardLastMsg: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#666",
-    lineHeight: 16,
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    lineHeight: C.FontSizes.sm * 1.4,
   },
   unreadBadge: {
-    minWidth: 28,
-    height: 28,
-    backgroundColor: "#FF6B6B",
-    borderLeftWidth: 3,
-    borderColor: "#000",
-    alignSelf: "center",
+    minWidth: 26,
+    height: 26,
+    borderRadius: C.Radii.full,
+    backgroundColor: C.accentPink,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
-    marginRight: 12,
+    marginRight: C.Space.lg,
   },
   unreadText: {
+    fontFamily: C.Fonts.bodyBold,
     fontSize: 11,
-    fontWeight: "900",
-    color: "#000",
+    color: "#fff",
   },
 });

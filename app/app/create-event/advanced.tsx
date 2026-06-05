@@ -131,7 +131,7 @@ export default function CreateEventScreen() {
         communityId: community_id,
       });
 
-      Alert.alert("Success", "Event created!");
+      Alert.alert("Success", "Hangout created!");
       router.back();
     } catch (error: any) {
       Alert.alert("Error", error.message || "Failed to create event");
@@ -271,7 +271,7 @@ export default function CreateEventScreen() {
       <ScrollView contentContainerStyle={{ padding: 20 }}>
         {/* Name Input */}
         <View className="mb-6">
-          <Text className="font-black text-sm uppercase mb-1">Event Name</Text>
+          <Text className="font-black text-sm uppercase mb-1">Hangout Name</Text>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -411,7 +411,7 @@ export default function CreateEventScreen() {
             <NeoButtonLoader color="white" />
           ) : (
             <Text className="font-black text-2xl text-white uppercase tracking-widest">
-              Launch Event
+              Launch Hangout
             </Text>
           )}
         </TouchableOpacity>

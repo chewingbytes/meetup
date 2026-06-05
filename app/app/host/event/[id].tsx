@@ -84,7 +84,7 @@ export default function EditEvent() {
         cover_image: data.cover_image || null,
       });
     } catch (e: any) {
-      Alert.alert("Error", "Failed to load event details");
+      Alert.alert("Error", "Failed to load hangout details");
       router.back();
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ export default function EditEvent() {
   };
 
   const deleteEvent = () => {
-    Alert.alert("Delete Event", "Are you sure? This action cannot be undone.", [
+    Alert.alert("Delete Hangout", "Are you sure? This action cannot be undone.", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -178,7 +178,7 @@ export default function EditEvent() {
             Alert.alert("Deleted", "Event has been removed.");
             router.back();
           } catch (e) {
-            Alert.alert("Error", "Could not delete event.");
+            Alert.alert("Error", "Could not delete hangout.");
           }
         },
       },
@@ -205,7 +205,7 @@ export default function EditEvent() {
             <ArrowLeft size={28} color="#000" strokeWidth={3} />
           </TouchableOpacity>
           <Text className="text-2xl font-black uppercase tracking-tighter flex-1">
-            Edit Event
+            Edit Hangout
           </Text>
           <TouchableOpacity
             onPress={handleSave}
@@ -226,7 +226,7 @@ export default function EditEvent() {
         <View className="bg-white border-4 border-black p-4 mb-6 shadow-[8px_8px_0px_0px_#000]">
           <View className="bg-black/5 p-2 mb-4 border-2 border-black border-dashed">
             <Text className="font-bold text-xs uppercase text-gray-500 mb-2">
-              Event Name
+              Hangout Name
             </Text>
             <TextInput
               value={form.name}
@@ -321,7 +321,7 @@ export default function EditEvent() {
           <View className="flex-row items-center justify-between mb-4 border-b-2 border-black border-dashed pb-2">
             <View className="flex-row items-center gap-2">
               <DollarSign size={20} color="#000" />
-              <Text className="font-bold text-base uppercase">Paid Event?</Text>
+              <Text className="font-bold text-base uppercase">Paid Hangout?</Text>
             </View>
             <Switch
               value={form.is_paid}

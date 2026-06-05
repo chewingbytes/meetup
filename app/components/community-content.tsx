@@ -352,7 +352,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
               >
                 <Plus size={16} color="#000" strokeWidth={3} />
                 <Text className="text-black font-bold text-xs uppercase">
-                  Add Event
+                  Add Hangout
                 </Text>
               </TouchableOpacity>
             )}
@@ -396,7 +396,7 @@ export default function CommunityContent({ community }: CommunityContentProps) {
 
             {(eventsByDate[selectedDate] || []).length === 0 ? (
               <Text className="text-black/40 font-bold uppercase text-sm border-2 border-dashed border-black/20 p-4 text-center bg-white/50">
-                No events on this day.
+                No hangouts on this day.
               </Text>
             ) : (
               (eventsByDate[selectedDate] || []).map((ev) => (
