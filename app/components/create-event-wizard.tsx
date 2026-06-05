@@ -130,11 +130,16 @@ async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
 }
 
 interface Props {
+  visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function CreateEventWizard({ onClose, onSuccess }: Props) {
+export default function CreateEventWizard({
+  visible,
+  onClose,
+  onSuccess,
+}: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
 
@@ -165,8 +170,8 @@ export default function CreateEventWizard({ onClose, onSuccess }: Props) {
   const slideX = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(1 / TOTAL_STEPS)).current;
 
-  // Reset every time the component mounts (parent only renders it when opening)
   useEffect(() => {
+    if (!visible) return;
     setStep(1);
     setForm(BLANK);
     setSubmitError(null);
@@ -175,7 +180,7 @@ export default function CreateEventWizard({ onClose, onSuccess }: Props) {
     setAddrQuery("");
     setAddrSuggestions([]);
     progressAnim.setValue(1 / TOTAL_STEPS);
-  }, []);
+  }, [visible]);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -447,117 +452,151 @@ export default function CreateEventWizard({ onClose, onSuccess }: Props) {
   });
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) }]}
-    >
-      {/* Drag handle */}
-      <View style={styles.sheetHandle} />
-
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={step === 1 ? onClose : goBack}
-          style={styles.headerBtn}
-          activeOpacity={0.7}
-        >
-          {step === 1 ? (
-            <X size={18} color={C.textPrimary} strokeWidth={2.5} />
-          ) : (
-            <ChevronLeft size={18} color={C.textPrimary} strokeWidth={2.5} />
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerStep}>Step {step} of {TOTAL_STEPS}</Text>
-          <Text style={styles.headerTitle}>{STEP_LABELS[step - 1]}</Text>
-        </View>
-
-        <View style={styles.stepPill}>
-          <Text style={styles.stepPillText}>{step}/{TOTAL_STEPS}</Text>
-        </View>
-      </View>
-
-      {/* Progress bar */}
-      <View style={styles.progressTrack}>
-        <Animated.View style={[styles.progressFill, { width: progressWidth as any }]} />
-      </View>
-
-      {/* ── Step content ── */}
-      <Animated.View style={[styles.stepWrap, { transform: [{ translateX: slideX }] }]}>
-        {renderStep()}
-      </Animated.View>
-
-      {/* ── Footer ── */}
-      <View style={styles.footer}>
-        {step < TOTAL_STEPS ? (
-          <Pressable
-            onPress={stepValid(step) ? goNext : undefined}
-            style={({ pressed }) => [
-              styles.nextBtn,
-              !stepValid(step) && styles.nextBtnDisabled,
-              pressed && stepValid(step) && { opacity: 0.85 },
-            ]}
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        {/* ── Header ── */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={step === 1 ? onClose : goBack}
+            style={styles.headerBtn}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={stepValid(step) ? C.Gradients.primary : (["#E5E1F0", "#E5E1F0"] as const)}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.nextBtnGrad}
-            >
-              <Text style={[styles.nextBtnText, !stepValid(step) && styles.nextBtnTextDisabled]}>
-                Next: {STEP_LABELS[step]}
-              </Text>
-              <ChevronRight size={18} color={stepValid(step) ? "#fff" : C.textTertiary} strokeWidth={2.5} />
-            </LinearGradient>
-          </Pressable>
-        ) : (
-          <Pressable
-            onPress={isSubmitting ? undefined : handleSubmit}
-            style={({ pressed }) => [styles.launchBtn, pressed && { opacity: 0.88 }]}
-          >
-            <LinearGradient
-              colors={C.Gradients.primary}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.launchBtnGrad}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Check size={20} color="#fff" strokeWidth={2.5} />
-                  <Text style={styles.launchBtnText}>Launch Hangout</Text>
-                </>
-              )}
-            </LinearGradient>
-          </Pressable>
-        )}
-      </View>
+            {step === 1 ? (
+              <X size={20} color={C.textPrimary} strokeWidth={2.5} />
+            ) : (
+              <ChevronLeft size={20} color={C.textPrimary} strokeWidth={2.5} />
+            )}
+          </TouchableOpacity>
 
-      {/* ── Internal time-picker modal ── */}
-      <Modal visible={showTimePicker} transparent animationType="fade">
-        <View style={styles.timePickerOverlay}>
-          <View style={styles.timePickerSheet}>
-            <View style={styles.timePickerHeader}>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={styles.timePickerActionBtn}>
-                <Text style={styles.timePickerCancel}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.timePickerTitle}>Set time</Text>
-              <TouchableOpacity onPress={confirmTime} style={styles.timePickerActionBtn}>
-                <Text style={styles.timePickerDone}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            <DateTimePicker
-              value={tempTime}
-              mode="time"
-              display="spinner"
-              onChange={(_, val) => { if (val) setTempTime(val); }}
-            />
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerStep}>
+              Step {step} of {TOTAL_STEPS}
+            </Text>
+            <Text style={styles.headerTitle}>{STEP_LABELS[step - 1]}</Text>
+          </View>
+
+          {/* Step counter pill */}
+          <View style={styles.stepPill}>
+            <Text style={styles.stepPillText}>
+              {step}/{TOTAL_STEPS}
+            </Text>
           </View>
         </View>
-      </Modal>
-    </KeyboardAvoidingView>
+
+        {/* Progress bar */}
+        <View style={styles.progressTrack}>
+          <Animated.View
+            style={[styles.progressFill, { width: progressWidth as any }]}
+          />
+        </View>
+
+        {/* ── Step content ── */}
+        <Animated.View
+          style={[styles.stepWrap, { transform: [{ translateX: slideX }] }]}
+        >
+          {renderStep()}
+        </Animated.View>
+
+        {/* ── Footer ── */}
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, 20) },
+          ]}
+        >
+          {step < TOTAL_STEPS ? (
+            <Pressable
+              onPress={stepValid(step) ? goNext : undefined}
+              style={({ pressed }) => [
+                styles.nextBtn,
+                !stepValid(step) && styles.nextBtnDisabled,
+                pressed && stepValid(step) && { opacity: 0.85 },
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  stepValid(step)
+                    ? C.Gradients.primary
+                    : (["#E5E1F0", "#E5E1F0"] as const)
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.nextBtnGrad}
+              >
+                <Text
+                  style={[
+                    styles.nextBtnText,
+                    !stepValid(step) && styles.nextBtnTextDisabled,
+                  ]}
+                >
+                  Next: {STEP_LABELS[step]}
+                </Text>
+                <ChevronRight
+                  size={18}
+                  color={stepValid(step) ? "#fff" : C.textTertiary}
+                  strokeWidth={2.5}
+                />
+              </LinearGradient>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={isSubmitting ? undefined : handleSubmit}
+              style={({ pressed }) => [
+                styles.launchBtn,
+                pressed && { opacity: 0.88 },
+              ]}
+            >
+              <LinearGradient
+                colors={C.Gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.launchBtnGrad}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Check size={20} color="#fff" strokeWidth={2.5} />
+                    <Text style={styles.launchBtnText}>Launch Event</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+          )}
+        </View>
+
+        {/* ── Time picker modal ── */}
+        <Modal visible={showTimePicker} transparent animationType="fade">
+          <View style={styles.timePickerOverlay}>
+            <View style={styles.timePickerSheet}>
+              <View style={styles.timePickerHeader}>
+                <TouchableOpacity
+                  onPress={() => setShowTimePicker(false)}
+                  style={styles.timePickerActionBtn}
+                >
+                  <Text style={styles.timePickerCancel}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.timePickerTitle}>Set time</Text>
+                <TouchableOpacity
+                  onPress={confirmTime}
+                  style={styles.timePickerActionBtn}
+                >
+                  <Text style={styles.timePickerDone}>Done</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={tempTime}
+                mode="time"
+                display="spinner"
+                onChange={(_, val) => {
+                  if (val) setTempTime(val);
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </Modal>
   );
 }
 
@@ -636,7 +675,7 @@ function Step2Category({
       contentContainerStyle={step.scroll}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={catStyles.title}>What kind of hangout is this?</Text>
+      <Text style={catStyles.title}>What kind of event is this?</Text>
       <View style={catStyles.grid}>
         {CATEGORIES.map((cat) => {
           const isSelected = form.category === cat.id;

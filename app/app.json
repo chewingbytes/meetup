@@ -4,11 +4,11 @@
     "slug": "meetup2",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logoo.png",
+    "icon": "./assets/images/transparentbackgroundlogo.png",
     "scheme": "meetup2",
     "userInterfaceStyle": "light",
     "ios": {
-      "icon": "./assets/images/logoo.png",
+      "icon": "./assets/images/transparentbackgroundlogo.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.chewingbytes.meetup2",
       "infoPlist": {
@@ -43,7 +43,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logoo.png",
+          "image": "./assets/images/transparentbackgroundlogo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
