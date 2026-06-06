@@ -1,0 +1,1856 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+  <!-- ── Fixed ambient blobs ── -->
+  <div class="blobs" aria-hidden="true">
+    <div class="blob blob-violet"></div>
+    <div class="blob blob-pink"></div>
+    <div class="blob blob-blue"></div>
+    <div class="blob blob-green"></div>
+  </div>
+
+  <!-- ── Navigation ── -->
+  <header class="nav-wrap">
+    <nav class="nav">
+      <div class="logo-lockup">
+        <img src="/transparentlogo.png" alt="Soonest" class="logo-img" />
+        <span class="logo-name">soonest</span>
+      </div>
+      <div class="nav-right">
+        <a href="#waitlist" class="nav-btn">join waitlist</a>
+      </div>
+    </nav>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="launch-badge">
+        <span class="badge-pulse"></span>
+        <span><span id="waitlist-count">0</span>+ people already waiting</span>
+      </div>
+
+      <h1 class="hero-headline">
+        find your people,<br />
+        <span class="gradient-text spontaneously">spontaneously.</span>
+      </h1>
+
+      <p class="hero-sub">
+        browse and join nearby activities, and make real friends. Fill your day with people.
+      </p>
+
+      <div id="waitlist" class="form-card">
+        <form id="form-hero" class="form-row">
+          <input
+            type="email"
+            class="form-input"
+            placeholder="your@email.com"
+            required
+            autocomplete="email"
+          />
+          <button type="submit" class="form-btn">
+            get early access <span class="btn-arrow">→</span>
+          </button>
+        </form>
+        <div
+          id="success-hero"
+          class="success-msg"
+          role="alert"
+          aria-live="polite"
+        >
+          🎉 you're on the list! we'll reach out before launch.
+        </div>
+      </div>
+
+      <p class="hero-footnote">Sign up now to enjoy early access and perks.</p>
+    </div>
+
+    <!-- Notification bubbles -->
+    <div class="hero-notif notif-1" aria-hidden="true">
+      <img src="https://i.pravatar.cc/40?img=52" class="notif-ava" alt="" />
+      <div class="notif-body">
+        <strong>bryan</strong> wants to go bouldering 🧗 at 6pm
+      </div>
+    </div>
+    <div class="hero-notif notif-2" aria-hidden="true">
+      <img src="https://i.pravatar.cc/40?img=23" class="notif-ava" alt="" />
+      <div class="notif-body">
+        <strong>sarah</strong> joined dinner 🍽️ near you
+      </div>
+    </div>
+    <div class="hero-notif notif-3" aria-hidden="true">
+      <img src="https://i.pravatar.cc/40?img=44" class="notif-ava" alt="" />
+      <div class="notif-body">
+        <strong>maya</strong> wants a girls' night out! 🛍️
+      </div>
+    </div>
+    <div class="hero-notif notif-4" aria-hidden="true">
+      <img src="https://i.pravatar.cc/40?img=61" class="notif-ava" alt="" />
+      <div class="notif-body">
+        <strong>kai</strong> wants to go cafe hopping ☕
+      </div>
+    </div>
+
+    <!-- MBTI pills -->
+    <div
+      class="hero-mbti mbti-p1"
+      style="background:linear-gradient(135deg,#A78BFA,#7C3AED)"
+      aria-hidden="true"
+    >
+      ENFP
+    </div>
+    <div
+      class="hero-mbti mbti-p2"
+      style="background:linear-gradient(135deg,#34D399,#10B981)"
+      aria-hidden="true"
+    >
+      INFJ
+    </div>
+    <div
+      class="hero-mbti mbti-p3"
+      style="background:linear-gradient(135deg,#60A5FA,#3B82F6)"
+      aria-hidden="true"
+    >
+      ESTJ
+    </div>
+    <div
+      class="hero-mbti mbti-p4"
+      style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
+      aria-hidden="true"
+    >
+      ESTP
+    </div>
+    <div
+      class="hero-mbti mbti-p5"
+      style="background:linear-gradient(135deg,#F9A8D4,#DB2777)"
+      aria-hidden="true"
+    >
+      INFP
+    </div>
+
+    <!-- Activity emoji pills -->
+    <div class="hero-emoji e1" aria-hidden="true">🏀</div>
+    <div class="hero-emoji e2" aria-hidden="true">☕</div>
+    <div class="hero-emoji e3" aria-hidden="true">🛍️</div>
+    <div class="hero-emoji e4" aria-hidden="true">📚</div>
+    <div class="hero-emoji e5" aria-hidden="true">⚽</div>
+    <div class="hero-emoji e6" aria-hidden="true">🎮</div>
+    <div class="hero-emoji e7" aria-hidden="true">🎵</div>
+    <div class="hero-emoji e8" aria-hidden="true">🏊</div>
+    <div class="hero-emoji e9" aria-hidden="true">🎨</div>
+  </section>
+
+  <!-- ── Events section ── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <div class="section-badge">real plans</div>
+        <h2 class="section-title">spend your day<br />with people</h2>
+        <p class="section-sub">
+          real plans made by real people. join the waiting list to be notified first.
+        </p>
+      </div>
+    </div>
+    <!-- Full-width scroll -->
+    <div class="events-outer">
+      <div class="events-scroll">
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(251,191,36,0.15);color:#D97706"
+          >
+            ☕ café hangout
+          </div>
+          <div class="event-title">early coffee @ the anchor</div>
+          <div class="event-meta">📍 harbour square · 7:00 am</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=1"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=2"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=3"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=4"
+                class="event-ava"
+                alt=""
+              />
+            </div>
+            <div class="event-going">4 going</div>
+          </div>
+        </div>
+
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(251,191,36,0.15);color:#D97706"
+          >
+            🏀 sports
+          </div>
+          <div class="event-title">3-on-3 basketball pickup</div>
+          <div class="event-meta">📍 riverside courts · 10:00 am</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=5"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=6"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=7"
+                class="event-ava"
+                alt=""
+              />
+              <div class="event-ava-more">+5</div>
+            </div>
+            <div class="event-going">8 going</div>
+          </div>
+        </div>
+
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(219,39,119,0.12);color:#DB2777"
+          >
+            🛍️ shopping
+          </div>
+          <div class="event-title">thrift run at the loft market</div>
+          <div class="event-meta">📍 east side · 2:00 pm</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=9"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=10"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=11"
+                class="event-ava"
+                alt=""
+              />
+            </div>
+            <div class="event-going">5 going</div>
+          </div>
+        </div>
+
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(59,130,246,0.12);color:#3B82F6"
+          >
+            📚 study
+          </div>
+          <div class="event-title">study session @ brewed & read</div>
+          <div class="event-meta">📍 midtown · 3:30 pm</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=12"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=13"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=14"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=15"
+                class="event-ava"
+                alt=""
+              />
+            </div>
+            <div class="event-going">6 going</div>
+          </div>
+        </div>
+
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(16,185,129,0.12);color:#10B981"
+          >
+            ⚽ sports
+          </div>
+          <div class="event-title">five-a-side at sundown fields</div>
+          <div class="event-meta">📍 westpark · 5:00 pm</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=16"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=17"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=18"
+                class="event-ava"
+                alt=""
+              />
+              <div class="event-ava-more">+7</div>
+            </div>
+            <div class="event-going">10 going</div>
+          </div>
+        </div>
+
+        <div class="event-card">
+          <div
+            class="event-cat"
+            style="background:rgba(251,146,60,0.15);color:#EA580C"
+          >
+            🍜 supper
+          </div>
+          <div class="event-title">late night ramen at noodle alley</div>
+          <div class="event-meta">📍 old quarter · 10:30 pm</div>
+          <div class="event-footer">
+            <div class="event-avatars">
+              <img
+                src="https://i.pravatar.cc/40?img=23"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=24"
+                class="event-ava"
+                alt=""
+              />
+              <img
+                src="https://i.pravatar.cc/40?img=25"
+                class="event-ava"
+                alt=""
+              />
+            </div>
+            <div class="event-going">7 going</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Day Timeline ── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <div class="section-badge">your day</div>
+        <h2 class="section-title">here's what your<br />day could look like</h2>
+        <p class="section-sub">
+          alex woke up with no plans. by 10pm, she had lived a whole day with
+          people she actually clicked with.
+        </p>
+      </div>
+
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-time">7:00 am</div>
+          <div class="tl-track">
+            <div
+              class="tl-dot"
+              style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
+            >
+            </div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-time-badge">7:00 am</div>
+            <div class="tl-emoji">☕</div>
+            <div class="tl-content">
+              <div class="tl-title">morning coffee @ ya kun</div>
+              <div class="tl-loc">📍 chinatown</div>
+              <div class="tl-people">
+                <img
+                  src="https://i.pravatar.cc/32?img=30"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=31"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=32"
+                  class="tl-ava"
+                  alt=""
+                />
+                <span class="tl-with">with sarah, jamie & kai</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-time">10:00 am</div>
+          <div class="tl-track">
+            <div
+              class="tl-dot"
+              style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
+            >
+            </div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-time-badge">10:00 am</div>
+            <div class="tl-emoji">🏀</div>
+            <div class="tl-content">
+              <div class="tl-title">3-on-3 basketball pickup</div>
+              <div class="tl-loc">📍 kallang sport centre</div>
+              <div class="tl-people">
+                <img
+                  src="https://i.pravatar.cc/32?img=33"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=34"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=35"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=36"
+                  class="tl-ava"
+                  alt=""
+                />
+                <span class="tl-with">with ryan, marcus & 5 others</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-time">2:00 pm</div>
+          <div class="tl-track">
+            <div
+              class="tl-dot"
+              style="background:linear-gradient(135deg,#F9A8D4,#DB2777)"
+            >
+            </div>
+            <div class="tl-line"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-time-badge">2:00 pm</div>
+            <div class="tl-emoji">🛍️</div>
+            <div class="tl-content">
+              <div class="tl-title">thrift hunting at bugis+</div>
+              <div class="tl-loc">📍 bugis</div>
+              <div class="tl-people">
+                <img
+                  src="https://i.pravatar.cc/32?img=40"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=41"
+                  class="tl-ava"
+                  alt=""
+                />
+                <span class="tl-with">with lin & maya</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tl-item">
+          <div class="tl-time">8:00 pm</div>
+          <div class="tl-track">
+            <div
+              class="tl-dot"
+              style="background:linear-gradient(135deg,#A78BFA,#7C3AED)"
+            >
+            </div>
+            <div class="tl-line tl-line-last"></div>
+          </div>
+          <div class="tl-card">
+            <div class="tl-time-badge">8:00 pm</div>
+            <div class="tl-emoji">🎵</div>
+            <div class="tl-content">
+              <div class="tl-title">indie gig @ the substation</div>
+              <div class="tl-loc">📍 armenian street</div>
+              <div class="tl-people">
+                <img
+                  src="https://i.pravatar.cc/32?img=44"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=45"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=46"
+                  class="tl-ava"
+                  alt=""
+                />
+                <img
+                  src="https://i.pravatar.cc/32?img=47"
+                  class="tl-ava"
+                  alt=""
+                />
+                <span class="tl-with">with jamie, ryan & 8 others</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── MBTI Showcase ── -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-head">
+        <div class="section-badge mbti-badge">🧠 personality matching</div>
+        <h2 class="section-title">
+          everyone's welcome.<br />sorted by vibe and interests.
+        </h2>
+        <p class="section-sub">
+          soonest displays every attendee's personality type on the map. find
+          your tribe before you show up.
+        </p>
+      </div>
+
+      <div class="mbti-grid">
+        <div class="mbti-group">
+          <div class="mbti-group-label" style="color:#7C3AED">analysts</div>
+          <div class="mbti-pills">
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
+              data-name="the architect"
+            >
+              INTJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
+              data-name="the logician"
+            >
+              INTP
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
+              data-name="the commander"
+            >
+              ENTJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
+              data-name="the debater"
+            >
+              ENTP
+            </div>
+          </div>
+        </div>
+        <div class="mbti-group">
+          <div class="mbti-group-label" style="color:#10B981">diplomats</div>
+          <div class="mbti-pills">
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#34D399,#10B981)"
+              data-name="the advocate"
+            >
+              INFJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#34D399,#10B981)"
+              data-name="the mediator"
+            >
+              INFP
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#34D399,#10B981)"
+              data-name="the protagonist"
+            >
+              ENFJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#34D399,#10B981)"
+              data-name="the campaigner"
+            >
+              ENFP
+            </div>
+          </div>
+        </div>
+        <div class="mbti-group">
+          <div class="mbti-group-label" style="color:#3B82F6">sentinels</div>
+          <div class="mbti-pills">
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
+              data-name="the logistician"
+            >
+              ISTJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
+              data-name="the defender"
+            >
+              ISFJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
+              data-name="the executive"
+            >
+              ESTJ
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
+              data-name="the consul"
+            >
+              ESFJ
+            </div>
+          </div>
+        </div>
+        <div class="mbti-group">
+          <div class="mbti-group-label" style="color:#D97706">explorers</div>
+          <div class="mbti-pills">
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
+              data-name="the virtuoso"
+            >
+              ISTP
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
+              data-name="the adventurer"
+            >
+              ISFP
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
+              data-name="the entrepreneur"
+            >
+              ESTP
+            </div>
+            <div
+              class="mbti-pill"
+              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
+              data-name="the entertainer"
+            >
+              ESFP
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Final CTA ── -->
+  <section class="section cta-section">
+    <div class="section-inner">
+      <div class="cta-card">
+        <div class="cta-blob cta-blob-1" aria-hidden="true"></div>
+        <div class="cta-blob cta-blob-2" aria-hidden="true"></div>
+        <div class="cta-content">
+          <h2 class="cta-title">be first through the door.</h2>
+          <p class="cta-sub">
+            early members get priority access, exclusive in-app badges, and the
+            chance to shape what soonest becomes.
+          </p>
+
+          <form id="form-cta" class="form-row form-row-dark">
+            <input
+              type="email"
+              class="form-input form-input-dark"
+              placeholder="your@email.com"
+              required
+              autocomplete="email"
+            />
+            <button type="submit" class="form-btn form-btn-white">
+              join waitlist
+            </button>
+          </form>
+          <div
+            id="success-cta"
+            class="success-msg success-msg-dark"
+            role="alert"
+            aria-live="polite"
+          >
+            🎉 you're on the list! we'll reach out before launch.
+          </div>
+
+          <div class="cta-perks">
+            <span class="cta-perk">✅ early access</span>
+            <span class="cta-perk">✅ exclusive badge</span>
+            <span class="cta-perk">✅ shape the app</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-logo-lockup">
+        <img src="/transparentlogo.png" alt="Soonest" class="footer-logo-img" />
+        <span class="footer-logo-name">soonest</span>
+      </div>
+      <p class="footer-tag">made with ❤️ in singapore</p>
+      <p class="footer-copy">© 2025 soonest. all rights reserved.</p>
+    </div>
+  </footer>
+</Layout>
+
+<style>
+  /* ── Layout ── */
+  .section-inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Blobs ── */
+  .blobs {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+  }
+  .blob-violet {
+    width: 65vw;
+    height: 65vw;
+    background: rgba(139, 92, 246, 0.11);
+    top: -15%;
+    left: -12%;
+    animation: clay-float 9s ease-in-out infinite;
+  }
+  .blob-pink {
+    width: 52vw;
+    height: 52vw;
+    background: rgba(219, 39, 119, 0.09);
+    top: 15%;
+    right: -14%;
+    animation: clay-float-alt 11s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+  .blob-blue {
+    width: 44vw;
+    height: 44vw;
+    background: rgba(14, 165, 233, 0.07);
+    bottom: -8%;
+    left: 18%;
+    animation: clay-float 13s ease-in-out infinite;
+    animation-delay: 4s;
+  }
+  .blob-green {
+    width: 38vw;
+    height: 38vw;
+    background: rgba(16, 185, 129, 0.07);
+    bottom: 22%;
+    right: -4%;
+    animation: clay-float-alt 10s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
+  /* ── Navigation ── */
+  .nav-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    padding: 14px 20px;
+  }
+  .nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 860px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 32px;
+    padding: 10px 18px 10px 22px;
+    box-shadow: var(--shadow-nav);
+  }
+  .logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .logo-img {
+    height: 32px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+  .logo-name {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+  }
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-chip {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: rgba(124, 58, 237, 0.08);
+    padding: 5px 12px;
+    border-radius: 100px;
+    display: none;
+  }
+  @media (min-width: 480px) {
+    .nav-chip {
+      display: inline;
+    }
+  }
+  .nav-btn {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.88rem;
+    color: #fff;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    padding: 9px 20px;
+    border-radius: 20px;
+    text-decoration: none;
+    box-shadow: var(--shadow-button);
+    transition:
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+  .nav-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-button-hover);
+  }
+  .nav-btn:active {
+    transform: scale(0.94);
+  }
+
+  /* ── Hero ── */
+  .hero {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 88vh;
+    padding: 60px 24px 80px;
+    overflow: hidden;
+  }
+  .hero-inner {
+    max-width: 680px;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 26px;
+    position: relative;
+    z-index: 2;
+  }
+  .launch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(124, 58, 237, 0.15);
+    border-radius: 100px;
+    padding: 8px 20px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--accent);
+    box-shadow: 0 4px 18px rgba(124, 58, 237, 0.1);
+    animation: fade-up 0.7s ease both;
+  }
+  .badge-pulse {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: clay-breathe 2.4s ease-in-out infinite;
+  }
+  .hero-subheadline {
+    font-family: "Nunito", sans-serif;
+    font-weight: 600;
+    font-size: clamp(2.8rem, 8vw, 5.2rem);
+    color: var(--text-primary);
+    line-height: 1.06;
+    letter-spacing: -2px;
+    animation: fade-up 0.7s 0.1s ease both;
+  }
+  .hero-headline {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2.8rem, 8vw, 5.2rem);
+    color: var(--text-primary);
+    line-height: 1.06;
+    letter-spacing: -2px;
+    animation: fade-up 0.7s 0.1s ease both;
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #332f3a 5%, #7c3aed 45%, #db2777 85%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+  }
+  @media (max-width: 300px) {
+    .spontaneously {
+      word-break: break-all;
+    }
+  }
+
+  .hero-sub {
+    font-size: clamp(1rem, 2.5vw, 1.18rem);
+    color: var(--text-secondary);
+    max-width: 520px;
+    line-height: 1.75;
+    animation: fade-up 0.7s 0.2s ease both;
+  }
+
+  /* Form */
+  .form-card {
+    width: 100%;
+    max-width: 500px;
+    animation: fade-up 0.7s 0.3s ease both;
+  }
+  .form-row {
+    display: flex;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    border-radius: 24px;
+    padding: 7px;
+    box-shadow:
+      14px 14px 30px rgba(160, 150, 180, 0.18),
+      -8px -8px 22px rgba(255, 255, 255, 0.95),
+      inset 4px 4px 10px rgba(139, 92, 246, 0.04),
+      inset -4px -4px 10px rgba(255, 255, 255, 1);
+  }
+  .form-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-family: "DM Sans", sans-serif;
+    font-size: 1rem;
+    color: var(--text-primary);
+    padding: 10px 14px;
+  }
+  .form-input::placeholder {
+    color: #9994a2;
+  }
+  .form-btn {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: #fff;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    border: none;
+    border-radius: 18px;
+    padding: 11px 22px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: var(--shadow-button);
+    transition:
+      transform 0.18s,
+      box-shadow 0.18s;
+  }
+  .form-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-button-hover);
+  }
+  .form-btn:active {
+    transform: scale(0.92);
+  }
+  .btn-arrow {
+    display: inline-block;
+    margin-left: 4px;
+  }
+  .success-msg {
+    display: none;
+    margin-top: 14px;
+    padding: 14px 22px;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1.5px solid rgba(16, 185, 129, 0.22);
+    border-radius: 20px;
+    color: #059669;
+    font-weight: 600;
+    font-size: 0.97rem;
+    text-align: center;
+  }
+  .hero-footnote {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    animation: fade-up 0.7s 0.4s ease both;
+  }
+  .footnote-count {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    color: var(--accent);
+  }
+
+  /* Floating notification bubbles */
+  .hero-notif {
+    position: absolute;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    border-radius: 100px;
+    padding: 8px 14px 8px 8px;
+    box-shadow: var(--shadow-card);
+    pointer-events: none;
+    max-width: 210px;
+  }
+  @media (min-width: 1200px) {
+    .hero-notif {
+      display: flex;
+    }
+  }
+  .notif-ava {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  }
+  .notif-body {
+    font-size: 0.76rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+  .notif-body strong {
+    font-weight: 700;
+  }
+
+  /* Left side — edge to near-content spread */
+  .notif-1 {
+    top: 16%;
+    left: 2%;
+    animation: clay-float 8s ease-in-out infinite;
+  }
+  .notif-3 {
+    bottom: 12%;
+    left: 2%;
+    animation: clay-float 9s ease-in-out infinite;
+    animation-delay: 3s;
+  }
+  /* Right side */
+  .notif-4 {
+    top: 18%;
+    right: 2%;
+    animation: clay-float-alt 7s ease-in-out infinite;
+    animation-delay: 0.8s;
+  }
+  .notif-2 {
+    bottom: 22%;
+    right: 2%;
+    animation: clay-float-alt 10s ease-in-out infinite;
+    animation-delay: 1.5s;
+  }
+
+  /* Floating MBTI pills */
+  .hero-mbti {
+    position: absolute;
+    display: none;
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 0.82rem;
+    color: #fff;
+    border-radius: 100px;
+    padding: 7px 14px;
+    box-shadow:
+      6px 6px 16px rgba(0, 0, 0, 0.15),
+      inset 2px 2px 6px rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+  }
+  @media (min-width: 900px) {
+    .hero-mbti {
+      display: block;
+    }
+  }
+
+  /* Left MBTI — stepped in from edge toward center */
+  .mbti-p1 {
+    top: 42%;
+    left: 6%;
+    animation: clay-float-alt 9s ease-in-out infinite;
+  }
+  .mbti-p4 {
+    bottom: 20%;
+    left: 10%;
+    animation: clay-float 10s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+  /* Right MBTI */
+  .mbti-p2 {
+    top: 28%;
+    right: 10%;
+    animation: clay-float 8s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+  .mbti-p3 {
+    bottom: 28%;
+    right: 6%;
+    animation: clay-float-alt 11s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+  .mbti-p5 {
+    top: 54%;
+    right: 14%;
+    animation: clay-float-alt 7s ease-in-out infinite;
+    animation-delay: 3s;
+  }
+
+  /* Floating activity emojis */
+  .hero-emoji {
+    position: absolute;
+    display: none;
+    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(10px);
+    border-radius: 100px;
+    padding: 8px 12px;
+    box-shadow: var(--shadow-card);
+    pointer-events: none;
+    line-height: 1;
+  }
+  .hero-emoji {
+    display: block;
+  }
+
+  /* Left emojis — spread from edge (2%) to near-content (17%) */
+  .e6 {
+    top: 11%;
+    left: 4%;
+    animation: clay-float-alt 11s ease-in-out infinite;
+    animation-delay: 3.5s;
+  }
+  .e7 {
+    top: 30%;
+    left: 14%;
+    animation: clay-float 8s ease-in-out infinite;
+    animation-delay: 2.5s;
+  }
+  .e4 {
+    top: 62%;
+    left: 5%;
+    animation: clay-float-alt 10s ease-in-out infinite;
+    animation-delay: 0.7s;
+  }
+  .e9 {
+    top: 54%;
+    left: 17%;
+    animation: clay-float 12s ease-in-out infinite;
+    animation-delay: 4s;
+  }
+  .e1 {
+    bottom: 35%;
+    left: 9%;
+    animation: clay-float 7s ease-in-out infinite;
+  }
+
+  /* Right emojis — spread from edge (2%) to near-content (17%) */
+  .e5 {
+    top: 11%;
+    right: 4%;
+    animation: clay-float 6s ease-in-out infinite;
+    animation-delay: 1.5s;
+  }
+  .e3 {
+    top: 66%;
+    right: 5%;
+    animation: clay-float 9s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+  .e8 {
+    top: 48%;
+    right: 17%;
+    animation: clay-float-alt 9s ease-in-out infinite;
+    animation-delay: 1.2s;
+  }
+  .e2 {
+    bottom: 16%;
+    right: 9%;
+    animation: clay-float-alt 8s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
+  /* ── Shared section ── */
+  .section {
+    position: relative;
+    z-index: 1;
+    padding: 0 0 100px;
+  }
+  .section-head {
+    text-align: center;
+    margin-bottom: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .section-badge {
+    display: inline-flex;
+    background: rgba(124, 58, 237, 0.1);
+    color: var(--accent);
+    border-radius: 100px;
+    padding: 6px 18px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .mbti-badge {
+    background: linear-gradient(90deg, #a78bfa, #7c3aed);
+    color: #fff;
+  }
+  .section-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: var(--text-primary);
+    line-height: 1.12;
+    letter-spacing: -1px;
+  }
+  .section-sub {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    max-width: 480px;
+    line-height: 1.7;
+  }
+
+  /* ── Events scroll ── */
+  .events-outer {
+    overflow: hidden;
+  }
+  .events-scroll {
+    display: flex;
+    gap: 28px;
+    justify-content: safe center;
+    overflow-x: auto;
+    padding: 20px 32px 36px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .events-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  @media (min-width: 1100px) {
+    .events-scroll {
+      padding-left: max(32px, calc((100vw - 1780px) / 2));
+      padding-right: max(32px, calc((100vw - 1780px) / 2));
+    }
+  }
+
+  .event-card {
+    flex-shrink: 0;
+    width: 230px;
+    scroll-snap-align: start;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px);
+    border-radius: 28px;
+    padding: 22px 20px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition:
+      transform 0.25s,
+      box-shadow 0.25s;
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+  }
+  .event-card:hover {
+    transform: translateY(-5px);
+    box-shadow:
+      20px 20px 40px rgba(160, 150, 180, 0.24),
+      -12px -12px 10px rgba(255, 255, 255, 0.95);
+  }
+
+  .event-cat {
+    display: inline-block;
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    width: fit-content;
+  }
+  .event-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .event-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  .event-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+  .event-avatars {
+    display: flex;
+  }
+  .event-ava {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    margin-left: -8px;
+  }
+  .event-ava:first-child {
+    margin-left: 0;
+  }
+  .event-ava-more {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(124, 58, 237, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    margin-left: -8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .event-going {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  /* ── Timeline ── */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  /* Mobile-first: 2-col (track | card), time shown as badge inside card */
+  .tl-item {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 0 14px;
+    align-items: start;
+  }
+  .tl-time {
+    display: none;
+  }
+  .tl-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .tl-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.18),
+      inset 2px 2px 5px rgba(255, 255, 255, 0.4);
+    margin-top: 12px;
+  }
+  .tl-line {
+    width: 2px;
+    flex: 1;
+    background: rgba(124, 58, 237, 0.15);
+    min-height: 28px;
+    margin-top: 6px;
+  }
+  .tl-line-last {
+    background: transparent;
+  }
+  .tl-card {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(14px);
+    border-radius: 20px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    transition:
+      transform 0.22s,
+      box-shadow 0.22s;
+  }
+  .tl-card:hover {
+    transform: translateY(-3px);
+  }
+  .tl-time-badge {
+    flex-basis: 100%;
+    order: -1;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: rgba(124, 58, 237, 0.1);
+    border-radius: 100px;
+    padding: 3px 10px;
+    width: fit-content;
+    margin-bottom: 4px;
+  }
+  .tl-emoji {
+    font-size: 1.4rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .tl-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .tl-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+  }
+  .tl-loc {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+  .tl-people {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .tl-ava {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    margin-left: -6px;
+  }
+  .tl-ava:first-child {
+    margin-left: 0;
+  }
+  .tl-with {
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    margin-left: 4px;
+    flex: 1;
+  }
+
+  /* Desktop: restore 3-col with external time label */
+  @media (min-width: 560px) {
+    .tl-item {
+      grid-template-columns: 72px 24px 1fr;
+      gap: 0 16px;
+    }
+    .tl-time {
+      display: block;
+      font-family: "Nunito", sans-serif;
+      font-weight: 800;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      text-align: right;
+      padding-top: 14px;
+    }
+    .tl-dot {
+      width: 24px;
+      height: 24px;
+      margin-top: 8px;
+    }
+    .tl-card {
+      border-radius: 24px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+      gap: 14px;
+      flex-wrap: nowrap;
+    }
+    .tl-time-badge {
+      display: none;
+    }
+    .tl-emoji {
+      font-size: 1.6rem;
+    }
+    .tl-title {
+      font-size: 1rem;
+    }
+    .tl-ava {
+      width: 26px;
+      height: 26px;
+    }
+  }
+
+  /* ── MBTI grid ── */
+  .mbti-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 700px) {
+    .mbti-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .mbti-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .mbti-group-label {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .mbti-pills {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .mbti-pill {
+    background: var(--g);
+    color: #fff;
+    border-radius: 16px;
+    padding: 12px 6px;
+    text-align: center;
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 0.88rem;
+    letter-spacing: 0.5px;
+    cursor: default;
+    position: relative;
+    box-shadow:
+      4px 4px 10px rgba(0, 0, 0, 0.14),
+      -2px -2px 6px rgba(255, 255, 255, 0.3),
+      inset 2px 2px 5px rgba(255, 255, 255, 0.28),
+      inset -2px -2px 5px rgba(0, 0, 0, 0.1);
+    transition:
+      transform 0.22s,
+      box-shadow 0.22s;
+  }
+  .mbti-pill:hover {
+    transform: translateY(-4px) scale(1.06);
+    box-shadow:
+      7px 7px 16px rgba(0, 0, 0, 0.2),
+      -2px -2px 6px rgba(255, 255, 255, 0.3),
+      inset 2px 2px 5px rgba(255, 255, 255, 0.28),
+      inset -2px -2px 5px rgba(0, 0, 0, 0.1);
+  }
+  .mbti-pill::after {
+    content: attr(data-name);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary);
+    color: #fff;
+    font-family: "DM Sans", sans-serif;
+    font-weight: 600;
+    font-size: 0.73rem;
+    padding: 4px 10px;
+    border-radius: 10px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s;
+    z-index: 10;
+  }
+  .mbti-pill:hover::after {
+    opacity: 1;
+  }
+
+  /* ── Final CTA ── */
+  .cta-section {
+    padding-bottom: 80px;
+  }
+  .cta-card {
+    position: relative;
+    background: linear-gradient(135deg, #2d1b69 0%, #1a0e3d 100%);
+    border-radius: 48px;
+    padding: 64px 40px;
+    overflow: hidden;
+    box-shadow:
+      20px 20px 50px rgba(45, 27, 105, 0.35),
+      -10px -10px 30px rgba(255, 255, 255, 0.06),
+      inset 4px 4px 12px rgba(167, 139, 250, 0.1),
+      inset -4px -4px 12px rgba(0, 0, 0, 0.2);
+    text-align: center;
+  }
+  .cta-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none;
+  }
+  .cta-blob-1 {
+    width: 40%;
+    height: 40%;
+    background: rgba(139, 92, 246, 0.25);
+    top: -10%;
+    left: -5%;
+    animation: clay-float 9s ease-in-out infinite;
+  }
+  .cta-blob-2 {
+    width: 35%;
+    height: 35%;
+    background: rgba(219, 39, 119, 0.2);
+    bottom: -10%;
+    right: -5%;
+    animation: clay-float-alt 11s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+  .cta-content {
+    position: relative;
+    z-index: 1;
+  }
+  .cta-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: #fff;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+  .cta-sub {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.05rem;
+    max-width: 460px;
+    margin: 0 auto 32px;
+    line-height: 1.7;
+  }
+  .form-row-dark {
+    max-width: 480px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      inset 6px 6px 14px rgba(0, 0, 0, 0.2),
+      inset -4px -4px 10px rgba(255, 255, 255, 0.06);
+  }
+  .form-input-dark {
+    color: #fff;
+  }
+  .form-input-dark::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+  .form-btn-white {
+    background: #fff;
+    color: var(--accent);
+    box-shadow:
+      6px 6px 14px rgba(0, 0, 0, 0.2),
+      inset 2px 2px 6px rgba(255, 255, 255, 0.6),
+      inset -2px -2px 6px rgba(0, 0, 0, 0.06);
+  }
+  .form-btn-white:hover {
+    box-shadow:
+      8px 8px 18px rgba(0, 0, 0, 0.25),
+      inset 2px 2px 6px rgba(255, 255, 255, 0.6),
+      inset -2px -2px 6px rgba(0, 0, 0, 0.06);
+  }
+  .success-msg-dark {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+  }
+  .cta-perks {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+  .cta-perk {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* ── Footer ── */
+  .footer {
+    position: relative;
+    z-index: 1;
+    padding: 40px 24px 48px;
+    display: flex;
+    justify-content: center;
+  }
+  .footer-inner {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .footer-logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .footer-logo-img {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+    opacity: 0.8;
+  }
+  .footer-logo-name {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    opacity: 0.8;
+  }
+  .footer-tag {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+  }
+  .footer-copy {
+    font-size: 0.8rem;
+    color: #9994a2;
+  }
+</style>
+
+<script>
+  const SUPABASE_URL = "https://supabase.hangoutstudios.com";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY0NjkxMjAwLCJleHAiOjE5MjI0NTc2MDB9.RB4UMWyk4yUl0GvrbJ_B1f9u6AEar6prsBUTqN3ftWQ";
+
+  async function submitToWaitlist(email: string): Promise<void> {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/soonest_waitlist`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      if (res.status === 409 || err.includes("duplicate")) return;
+      throw new Error(err || "Failed to submit");
+    }
+  }
+
+  function setupForm(formId: string, successId: string) {
+    const form = document.getElementById(formId) as HTMLFormElement | null;
+    if (!form) return;
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector("button") as HTMLButtonElement;
+      const emailInput = form.querySelector(
+        'input[type="email"]',
+      ) as HTMLInputElement;
+      const email = emailInput.value.trim();
+
+      btn.disabled = true;
+      btn.innerHTML = "sending…";
+
+      try {
+        await submitToWaitlist(email);
+        form.style.display = "none";
+        const msg = document.getElementById(successId);
+        if (msg) msg.style.display = "block";
+      } catch {
+        btn.disabled = false;
+        btn.innerHTML = "try again";
+        emailInput.setCustomValidity(
+          "something went wrong — please try again.",
+        );
+        emailInput.reportValidity();
+        emailInput.setCustomValidity("");
+      }
+    });
+  }
+
+  setupForm("form-hero", "success-hero");
+  setupForm("form-cta", "success-cta");
+
+  // Count-up animation for waitlist number
+  const countEl = document.getElementById('waitlist-count');
+  if (countEl) {
+    const target = 200;
+    const duration = 1800;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      countEl.textContent = String(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+</script>
