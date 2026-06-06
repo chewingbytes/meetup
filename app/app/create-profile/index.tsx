@@ -23,7 +23,7 @@ export default function CreateProfile() {
       <Text style={{ marginBottom: 6 }}>Short bio</Text>
       <TextInput value={bio} onChangeText={setBio} placeholder="I like study groups & coffee..." style={{ borderWidth: 1, borderColor: PALETTE.lightGrey, padding: 12, borderRadius: 10, marginBottom: 18 }} multiline numberOfLines={3} />
 
-      <TouchableOpacity onPress={() => router.replace("/" as any)} style={{ backgroundColor: PALETTE.coral, paddingVertical: 14, borderRadius: 12 }}>
+      <TouchableOpacity onPress={() => router.replace("/home" as any)} style={{ backgroundColor: PALETTE.coral, paddingVertical: 14, borderRadius: 12 }}>
         <Text style={{ textAlign: "center", color: PALETTE.white, fontWeight: "700" }}>Finish</Text>
       </TouchableOpacity>
     </View>

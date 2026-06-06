@@ -1,72 +1,67 @@
-import { MessageCircle, Users } from "lucide-react-native";
+import { CommunityProps } from "@/utils/types";
 import { Image, Text, TouchableOpacity, View } from "react-native";
 
-const PALETTE = {
-  coral: "#FF8FA3",
-  apricot: "#FFBC8F",
-  beige: "#FFE0B2",
-  graphite: "#2C2C2C",
-  lightGrey: "#F5F5F5",
-  white: "#FFFFFF",
-  babyPink: "#FFD7E9",
-};
+export default function CommunityCard({
+  community,
+  onPress,
+}: {
+  community: CommunityProps;
+  onPress: () => void;
+}) {
+  const imageSource = community.profile_image ?? community.profileImage;
+  const resolvedImageSource =
+    typeof imageSource === "string" ? { uri: imageSource } : imageSource;
+  const createdDate = new Date(community.created_at as string);
+  const formattedDate = createdDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 
-interface CommunityCardProps {
-  name: string;
-  members: number;
-  avatar?: string;
-  color?: string;
-}
-
-export function CommunityCard({
-  name,
-  members,
-  avatar,
-  color,
-}: CommunityCardProps) {
   return (
-    <View style={{ backgroundColor: PALETTE.white, padding: 12, borderRadius: 16, shadowColor: "#000", shadowOpacity: 0.05, elevation: 2, borderWidth: 1, borderColor: PALETTE.babyPink }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        {/* Avatar with Gradient Container */}
-        <View
-          style={{
-            borderRadius: 12,
-            padding: 8,
-            backgroundColor: PALETTE.babyPink,
-            width: 56,
-            height: 56,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          {avatar ? (
-            <Image
-              source={{ uri: avatar }}
-              style={{ width: 40, height: 40, borderRadius: 10 }}
-            />
-          ) : (
-            <View style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: PALETTE.lightGrey, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 16, fontWeight: "700", color: PALETTE.coral }}>
-                {name.slice(0, 2).toUpperCase()}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Name + Members */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontWeight: "600", fontSize: 16, color: PALETTE.graphite }}>{name}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-            <Users size={14} color="#9CA3AF" />
-            <Text style={{ fontSize: 13, color: "#6B7280" }}>{members} members</Text>
-          </View>
-        </View>
-
-        {/* Message Button */}
-        <TouchableOpacity style={{ width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: PALETTE.babyPink }}>
-          <MessageCircle size={18} color={PALETTE.coral} />
-        </TouchableOpacity>
+    <TouchableOpacity
+      onPress={onPress}
+      className="flex-row w-full bg-white border-4 border-black shadow-[8px_8px_0px_0px_#000] p-4 mb-6 active:translate-y-[2px] active:shadow-none"
+    >
+      {/* Image Box */}
+      <View className="border-4 border-black bg-neo-yellow w-24 h-24 mr-4 items-center justify-center overflow-hidden shadow-[4px_4px_0px_0px_#000] -rotate-2">
+        {resolvedImageSource ? (
+          <Image
+            source={resolvedImageSource as any}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+          <Text className="text-4xl">👾</Text>
+        )}
       </View>
-    </View>
+
+      {/* Content */}
+      <View className="flex-1 justify-between py-1">
+        <View>
+          <View className="bg-neo-red border-2 border-black self-start px-2 mb-1 rotate-1">
+            <Text className="text-white text-xs font-bold uppercase">
+              {community.privacyMode ? "PRIVATE" : "PUBLIC"}
+            </Text>
+          </View>
+          <Text
+            className="text-black text-xl font-black uppercase leading-tight"
+            numberOfLines={2}
+          >
+            {community.name}
+          </Text>
+        </View>
+
+        <Text
+          className="text-black/80 font-medium text-sm leading-tight mt-1"
+          numberOfLines={2}
+        >
+          {community.description}
+        </Text>
+
+        <Text className="text-black/40 text-xs font-bold uppercase mt-2">
+          EST. {formattedDate}
+        </Text>
+      </View>
+    </TouchableOpacity>
   );
 }

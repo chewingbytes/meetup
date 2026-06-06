@@ -1,129 +1,81 @@
-import { Calendar, Heart, MapPin, Users } from "lucide-react-native";
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { TouchableOpacity, View, Text, Image } from "react-native";
+import { EventProps } from "@/utils/types";
 
-const PALETTE = {
-  coral: "#FF8FA3",
-  apricot: "#FFBC8F",
-  beige: "#FFE0B2",
-  graphite: "#2C2C2C",
-  lightGrey: "#F5F5F5",
-  white: "#FFFFFF",
-  babyPink: "#FFD7E9",
-};
+export default function EventCard({
+  event,
+  onPress,
+}: {
+  event: EventProps;
+  onPress: () => void;
+}) {
+  const startDate = new Date(event.start_at);
+  const formattedDate = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  const formattedTime = startDate.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-interface EventCardProps {
-  title: string;
-  category: string;
-  date: string;
-  time: string;
-  location: string;
-  attendees: number;
-  maxAttendees: number;
-  hostName: string;
-  hostAvatar?: string;
-  image?: string;
-  tags?: string[];
-}
+  const isPaid = event.is_paid && (event.price ?? 0) > 0;
 
-export function EventCard({
-  title,
-  category,
-  date,
-  time,
-  location,
-  attendees,
-  maxAttendees,
-  hostName,
-  hostAvatar,
-  image,
-  tags = [],
-}: EventCardProps) {
   return (
-    <View style={{ backgroundColor: PALETTE.white, borderRadius: 16, shadowColor: "#000", shadowOpacity: 0.05, elevation: 2, overflow: "hidden", borderWidth: 1, borderColor: PALETTE.babyPink }}>
-      {/* Image */}
-      <View style={{ position: "relative", height: 176, width: "100%", backgroundColor: PALETTE.lightGrey }}>
-        <Image
-          source={{
-            uri:
-              image ||
-              `https://placehold.co/400x200?text=${category.replace(" ", "+")}`,
-          }}
-          style={{ height: "100%", width: "100%" }}
-          resizeMode="cover"
-        />
-
-        {/* Like Button */}
-        <TouchableOpacity style={{ position: "absolute", right: 12, top: 12, height: 40, width: 40, borderRadius: 20, backgroundColor: "rgba(255, 255, 255, 0.9)", alignItems: "center", justifyContent: "center" }}>
-          <Heart size={20} color={PALETTE.graphite} />
-        </TouchableOpacity>
-
-        {/* Category Badge */}
-        <View style={{ position: "absolute", left: 12, top: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: `rgba(255, 143, 163, 0.9)` }}>
-          <Text style={{ color: PALETTE.white, fontSize: 12, fontWeight: "600" }}>{category}</Text>
-        </View>
-      </View>
-
-      {/* Info */}
-      <View style={{ padding: 16, gap: 12 }}>
-        {/* Title */}
-        <Text style={{ fontSize: 16, fontWeight: "600", color: PALETTE.graphite }}>{title}</Text>
-
-        {/* Tags */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-          {tags.map((tag) => (
-            <View
-              key={tag}
-              style={{
-                backgroundColor: PALETTE.babyPink,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 12,
-              }}
-            >
-              <Text style={{ fontSize: 12, color: "#6B7280" }}>{tag}</Text>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={1}
+      className="w-full bg-white border-2 border-black mb-6 shadow-[4px_4px_0px_0px_#000] active:translate-y-[2px] active:shadow-none"
+    >
+      {/* Image Section - Default aspect ratio 16:9 or similar */}
+      <View className="w-full h-48 border-b-4 border-black bg-neo-bg relative overflow-hidden">
+        {event.cover_image ? (
+          <Image
+            source={{ uri: event.cover_image }}
+            className="w-full h-full"
+            resizeMode="cover"
+          />
+        ) : (
+            <View className="flex-1 items-center justify-center bg-neo-yellow">
+                <Text className="text-6xl">📅</Text>
             </View>
-          ))}
+        )}
+        
+        {/* Date Sticker */}
+        <View className="absolute top-4 left-4 bg-white border-4 border-black p-2 -rotate-3">
+            <Text className="text-black font-black uppercase text-xs">{formattedDate}</Text>
         </View>
 
-        {/* Details */}
-        <View style={{ gap: 8 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Calendar size={16} color="#9CA3AF" />
-            <Text style={{ fontSize: 14, color: "#6B7280" }}>
-              {date} • {time}
+        {/* Price Sticker */}
+        <View className="absolute bottom-4 right-4 bg-neo-red border-4 border-black px-3 py-1 rotate-2">
+            <Text className="text-white font-black uppercase text-sm">
+                {isPaid ? `$${event.price?.toFixed(2)}` : "FREE"}
             </Text>
-          </View>
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <MapPin size={16} color="#9CA3AF" />
-            <Text style={{ fontSize: 14, color: "#6B7280", flex: 1 }} numberOfLines={1}>
-              {location}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Users size={16} color="#9CA3AF" />
-            <Text style={{ fontSize: 14, color: "#6B7280" }}>
-              {attendees}/{maxAttendees} going
-            </Text>
-          </View>
-        </View>
-
-        {/* Host + Join Button */}
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTopWidth: 1, borderColor: PALETTE.babyPink }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Image
-              source={{ uri: hostAvatar || "https://placehold.co/40" }}
-              style={{ width: 32, height: 32, borderRadius: 16 }}
-            />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: PALETTE.graphite }}>{hostName}</Text>
-          </View>
-
-          <TouchableOpacity style={{ backgroundColor: PALETTE.coral, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}>
-            <Text style={{ color: PALETTE.white, fontSize: 12, fontWeight: "700" }}>Join</Text>
-          </TouchableOpacity>
         </View>
       </View>
-    </View>
+
+      {/* Content Section */}
+      <View className="p-4 bg-white">
+        <Text className="text-3xl font-black uppercase text-black leading-none mb-2" numberOfLines={2}>
+            {event.name}
+        </Text>
+        
+        <View className="flex-row items-center gap-2 mb-2">
+            <View className="bg-neo-bg border-2 border-black px-2 py-0.5">
+                <Text className="text-xs font-bold uppercase">{formattedTime}</Text>
+            </View>
+            {event.location && (
+                <Text className="text-black font-bold uppercase text-xs truncate max-w-[200px]" numberOfLines={1}>
+                    @ {event.location}
+                </Text>
+            )}
+        </View>
+
+        {event.description && (
+             <Text className="text-black/60 font-medium text-sm leading-tight" numberOfLines={2}>
+                {event.description}
+            </Text>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
