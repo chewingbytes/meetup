@@ -1,5 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import { Image } from "astro:assets";
+import logo from "../assets/transparentlogo.png";
 ---
 
 <Layout>
@@ -15,7 +17,7 @@ import Layout from "../layouts/Layout.astro";
   <header class="nav-wrap">
     <nav class="nav">
       <div class="logo-lockup">
-        <img src="/transparentlogo.png" alt="Soonest" class="logo-img" />
+        <Image src={logo} alt="Soonest" class="logo-img" />
         <span class="logo-name">soonest</span>
       </div>
       <div class="nav-right">
@@ -33,12 +35,13 @@ import Layout from "../layouts/Layout.astro";
       </div>
 
       <h1 class="hero-headline">
-        fill your day, <br />
-        <span class="gradient-text spontaneously">with people.</span>
+        find new people,<br />
+        <span class="gradient-text spontaneously">spontaneously</span>
       </h1>
 
       <p class="hero-sub">
-        browse and join nearby activities, and make real friends. Fill your day with people.
+        browse and join nearby activities, and make real friends. Fill your day
+        with people.
       </p>
 
       <div id="waitlist" class="form-card">
@@ -69,25 +72,25 @@ import Layout from "../layouts/Layout.astro";
 
     <!-- Notification bubbles -->
     <div class="hero-notif notif-1" aria-hidden="true">
-      <img src="https://i.pravatar.cc/40?img=52" class="notif-ava" alt="" />
+      <span class="notif-ava ava-1"></span>
       <div class="notif-body">
         <strong>bryan</strong> wants to go bouldering 🧗 at 6pm
       </div>
     </div>
     <div class="hero-notif notif-2" aria-hidden="true">
-      <img src="https://i.pravatar.cc/40?img=23" class="notif-ava" alt="" />
+      <span class="notif-ava ava-2"></span>
       <div class="notif-body">
         <strong>sarah</strong> joined dinner 🍽️ near you
       </div>
     </div>
     <div class="hero-notif notif-3" aria-hidden="true">
-      <img src="https://i.pravatar.cc/40?img=44" class="notif-ava" alt="" />
+      <span class="notif-ava ava-3"></span>
       <div class="notif-body">
         <strong>maya</strong> wants a girls' night out! 🛍️
       </div>
     </div>
     <div class="hero-notif notif-4" aria-hidden="true">
-      <img src="https://i.pravatar.cc/40?img=61" class="notif-ava" alt="" />
+      <span class="notif-ava ava-4"></span>
       <div class="notif-body">
         <strong>kai</strong> wants to go cafe hopping ☕
       </div>
@@ -149,7 +152,8 @@ import Layout from "../layouts/Layout.astro";
         <div class="section-badge">real plans</div>
         <h2 class="section-title">spend your day<br />with people</h2>
         <p class="section-sub">
-          real plans made by real people. join the waiting list to be notified first.
+          real plans made by real people. join the waiting list to be notified
+          first.
         </p>
       </div>
     </div>
@@ -167,26 +171,10 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 harbour square · 7:00 am</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=1"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=2"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=3"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=4"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-5"></span>
+              <span class="event-ava ava-6"></span>
+              <span class="event-ava ava-1"></span>
+              <span class="event-ava ava-2"></span>
             </div>
             <div class="event-going">4 going</div>
           </div>
@@ -203,21 +191,9 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 riverside courts · 10:00 am</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=5"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=6"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=7"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-3"></span>
+              <span class="event-ava ava-4"></span>
+              <span class="event-ava ava-5"></span>
               <div class="event-ava-more">+5</div>
             </div>
             <div class="event-going">8 going</div>
@@ -235,21 +211,9 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 east side · 2:00 pm</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=9"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=10"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=11"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-6"></span>
+              <span class="event-ava ava-1"></span>
+              <span class="event-ava ava-2"></span>
             </div>
             <div class="event-going">5 going</div>
           </div>
@@ -266,26 +230,10 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 midtown · 3:30 pm</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=12"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=13"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=14"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=15"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-3"></span>
+              <span class="event-ava ava-4"></span>
+              <span class="event-ava ava-5"></span>
+              <span class="event-ava ava-6"></span>
             </div>
             <div class="event-going">6 going</div>
           </div>
@@ -302,21 +250,9 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 westpark · 5:00 pm</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=16"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=17"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=18"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-1"></span>
+              <span class="event-ava ava-2"></span>
+              <span class="event-ava ava-3"></span>
               <div class="event-ava-more">+7</div>
             </div>
             <div class="event-going">10 going</div>
@@ -334,21 +270,9 @@ import Layout from "../layouts/Layout.astro";
           <div class="event-meta">📍 old quarter · 10:30 pm</div>
           <div class="event-footer">
             <div class="event-avatars">
-              <img
-                src="https://i.pravatar.cc/40?img=23"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=24"
-                class="event-ava"
-                alt=""
-              />
-              <img
-                src="https://i.pravatar.cc/40?img=25"
-                class="event-ava"
-                alt=""
-              />
+              <span class="event-ava ava-4"></span>
+              <span class="event-ava ava-5"></span>
+              <span class="event-ava ava-6"></span>
             </div>
             <div class="event-going">7 going</div>
           </div>
@@ -387,21 +311,9 @@ import Layout from "../layouts/Layout.astro";
               <div class="tl-title">morning coffee @ ya kun</div>
               <div class="tl-loc">📍 chinatown</div>
               <div class="tl-people">
-                <img
-                  src="https://i.pravatar.cc/32?img=30"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=31"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=32"
-                  class="tl-ava"
-                  alt=""
-                />
+                <span class="tl-ava ava-1"></span>
+                <span class="tl-ava ava-2"></span>
+                <span class="tl-ava ava-3"></span>
                 <span class="tl-with">with sarah, jamie & kai</span>
               </div>
             </div>
@@ -425,26 +337,10 @@ import Layout from "../layouts/Layout.astro";
               <div class="tl-title">3-on-3 basketball pickup</div>
               <div class="tl-loc">📍 kallang sport centre</div>
               <div class="tl-people">
-                <img
-                  src="https://i.pravatar.cc/32?img=33"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=34"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=35"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=36"
-                  class="tl-ava"
-                  alt=""
-                />
+                <span class="tl-ava ava-4"></span>
+                <span class="tl-ava ava-5"></span>
+                <span class="tl-ava ava-6"></span>
+                <span class="tl-ava ava-1"></span>
                 <span class="tl-with">with ryan, marcus & 5 others</span>
               </div>
             </div>
@@ -468,16 +364,8 @@ import Layout from "../layouts/Layout.astro";
               <div class="tl-title">thrift hunting at bugis+</div>
               <div class="tl-loc">📍 bugis</div>
               <div class="tl-people">
-                <img
-                  src="https://i.pravatar.cc/32?img=40"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=41"
-                  class="tl-ava"
-                  alt=""
-                />
+                <span class="tl-ava ava-2"></span>
+                <span class="tl-ava ava-3"></span>
                 <span class="tl-with">with lin & maya</span>
               </div>
             </div>
@@ -501,26 +389,10 @@ import Layout from "../layouts/Layout.astro";
               <div class="tl-title">indie gig @ the substation</div>
               <div class="tl-loc">📍 armenian street</div>
               <div class="tl-people">
-                <img
-                  src="https://i.pravatar.cc/32?img=44"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=45"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=46"
-                  class="tl-ava"
-                  alt=""
-                />
-                <img
-                  src="https://i.pravatar.cc/32?img=47"
-                  class="tl-ava"
-                  alt=""
-                />
+                <span class="tl-ava ava-4"></span>
+                <span class="tl-ava ava-5"></span>
+                <span class="tl-ava ava-6"></span>
+                <span class="tl-ava ava-1"></span>
                 <span class="tl-with">with jamie, ryan & 8 others</span>
               </div>
             </div>
@@ -729,7 +601,7 @@ import Layout from "../layouts/Layout.astro";
   <footer class="footer">
     <div class="footer-inner">
       <div class="footer-logo-lockup">
-        <img src="/transparentlogo.png" alt="Soonest" class="footer-logo-img" />
+        <Image src={logo} alt="Soonest" class="footer-logo-img" />
         <span class="footer-logo-name">soonest</span>
       </div>
       <p class="footer-tag">made with ❤️ in singapore</p>
@@ -739,6 +611,30 @@ import Layout from "../layouts/Layout.astro";
 </Layout>
 
 <style>
+  /* Float-up-disappear cycle: fade in from below, drift up, fade out, stay hidden, repeat */
+  @keyframes float-up-loop {
+    0% {
+      opacity: 0;
+      transform: translateY(22px) scale(0.9);
+    }
+    7% {
+      opacity: 1;
+      transform: translateY(8px) scale(1);
+    }
+    24% {
+      opacity: 1;
+      transform: translateY(-14px) scale(1);
+    }
+    32% {
+      opacity: 0;
+      transform: translateY(-28px) scale(0.95);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-28px) scale(0.95);
+    }
+  }
+
   /* ── Layout ── */
   .section-inner {
     max-width: 1000px;
@@ -1057,19 +953,37 @@ import Layout from "../layouts/Layout.astro";
     pointer-events: none;
     max-width: 210px;
   }
-  @media (min-width: 1200px) {
-    .hero-notif {
-      display: flex;
-    }
+  .hero-notif {
+    display: flex;
   }
   .notif-ava {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    object-fit: cover;
     flex-shrink: 0;
     border: 2px solid rgba(255, 255, 255, 0.85);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    display: inline-block;
+  }
+
+  /* Gradient palette for CSS-only avatar circles */
+  .ava-1 {
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  }
+  .ava-2 {
+    background: linear-gradient(135deg, #f9a8d4, #db2777);
+  }
+  .ava-3 {
+    background: linear-gradient(135deg, #93c5fd, #3b82f6);
+  }
+  .ava-4 {
+    background: linear-gradient(135deg, #6ee7b7, #10b981);
+  }
+  .ava-5 {
+    background: linear-gradient(135deg, #fcd34d, #f59e0b);
+  }
+  .ava-6 {
+    background: linear-gradient(135deg, #fca5a5, #ef4444);
   }
   .notif-body {
     font-size: 0.76rem;
@@ -1080,30 +994,30 @@ import Layout from "../layouts/Layout.astro";
     font-weight: 700;
   }
 
-  /* Left side — edge to near-content spread */
+  /* Floaters: fill-mode:backwards keeps each element at opacity:0 during its delay.
+     1s base delay on every element gives the page time to render before anything appears.
+     Stagger is 0.8s per element, alternating left/right. */
+
+  /* Notifications */
   .notif-1 {
-    top: 16%;
+    top: 5%;
     left: 2%;
-    animation: clay-float 8s ease-in-out infinite;
+    animation: float-up-loop 14s 1s linear infinite backwards;
+  }
+  .notif-4 {
+    top: 18%;
+    right: 2%;
+    animation: float-up-loop 14s 1.8s linear infinite backwards;
   }
   .notif-3 {
     bottom: 12%;
     left: 2%;
-    animation: clay-float 9s ease-in-out infinite;
-    animation-delay: 3s;
-  }
-  /* Right side */
-  .notif-4 {
-    top: 18%;
-    right: 2%;
-    animation: clay-float-alt 7s ease-in-out infinite;
-    animation-delay: 0.8s;
+    animation: float-up-loop 14s 7.4s linear infinite backwards;
   }
   .notif-2 {
     bottom: 22%;
     right: 2%;
-    animation: clay-float-alt 10s ease-in-out infinite;
-    animation-delay: 1.5s;
+    animation: float-up-loop 14s 8.2s linear infinite backwards;
   }
 
   /* Floating MBTI pills */
@@ -1121,42 +1035,34 @@ import Layout from "../layouts/Layout.astro";
       inset 2px 2px 6px rgba(255, 255, 255, 0.3);
     pointer-events: none;
   }
-  @media (min-width: 900px) {
-    .hero-mbti {
-      display: block;
-    }
+  .hero-mbti {
+    display: block;
   }
 
-  /* Left MBTI — stepped in from edge toward center */
   .mbti-p1 {
     top: 42%;
     left: 6%;
-    animation: clay-float-alt 9s ease-in-out infinite;
+    animation: float-up-loop 14s 4.2s linear infinite backwards;
+  }
+  .mbti-p2 {
+    top: 28%;
+    right: 10%;
+    animation: float-up-loop 14s 5s linear infinite backwards;
   }
   .mbti-p4 {
     bottom: 20%;
     left: 10%;
-    animation: clay-float 10s ease-in-out infinite;
-    animation-delay: 0.5s;
-  }
-  /* Right MBTI */
-  .mbti-p2 {
-    top: 28%;
-    right: 10%;
-    animation: clay-float 8s ease-in-out infinite;
-    animation-delay: 1s;
+    animation: float-up-loop 14s 9s linear infinite backwards;
   }
   .mbti-p3 {
     bottom: 28%;
     right: 6%;
-    animation: clay-float-alt 11s ease-in-out infinite;
-    animation-delay: 2s;
+    animation: float-up-loop 14s 9.8s linear infinite backwards;
   }
   .mbti-p5 {
     top: 54%;
     right: 14%;
-    animation: clay-float-alt 7s ease-in-out infinite;
-    animation-delay: 3s;
+    animation: float-up-loop 14s 13s linear infinite backwards;
   }
 
   /* Floating activity emojis */
@@ -1176,61 +1082,50 @@ import Layout from "../layouts/Layout.astro";
     display: block;
   }
 
-  /* Left emojis — spread from edge (2%) to near-content (17%) */
   .e6 {
     top: 11%;
     left: 4%;
-    animation: clay-float-alt 11s ease-in-out infinite;
-    animation-delay: 3.5s;
+    animation: float-up-loop 14s 2.6s linear infinite backwards;
+  }
+  .e5 {
+    top: 11%;
+    right: 4%;
+    animation: float-up-loop 14s 3.4s linear infinite backwards;
   }
   .e7 {
     top: 30%;
     left: 14%;
-    animation: clay-float 8s ease-in-out infinite;
-    animation-delay: 2.5s;
-  }
-  .e4 {
-    top: 62%;
-    left: 5%;
-    animation: clay-float-alt 10s ease-in-out infinite;
-    animation-delay: 0.7s;
-  }
-  .e9 {
-    top: 54%;
-    left: 17%;
-    animation: clay-float 12s ease-in-out infinite;
-    animation-delay: 4s;
-  }
-  .e1 {
-    bottom: 35%;
-    left: 9%;
-    animation: clay-float 7s ease-in-out infinite;
-  }
-
-  /* Right emojis — spread from edge (2%) to near-content (17%) */
-  .e5 {
-    top: 11%;
-    right: 4%;
-    animation: clay-float 6s ease-in-out infinite;
-    animation-delay: 1.5s;
+    animation: float-up-loop 14s 5.8s linear infinite backwards;
   }
   .e3 {
     top: 66%;
     right: 5%;
-    animation: clay-float 9s ease-in-out infinite;
-    animation-delay: 2s;
+    animation: float-up-loop 14s 6.6s linear infinite backwards;
+  }
+  .e4 {
+    top: 62%;
+    left: 5%;
+    animation: float-up-loop 14s 10.6s linear infinite backwards;
   }
   .e8 {
     top: 48%;
     right: 17%;
-    animation: clay-float-alt 9s ease-in-out infinite;
-    animation-delay: 1.2s;
+    animation: float-up-loop 14s 11.4s linear infinite backwards;
+  }
+  .e1 {
+    bottom: 35%;
+    left: 9%;
+    animation: float-up-loop 14s 12.2s linear infinite backwards;
+  }
+  .e9 {
+    top: 54%;
+    left: 17%;
+    animation: float-up-loop 14s 13.8s linear infinite backwards;
   }
   .e2 {
     bottom: 16%;
     right: 9%;
-    animation: clay-float-alt 8s ease-in-out infinite;
-    animation-delay: 1s;
+    animation: float-up-loop 14s 14.6s linear infinite backwards;
   }
 
   /* ── Shared section ── */
@@ -1357,9 +1252,10 @@ import Layout from "../layouts/Layout.astro";
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.9);
     margin-left: -8px;
+    display: inline-block;
+    flex-shrink: 0;
   }
   .event-ava:first-child {
     margin-left: 0;
@@ -1494,9 +1390,10 @@ import Layout from "../layouts/Layout.astro";
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.9);
     margin-left: -6px;
+    display: inline-block;
+    flex-shrink: 0;
   }
   .tl-ava:first-child {
     margin-left: 0;
@@ -1838,7 +1735,7 @@ import Layout from "../layouts/Layout.astro";
   setupForm("form-cta", "success-cta");
 
   // Count-up animation for waitlist number
-  const countEl = document.getElementById('waitlist-count');
+  const countEl = document.getElementById("waitlist-count");
   if (countEl) {
     const target = 200;
     const duration = 1800;
