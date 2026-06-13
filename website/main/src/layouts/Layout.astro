@@ -4,8 +4,8 @@ interface Props {
   description?: string;
 }
 const {
-  title = "soonest, join the waitlist now",
-  description = "discover live activities near you, matched to your MBTI types and interests. Fill your day with people.",
+  title = "soonest — the action-first social network",
+  description = "Stop performative flexing. Find like-minded people who get the grind. Drop a pin, filter the vibe, link up for real.",
 } = Astro.props;
 ---
 
@@ -20,7 +20,6 @@ const {
     <meta property="og:type" content="website" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
-    <!-- Non-blocking font load — onload swaps rel to stylesheet after paint -->
     <link
       rel="preload"
       as="style"

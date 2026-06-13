@@ -2,10 +2,108 @@
 import Layout from "../layouts/Layout.astro";
 import { Image } from "astro:assets";
 import logo from "../assets/transparentlogo.png";
+
+import avaBryan from "../assets/avatars/male/bryan.jpg";
+import avaSarah from "../assets/avatars/female/sarah.jpeg";
+import avaMaya from "../assets/avatars/female/maya.jpeg";
+import avaKai from "../assets/avatars/male/kai.jpeg";
+
+import avaM1 from "../assets/avatars/male/male.jpeg";
+import avaM2 from "../assets/avatars/male/male2.jpeg";
+import avaM3 from "../assets/avatars/male/male3.jpeg";
+import avaM4 from "../assets/avatars/male/male4.jpeg";
+import avaM5 from "../assets/avatars/male/male5.jpeg";
+import avaF1 from "../assets/avatars/female/female.jpeg";
+import avaF2 from "../assets/avatars/female/female2.jpeg";
+import avaF3 from "../assets/avatars/female/female3.jpeg";
+import avaF4 from "../assets/avatars/female/female4.jpeg";
+import avaF5 from "../assets/avatars/female/female5.jpeg";
+
+// ── Profile screen mock data ──
+const profiles = [
+  {
+    img: avaBryan,
+    name: "Bryan",
+    age: 20,
+    role: "Entrepreneur",
+    city: "Singapore",
+    accent: "#7C3AED",
+    accentFrom: "#A78BFA",
+    statusText: "deep in a codebase",
+    statusEmoji: "💻",
+    ledger: 96,
+    ledgerNote: "showed up to 23 of 24 activities",
+    stats: [
+      ["12", "activities"],
+      ["8", "day streak"],
+    ],
+    promptQ: "what i'm up for right now",
+    promptA:
+      "trying to run 2.4km under 11 minutes. looking for people with a similar goal to work towards it together.",
+    tags: ["💻 TypeScript", "🎧 UK Garage", "🧗 Bouldering"],
+    feed: [
+      { ic: "💻", t: "Deep work sprint", s: "with 3 others · 2d ago" },
+      { ic: "🍜", t: "Late supper run", s: "with 5 others · 5d ago" },
+    ],
+  },
+  {
+    img: avaF2,
+    name: "Aisha",
+    age: 23,
+    role: "Product Designer",
+    city: "United States",
+    accent: "#DB2777",
+    accentFrom: "#F9A8D4",
+    statusText: "free after 6pm",
+    statusEmoji: "☕",
+    ledger: 88,
+    ledgerNote: "showed up to 16 of 18 activities",
+    stats: [
+      ["9", "activities"],
+      ["5", "day streak"],
+    ],
+    promptQ: "current hyper-fixation",
+    promptA:
+      "Muay Thai 3× a week and obsessing over motion design. Down to explore specialty coffee spots on weekends.",
+    tags: ["🎨 Figma", "🥊 Muay Thai", "🎶 Afrobeats"],
+    feed: [
+      { ic: "☕", t: "Specialty coffee crawl", s: "with 4 others · 1d ago" },
+      { ic: "🥊", t: "Muay Thai open mat", s: "with 6 others · 4d ago" },
+    ],
+  },
+  {
+    img: avaM3,
+    name: "Marcus",
+    age: 22,
+    role: "Senior Software Engineer",
+    city: "Germany",
+    accent: "#059669",
+    accentFrom: "#34D399",
+    statusText: "looking for dinner",
+    statusEmoji: "🍜",
+    ledger: 93,
+    ledgerNote: "showed up to 28 of 30 activities",
+    stats: [
+      ["15", "activities"],
+      ["11", "day streak"],
+    ],
+    promptQ: "what i'm building",
+    promptA:
+      "Early-stage health-tech startup. Looking for dinner partners to go over ideas over good food.",
+    tags: ["🚀 Startups", "🧗 Bouldering", "🎷 Jazz"],
+    feed: [
+      { ic: "🍜", t: "Founder dinner table", s: "with 5 others · 3d ago" },
+      { ic: "🧗", t: "Bouldering session", s: "with 2 others · 6d ago" },
+    ],
+  },
+];
 ---
 
-<Layout>
-  <!-- ── Fixed ambient blobs ── -->
+<Layout
+  title="soonest — the action-first social network"
+  description="Stop performative flexing. Find like-minded people who get the grind. Drop a pin, filter the vibe, link up for real."
+>
+  <!-- ── Ambient blobs ── -->
   <div class="blobs" aria-hidden="true">
     <div class="blob blob-violet"></div>
     <div class="blob blob-pink"></div>
@@ -17,7 +115,13 @@ import logo from "../assets/transparentlogo.png";
   <header class="nav-wrap">
     <nav class="nav">
       <div class="logo-lockup">
-        <Image src={logo} alt="Soonest" class="logo-img" />
+        <Image
+          src={logo}
+          alt="Soonest"
+          class="logo-img"
+          width={64}
+          height={64}
+        />
         <span class="logo-name">soonest</span>
       </div>
       <div class="nav-right">
@@ -34,14 +138,20 @@ import logo from "../assets/transparentlogo.png";
         <span><span id="waitlist-count">0</span>+ people already waiting</span>
       </div>
 
-      <h1 class="hero-headline">
-        find new people,<br />
-        <span class="gradient-text spontaneously">spontaneously</span>
-      </h1>
+      <div class="hero-headline-block">
+        <h1 class="hero-headline">
+          the <span class="irl-headline">irl</span> social network to
+        </h1>
+        <div class="flip-line" aria-live="polite" aria-atomic="true">
+          <span id="flip-word" class="flip-word"
+            >level up<br />your inner circle</span
+          >
+        </div>
+      </div>
 
       <p class="hero-sub">
-        browse and join nearby activities, and make real friends. Fill your day
-        with people.
+        stop just performatively flexing online. meet like-minded people who
+        actually push you forward.
       </p>
 
       <div id="waitlist" class="form-card">
@@ -67,487 +177,639 @@ import logo from "../assets/transparentlogo.png";
         </div>
       </div>
 
-      <p class="hero-footnote">Sign up now to enjoy early access and perks.</p>
+      <p class="hero-footnote">sign up now to enjoy early access and perks.</p>
     </div>
 
     <!-- Notification bubbles -->
     <div class="hero-notif notif-1" aria-hidden="true">
-      <span class="notif-ava ava-1"></span>
+      <Image src={avaBryan} alt="" class="notif-ava" width={64} height={64} />
       <div class="notif-body">
         <strong>bryan</strong> wants to go bouldering 🧗 at 6pm
       </div>
     </div>
     <div class="hero-notif notif-2" aria-hidden="true">
-      <span class="notif-ava ava-2"></span>
+      <Image src={avaSarah} alt="" class="notif-ava" width={64} height={64} />
       <div class="notif-body">
         <strong>sarah</strong> joined dinner 🍽️ near you
       </div>
     </div>
     <div class="hero-notif notif-3" aria-hidden="true">
-      <span class="notif-ava ava-3"></span>
+      <Image src={avaMaya} alt="" class="notif-ava" width={64} height={64} />
       <div class="notif-body">
-        <strong>maya</strong> wants a girls' night out! 🛍️
+        <strong>maya</strong> dropped a coffee spot ☕
       </div>
     </div>
     <div class="hero-notif notif-4" aria-hidden="true">
-      <span class="notif-ava ava-4"></span>
+      <Image src={avaKai} alt="" class="notif-ava" width={64} height={64} />
       <div class="notif-body">
-        <strong>kai</strong> wants to go cafe hopping ☕
+        <strong>kai</strong> is deep in a codebase 💻
       </div>
     </div>
 
-    <!-- MBTI pills -->
-    <div
-      class="hero-mbti mbti-p1"
-      style="background:linear-gradient(135deg,#A78BFA,#7C3AED)"
-      aria-hidden="true"
-    >
-      ENFP
-    </div>
-    <div
-      class="hero-mbti mbti-p2"
-      style="background:linear-gradient(135deg,#34D399,#10B981)"
-      aria-hidden="true"
-    >
-      INFJ
-    </div>
-    <div
-      class="hero-mbti mbti-p3"
-      style="background:linear-gradient(135deg,#60A5FA,#3B82F6)"
-      aria-hidden="true"
-    >
-      ESTJ
-    </div>
-    <div
-      class="hero-mbti mbti-p4"
-      style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
-      aria-hidden="true"
-    >
-      ESTP
-    </div>
-    <div
-      class="hero-mbti mbti-p5"
-      style="background:linear-gradient(135deg,#F9A8D4,#DB2777)"
-      aria-hidden="true"
-    >
-      INFP
-    </div>
-
-    <!-- Activity emoji pills -->
+    <!-- Activity emoji floaters (no MBTI) -->
     <div class="hero-emoji e1" aria-hidden="true">🏀</div>
     <div class="hero-emoji e2" aria-hidden="true">☕</div>
-    <div class="hero-emoji e3" aria-hidden="true">🛍️</div>
+    <div class="hero-emoji e3" aria-hidden="true">💻</div>
     <div class="hero-emoji e4" aria-hidden="true">📚</div>
     <div class="hero-emoji e5" aria-hidden="true">⚽</div>
     <div class="hero-emoji e6" aria-hidden="true">🎮</div>
     <div class="hero-emoji e7" aria-hidden="true">🎵</div>
-    <div class="hero-emoji e8" aria-hidden="true">🏊</div>
+    <div class="hero-emoji e8" aria-hidden="true">🧗</div>
     <div class="hero-emoji e9" aria-hidden="true">🎨</div>
   </section>
 
-  <!-- ── Events section ── -->
-  <section class="section">
+  <!-- ── Section 2: Manifesto + Problems ── -->
+  <section class="section manifesto-section">
+    <div class="manifesto-outer">
+      <p class="manifesto-text" id="manifesto-text">
+        'true connection is a byproduct of doing things <span
+          style="font-style: italic; color: #7C3AED;">together</span
+        >.'
+      </p>
+    </div>
+
+    <!-- <div class="section-inner">
+      <div class="problem-grid">
+        <div class="problem-card">
+          <div class="problem-num">01</div>
+          <div class="problem-icon">🎭</div>
+          <h3 class="problem-title">The Corporate Masquerade</h3>
+          <p class="problem-body">
+            Modern networking platforms force everyone to wear a performative
+            mask. You connect based on resumes and inflated job titles, leading
+            to forced, awkward coffee chats with zero real-life chemistry.
+          </p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-num">02</div>
+          <div class="problem-icon">🔗</div>
+          <h3 class="problem-title">The Friendship Gap</h3>
+          <p class="problem-body">
+            Your current friends match your history, but they don't always match
+            your daily energy. Sometimes you need a specific peer to keep you
+            accountable on a late-night grind, and sometimes you just want
+            someone who shares your exact niche music taste.
+          </p>
+        </div>
+        <div class="problem-card">
+          <div class="problem-num">03</div>
+          <div class="problem-icon">📱</div>
+          <h3 class="problem-title">The Clout Culture</h3>
+          <p class="problem-body">
+            Mainstream social apps have become hyper-superficial popularity
+            contests. You optimize aesthetic profile grids, chase follower
+            metrics, and perform for validation — curating an identity instead
+            of just being human and linking up in real life.
+          </p>
+        </div>
+      </div>
+    </div> -->
+  </section>
+
+  <!-- ── Section 3: How It Works ── -->
+  <section class="section hiw-section">
     <div class="section-inner">
       <div class="section-head">
-        <div class="section-badge">real plans</div>
-        <h2 class="section-title">spend your day<br />with people</h2>
+        <div class="section-badge">how it works</div>
+        <h2 class="section-title">actually meet people.</h2>
         <p class="section-sub">
-          real plans made by real people. join the waiting list to be notified
-          first.
+          don't just add people to your connections list. browse, create and
+          join activities with like-minded individuals with just a click of a
+          button.
         </p>
       </div>
-    </div>
-    <!-- Full-width scroll -->
-    <div class="events-outer">
-      <div class="events-scroll">
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(251,191,36,0.15);color:#D97706"
-          >
-            ☕ café hangout
-          </div>
-          <div class="event-title">early coffee @ the anchor</div>
-          <div class="event-meta">📍 harbour square · 7:00 am</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-5"></span>
-              <span class="event-ava ava-6"></span>
-              <span class="event-ava ava-1"></span>
-              <span class="event-ava ava-2"></span>
+
+      <div class="hiw-layout">
+        <!-- ── Map mock (redesigned) ── -->
+        <div class="map-wrap" id="map-stage" aria-hidden="true">
+          <!-- Base map surface -->
+          <div class="mm-surface">
+            <div class="mm-water"></div>
+            <div class="mm-hwy mm-hwy-h"></div>
+            <div class="mm-hwy mm-hwy-v"></div>
+            <div class="mm-road mm-r-h1"></div>
+            <div class="mm-road mm-r-h2"></div>
+            <div class="mm-road mm-r-h3"></div>
+            <div class="mm-road mm-r-v1"></div>
+            <div class="mm-road mm-r-v2"></div>
+            <div class="mm-local mm-l-h1"></div>
+            <div class="mm-local mm-l-h2"></div>
+            <div class="mm-local mm-l-h3"></div>
+            <div class="mm-local mm-l-v1"></div>
+            <div class="mm-local mm-l-v2"></div>
+            <div class="mm-blk mm-b1 mm-lit"></div>
+            <div class="mm-blk mm-b2"></div>
+            <div class="mm-blk mm-b3"></div>
+            <div class="mm-blk mm-b4 mm-lit"></div>
+            <div class="mm-blk mm-b5 mm-lit"></div>
+            <div class="mm-blk mm-b6"></div>
+            <div class="mm-blk mm-b7 mm-lit"></div>
+            <div class="mm-blk mm-b8"></div>
+            <div class="mm-blk mm-b9 mm-lit"></div>
+            <div class="mm-park"></div>
+
+            <!-- Street labels -->
+            <span class="mm-label" style="top:38%;left:8%">MARINA EXPY</span>
+            <span class="mm-label mm-label-v" style="top:50%;left:37%"
+              >ORCHARD RD</span
+            >
+            <span class="mm-label" style="top:18%;left:46%">CECIL ST</span>
+            <span class="mm-label mm-water-label" style="bottom:8%;left:6%"
+              >THE BAY</span
+            >
+
+            <div class="mm-grid"></div>
+
+            <!-- Route from you → nearest pin -->
+            <svg
+              class="mm-route"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M44 78 L44 52 Q44 44 36 44 L26 30"
+                fill="none"
+                stroke="rgba(124,58,237,0.55)"
+                stroke-width="0.9"
+                stroke-linecap="round"
+                stroke-dasharray="2.4 2.4"></path>
+            </svg>
+
+            <!-- You-are-here marker -->
+            <div class="mm-you" style="top:78%;left:44%">
+              <span class="mm-you-acc"></span>
+              <span class="mm-you-dot"></span>
             </div>
-            <div class="event-going">4 going</div>
           </div>
+
+          <!-- Top bar -->
+          <div class="mm-topbar">
+            <div class="mm-live-pill">
+              <span class="mm-dot"></span>
+              <span>Live</span>
+            </div>
+            <span class="mm-location">📍 Downtown District</span>
+            <span class="mm-activity-count">12 active</span>
+          </div>
+
+          <!-- Compass -->
+          <div class="mm-compass" aria-hidden="true">
+            <span class="mm-compass-n">N</span>
+            <span class="mm-compass-needle"></span>
+          </div>
+
+          <!-- Scale bar -->
+          <div class="mm-scale" aria-hidden="true">
+            <span class="mm-scale-bar"></span>
+            <span class="mm-scale-txt">500 m</span>
+          </div>
+
+          <!-- Pin: Study -->
+          <div class="mp" style="--c:#7C3AED;--gfrom:#A78BFA;top:22%;left:26%">
+            <div class="mp-ring"></div>
+            <div class="mp-icon">💻</div>
+            <div class="mp-stem"></div>
+            <div class="mp-card">
+              <span class="mp-cat" style="color:#A78BFA">Study</span>
+              <div class="mp-name">Deep-diving a codebase</div>
+              <div class="mp-meta">10 PM · 2 going</div>
+              <div class="mp-avs">
+                <div class="mp-av" style="background:#A78BFA">J</div>
+                <div class="mp-av" style="background:#7C3AED">R</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pin: Coffee -->
+          <div class="mp" style="--c:#D97706;--gfrom:#FCD34D;top:50%;left:55%">
+            <div class="mp-ring"></div>
+            <div class="mp-icon">☕</div>
+            <div class="mp-stem"></div>
+            <div class="mp-card mp-card-left">
+              <span class="mp-cat" style="color:#FCD34D">Coffee</span>
+              <div class="mp-name">Specialty coffee run</div>
+              <div class="mp-meta">9 PM · 4 going</div>
+              <div class="mp-avs">
+                <div class="mp-av" style="background:#D97706">S</div>
+                <div class="mp-av" style="background:#F59E0B">M</div>
+                <div class="mp-av" style="background:#FCD34D;color:#78350F">
+                  +2
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pin: Run -->
+          <div class="mp" style="--c:#059669;--gfrom:#34D399;top:68%;left:16%">
+            <div class="mp-ring"></div>
+            <div class="mp-icon">🏃</div>
+            <div class="mp-stem"></div>
+            <div class="mp-card">
+              <span class="mp-cat" style="color:#34D399">Sports</span>
+              <div class="mp-name">Late-night run loop</div>
+              <div class="mp-meta">11 PM · 3 going</div>
+            </div>
+          </div>
+
+          <!-- Pin: Supper -->
+          <div class="mp" style="--c:#DB2777;--gfrom:#F9A8D4;top:30%;left:64%">
+            <div class="mp-ring"></div>
+            <div class="mp-icon">🍜</div>
+            <div class="mp-stem"></div>
+            <div class="mp-card mp-card-left">
+              <span class="mp-cat" style="color:#F9A8D4">Food</span>
+              <div class="mp-name">Cheap supper loop</div>
+              <div class="mp-meta">12 AM · 5 going</div>
+            </div>
+          </div>
+
+          <!-- Pin: Boulder -->
+          <div class="mp" style="--c:#2563EB;--gfrom:#93C5FD;top:12%;left:58%">
+            <div class="mp-ring"></div>
+            <div class="mp-icon">🧗</div>
+            <div class="mp-stem"></div>
+            <div class="mp-card mp-card-below">
+              <span class="mp-cat" style="color:#93C5FD">Sports</span>
+              <div class="mp-name">Bouldering session</div>
+              <div class="mp-meta">7 PM · 6 going</div>
+            </div>
+          </div>
+
+          <!-- Filter bar -->
+          <!-- <div class="mm-fbar">
+            <button class="mm-chip mm-chip-on">All</button>
+            <button class="mm-chip">☕</button>
+            <button class="mm-chip">💻</button>
+            <button class="mm-chip">🏃</button>
+            <button class="mm-chip">🍜</button>
+          </div> -->
         </div>
 
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(251,191,36,0.15);color:#D97706"
-          >
-            🏀 sports
-          </div>
-          <div class="event-title">3-on-3 basketball pickup</div>
-          <div class="event-meta">📍 riverside courts · 10:00 am</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-3"></span>
-              <span class="event-ava ava-4"></span>
-              <span class="event-ava ava-5"></span>
-              <div class="event-ava-more">+5</div>
+        <!-- ── Steps ── -->
+        <div class="hiw-steps">
+          <div class="hiw-step">
+            <div class="step-num">01</div>
+            <div class="step-content">
+              <h3 class="step-title">drop an activity</h3>
+              <p class="step-kicker">takes 10 seconds.</p>
+              <p class="step-body">
+                training for a marathon? grinding late-night deep work? trying
+                to hit a new PR? or just want to grab a good dinner with good
+                people? drop a live pin on the map with the exact vibe or target
+                you’re chasing right now. find your parallel accountability
+                partner and cross the finish line together.
+              </p>
             </div>
-            <div class="event-going">8 going</div>
           </div>
-        </div>
 
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(219,39,119,0.12);color:#DB2777"
-          >
-            🛍️ shopping
-          </div>
-          <div class="event-title">thrift run at the loft market</div>
-          <div class="event-meta">📍 east side · 2:00 pm</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-6"></span>
-              <span class="event-ava ava-1"></span>
-              <span class="event-ava ava-2"></span>
+          <div class="hiw-step">
+            <div class="step-num">02</div>
+            <div class="step-content">
+              <h3 class="step-title">choose who you want to meet</h3>
+              <p class="step-kicker">frictionless entry.</p>
+              <p class="step-body">
+                choose exactly who you want to cross paths with filters straight
+                down to your interests and passions.
+              </p>
             </div>
-            <div class="event-going">5 going</div>
           </div>
-        </div>
 
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(59,130,246,0.12);color:#3B82F6"
-          >
-            📚 study
-          </div>
-          <div class="event-title">study session @ brewed & read</div>
-          <div class="event-meta">📍 midtown · 3:30 pm</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-3"></span>
-              <span class="event-ava ava-4"></span>
-              <span class="event-ava ava-5"></span>
-              <span class="event-ava ava-6"></span>
+          <div class="hiw-step">
+            <div class="step-num">03</div>
+            <div class="step-content">
+              <h3 class="step-title">check the ledger</h3>
+              <p class="step-kicker">zero flake zone.</p>
+              <p class="step-body">
+                every profile features an automated reliability score based on
+                actual meetup attendance. we filter out the talkers so you only
+                link up with people who actually show up.
+              </p>
             </div>
-            <div class="event-going">6 going</div>
-          </div>
-        </div>
-
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(16,185,129,0.12);color:#10B981"
-          >
-            ⚽ sports
-          </div>
-          <div class="event-title">five-a-side at sundown fields</div>
-          <div class="event-meta">📍 westpark · 5:00 pm</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-1"></span>
-              <span class="event-ava ava-2"></span>
-              <span class="event-ava ava-3"></span>
-              <div class="event-ava-more">+7</div>
-            </div>
-            <div class="event-going">10 going</div>
-          </div>
-        </div>
-
-        <div class="event-card">
-          <div
-            class="event-cat"
-            style="background:rgba(251,146,60,0.15);color:#EA580C"
-          >
-            🍜 supper
-          </div>
-          <div class="event-title">late night ramen at noodle alley</div>
-          <div class="event-meta">📍 old quarter · 10:30 pm</div>
-          <div class="event-footer">
-            <div class="event-avatars">
-              <span class="event-ava ava-4"></span>
-              <span class="event-ava ava-5"></span>
-              <span class="event-ava ava-6"></span>
-            </div>
-            <div class="event-going">7 going</div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Day Timeline ── -->
-  <section class="section">
+  <!-- ── Section 4: Profile Mocks (vertical phone screens) ── -->
+  <section class="section profiles-section">
     <div class="section-inner">
       <div class="section-head">
-        <div class="section-badge">your day</div>
-        <h2 class="section-title">here's what your<br />day could look like</h2>
+        <div class="section-badge">the soonest profile</div>
+        <h2 class="section-title">no resume. no follower count.</h2>
         <p class="section-sub">
-          alex woke up with no plans. by 10pm, she had lived a whole day with
-          people she actually clicked with.
+          just who you are, what you're working towards, and what you're down to
+          do — right now.
         </p>
       </div>
 
-      <div class="timeline">
-        <div class="tl-item">
-          <div class="tl-time">7:00 am</div>
-          <div class="tl-track">
-            <div
-              class="tl-dot"
-              style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
+      <div class="profiles-wrap">
+        {
+          profiles.map((p, i) => (
+            <article
+              class={`phone pc-${i + 1}`}
+              style={`--pc:${p.accent};--pc-from:${p.accentFrom}`}
             >
-            </div>
-            <div class="tl-line"></div>
-          </div>
-          <div class="tl-card">
-            <div class="tl-time-badge">7:00 am</div>
-            <div class="tl-emoji">☕</div>
-            <div class="tl-content">
-              <div class="tl-title">morning coffee @ ya kun</div>
-              <div class="tl-loc">📍 chinatown</div>
-              <div class="tl-people">
-                <span class="tl-ava ava-1"></span>
-                <span class="tl-ava ava-2"></span>
-                <span class="tl-ava ava-3"></span>
-                <span class="tl-with">with sarah, jamie & kai</span>
-              </div>
-            </div>
-          </div>
-        </div>
+              <div class="phone-glow" aria-hidden="true" />
+              <div class="phone-screen">
+                <div class="ps-status">
+                  <span class="ps-time">9:41</span>
+                  <span class="ps-status-ic">
+                    <svg width="17" height="11" viewBox="0 0 17 11" fill="none">
+                      <rect
+                        x="0"
+                        y="7"
+                        width="3"
+                        height="4"
+                        rx="1"
+                        fill="currentColor"
+                      />
+                      <rect
+                        x="4.5"
+                        y="5"
+                        width="3"
+                        height="6"
+                        rx="1"
+                        fill="currentColor"
+                      />
+                      <rect
+                        x="9"
+                        y="2.5"
+                        width="3"
+                        height="8.5"
+                        rx="1"
+                        fill="currentColor"
+                      />
+                      <rect
+                        x="13.5"
+                        y="0"
+                        width="3"
+                        height="11"
+                        rx="1"
+                        fill="currentColor"
+                        opacity="0.4"
+                      />
+                    </svg>
+                    <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
+                      <path
+                        d="M7.5 10.2 1 4.1a9 9 0 0 1 13 0L7.5 10.2Z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.3"
+                        opacity="0.35"
+                      />
+                      <path
+                        d="M7.5 10.2 3.7 6.5a5.4 5.4 0 0 1 7.6 0L7.5 10.2Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                    <svg width="24" height="12" viewBox="0 0 24 12" fill="none">
+                      <rect
+                        x="0.5"
+                        y="0.5"
+                        width="20"
+                        height="11"
+                        rx="3"
+                        stroke="currentColor"
+                        opacity="0.45"
+                      />
+                      <rect
+                        x="2"
+                        y="2"
+                        width="15"
+                        height="8"
+                        rx="1.6"
+                        fill="currentColor"
+                      />
+                      <rect
+                        x="21.5"
+                        y="3.5"
+                        width="1.8"
+                        height="5"
+                        rx="0.9"
+                        fill="currentColor"
+                        opacity="0.45"
+                      />
+                    </svg>
+                  </span>
+                </div>
 
-        <div class="tl-item">
-          <div class="tl-time">10:00 am</div>
-          <div class="tl-track">
-            <div
-              class="tl-dot"
-              style="background:linear-gradient(135deg,#FCD34D,#F59E0B)"
-            >
-            </div>
-            <div class="tl-line"></div>
-          </div>
-          <div class="tl-card">
-            <div class="tl-time-badge">10:00 am</div>
-            <div class="tl-emoji">🏀</div>
-            <div class="tl-content">
-              <div class="tl-title">3-on-3 basketball pickup</div>
-              <div class="tl-loc">📍 kallang sport centre</div>
-              <div class="tl-people">
-                <span class="tl-ava ava-4"></span>
-                <span class="tl-ava ava-5"></span>
-                <span class="tl-ava ava-6"></span>
-                <span class="tl-ava ava-1"></span>
-                <span class="tl-with">with ryan, marcus & 5 others</span>
-              </div>
-            </div>
-          </div>
-        </div>
+                <div class="ps-scroll">
+                  <div class="ps-id">
+                    <div class="ps-ava-wrap">
+                      <Image
+                        src={p.img}
+                        alt={p.name}
+                        class="ps-ava"
+                        width={160}
+                        height={160}
+                      />
+                      <span class="ps-ava-status" />
+                    </div>
+                    <div class="ps-id-text">
+                      <div class="ps-name-row">
+                        <h3 class="ps-name">
+                          {p.name}, {p.age}
+                        </h3>
+                        <svg
+                          class="ps-verified"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 16 16"
+                          fill="none"
+                        >
+                          <path
+                            d="M8 0.8l1.9 1.4 2.3-.2.9 2.2 2 1.2-.8 2.2.8 2.2-2 1.2-.9 2.2-2.3-.2L8 15.2 6.1 13.8l-2.3.2-.9-2.2-2-1.2.8-2.2-.8-2.2 2-1.2.9-2.2 2.3.2L8 0.8Z"
+                            fill="var(--pc)"
+                          />
+                          <path
+                            d="M5.4 8.1l1.7 1.7 3.5-3.6"
+                            stroke="#fff"
+                            stroke-width="1.4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            fill="none"
+                          />
+                        </svg>
+                      </div>
+                      <p class="ps-role">
+                        {p.role} · {p.city}
+                      </p>
+                    </div>
+                  </div>
 
-        <div class="tl-item">
-          <div class="tl-time">2:00 pm</div>
-          <div class="tl-track">
-            <div
-              class="tl-dot"
-              style="background:linear-gradient(135deg,#F9A8D4,#DB2777)"
-            >
-            </div>
-            <div class="tl-line"></div>
-          </div>
-          <div class="tl-card">
-            <div class="tl-time-badge">2:00 pm</div>
-            <div class="tl-emoji">🛍️</div>
-            <div class="tl-content">
-              <div class="tl-title">thrift hunting at bugis+</div>
-              <div class="tl-loc">📍 bugis</div>
-              <div class="tl-people">
-                <span class="tl-ava ava-2"></span>
-                <span class="tl-ava ava-3"></span>
-                <span class="tl-with">with lin & maya</span>
-              </div>
-            </div>
-          </div>
-        </div>
+                  <div class="ps-ledger">
+                    <div class="ps-ledger-top">
+                      <span class="ps-ledger-label">⚡ Reliability Ledger</span>
+                      <span class="ps-ledger-pct">{p.ledger}%</span>
+                    </div>
+                    <div class="ps-ledger-bar">
+                      <span
+                        class="ps-ledger-fill"
+                        style={`width:${p.ledger}%`}
+                      />
+                    </div>
+                    <p class="ps-ledger-note">{p.ledgerNote}</p>
+                  </div>
 
-        <div class="tl-item">
-          <div class="tl-time">8:00 pm</div>
-          <div class="tl-track">
-            <div
-              class="tl-dot"
-              style="background:linear-gradient(135deg,#A78BFA,#7C3AED)"
-            >
-            </div>
-            <div class="tl-line tl-line-last"></div>
-          </div>
-          <div class="tl-card">
-            <div class="tl-time-badge">8:00 pm</div>
-            <div class="tl-emoji">🎵</div>
-            <div class="tl-content">
-              <div class="tl-title">indie gig @ the substation</div>
-              <div class="tl-loc">📍 armenian street</div>
-              <div class="tl-people">
-                <span class="tl-ava ava-4"></span>
-                <span class="tl-ava ava-5"></span>
-                <span class="tl-ava ava-6"></span>
-                <span class="tl-ava ava-1"></span>
-                <span class="tl-with">with jamie, ryan & 8 others</span>
+                  <div class="ps-stats">
+                    {p.stats.map((s) => (
+                      <div class="ps-stat">
+                        <b>{s[0]}</b>
+                        <span>{s[1]}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div class="ps-block">
+                    <span class="ps-block-q">{p.promptQ}</span>
+                    <p class="ps-block-a">{p.promptA}</p>
+                  </div>
+
+                  <div class="ps-tags">
+                    {p.tags.map((t) => (
+                      <span class="ps-tag">{t}</span>
+                    ))}
+                  </div>
+
+                  <div class="ps-feed">
+                    <span class="ps-feed-h">recent meetups</span>
+                    {p.feed.map((f) => (
+                      <div class="ps-feed-row">
+                        <span class="ps-feed-ic">{f.ic}</span>
+                        <div class="ps-feed-txt">
+                          <b>{f.t}</b>
+                          <span>{f.s}</span>
+                        </div>
+                        <span class="ps-feed-chk">✓</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* <div class="ps-actions">
+                  <button class="ps-act ps-act-ghost" type="button">
+                    💬 Message
+                  </button>
+                  <button class="ps-act ps-act-main" type="button">
+                    Pull up 📍
+                  </button>
+                </div> */}
               </div>
-            </div>
-          </div>
-        </div>
+            </article>
+          ))
+        }
       </div>
     </div>
   </section>
 
-  <!-- ── MBTI Showcase ── -->
-  <section class="section">
+  <!-- <section class="section premium-section">
     <div class="section-inner">
       <div class="section-head">
-        <div class="section-badge mbti-badge">🧠 personality matching</div>
-        <h2 class="section-title">
-          everyone's welcome.<br />sorted by vibe and interests.
+        <div class="section-badge prem-badge">⚡ Soonest+</div>
+        <h2 class="section-title prem-title">
+          Engineering your circle<br />shouldn't be left to luck.
         </h2>
         <p class="section-sub">
-          soonest displays every attendee's personality type on the map. find
-          your tribe before you show up.
+          Basic activity matchmaking is free forever. Soonest+ gives you precision control.
         </p>
       </div>
 
-      <div class="mbti-grid">
-        <div class="mbti-group">
-          <div class="mbti-group-label" style="color:#7C3AED">analysts</div>
-          <div class="mbti-pills">
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
-              data-name="the architect"
-            >
-              INTJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
-              data-name="the logician"
-            >
-              INTP
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
-              data-name="the commander"
-            >
-              ENTJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#A78BFA,#7C3AED)"
-              data-name="the debater"
-            >
-              ENTP
-            </div>
+      <div class="prem-features">
+        <div class="prem-feat">
+          <div class="pf-icon-wrap" style="background:rgba(124,58,237,0.1);color:#7C3AED">🎯</div>
+          <div class="pf-body">
+            <h4 class="pf-title">Peer Curation Filters</h4>
+            <p class="pf-desc">
+              Filter the map strictly by exact age brackets and lifestyle contexts — Students Only
+              or Verified Working Professionals — to guarantee you meet peers on your exact
+              wavelength.
+            </p>
           </div>
         </div>
-        <div class="mbti-group">
-          <div class="mbti-group-label" style="color:#10B981">diplomats</div>
-          <div class="mbti-pills">
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#34D399,#10B981)"
-              data-name="the advocate"
-            >
-              INFJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#34D399,#10B981)"
-              data-name="the mediator"
-            >
-              INFP
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#34D399,#10B981)"
-              data-name="the protagonist"
-            >
-              ENFJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#34D399,#10B981)"
-              data-name="the campaigner"
-            >
-              ENFP
-            </div>
+
+        <div class="prem-feat">
+          <div class="pf-icon-wrap" style="background:rgba(219,39,119,0.1);color:#DB2777">🔥</div>
+          <div class="pf-body">
+            <h4 class="pf-title">The Weekly Flare</h4>
+            <p class="pf-desc">
+              Instantly force your active project table, dinner plan, or training session to the
+              absolute top of the local feed to gather a high-value squad in seconds.
+            </p>
           </div>
         </div>
-        <div class="mbti-group">
-          <div class="mbti-group-label" style="color:#3B82F6">sentinels</div>
-          <div class="mbti-pills">
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
-              data-name="the logistician"
-            >
-              ISTJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
-              data-name="the defender"
-            >
-              ISFJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
-              data-name="the executive"
-            >
-              ESTJ
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#60A5FA,#3B82F6)"
-              data-name="the consul"
-            >
-              ESFJ
-            </div>
+
+        <div class="prem-feat">
+          <div class="pf-icon-wrap" style="background:rgba(37,99,235,0.1);color:#2563EB">📡</div>
+          <div class="pf-body">
+            <h4 class="pf-title">The Live Beacon</h4>
+            <p class="pf-desc">
+              Passive discovery mode. Broadcast that your node is live and you're free to link up,
+              work, or chill — letting the right groups invite you without any effort on your end.
+            </p>
           </div>
         </div>
-        <div class="mbti-group">
-          <div class="mbti-group-label" style="color:#D97706">explorers</div>
-          <div class="mbti-pills">
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
-              data-name="the virtuoso"
-            >
-              ISTP
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
-              data-name="the adventurer"
-            >
-              ISFP
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
-              data-name="the entrepreneur"
-            >
-              ESTP
-            </div>
-            <div
-              class="mbti-pill"
-              style="--g:linear-gradient(135deg,#FCD34D,#F59E0B)"
-              data-name="the entertainer"
-            >
-              ESFP
-            </div>
+      </div>
+
+      <div class="prem-dev-note">
+        <span class="pdn-flash">⚡</span>
+        <p>
+          <strong>Early waitlist perk —</strong> While basic interest matchmaking on the live map
+          remains completely free, early waitlist members get first dibs on these premium Soonest+
+          curation tools at launch. For a limited time.
+        </p>
+      </div>
+    </div>
+  </section> -->
+
+  <!-- ── Why I Built Soonest ── -->
+  <section class="section founder-section">
+    <div class="section-inner">
+      <div class="founder-wrap">
+        <div class="founder-profile">
+          <div class="founder-avatar-wrap">
+            <Image
+              src={avaBryan}
+              alt="Bryan"
+              class="founder-avatar"
+              width={200}
+              height={200}
+            />
           </div>
+          <div class="founder-name">bryan</div>
+          <div class="founder-role">💜 made with love by a fellow chap</div>
+        </div>
+
+        <h2 class="founder-headline">why i built soonest</h2>
+
+        <div class="founder-body">
+          <div class="founder-body">
+            <p>
+              as a student entering my 20s, i realized how important it is to
+              build a circle of friends and peers who align with <span
+                style="font-weight: 800">your goals, values, and ambitions</span
+              >. i myself wouldn't have made this if it wasn't for a specific
+              someone i met recently. but that's a story for another day.
+            </p>
+            <p>
+              Finding people who share similar goals is one of the most
+              rewarding ways to grow, whether you are trying to improve your
+              fitness, build a business, or get better at a sport. and the best
+              way to do that is to meet people who share your drive or similar
+              interests and passions, and just start doing things together.
+            </p>
+            <p>
+              existing apps solve the wrong problems. dating apps optimize for
+              superficial romance, apps like meetup skew way too formal, and
+              forums lack any immediate real-world coordination.
+            </p>
+            <p>
+              that's why im fully commited to building Soonest, a faster, more
+              effective way to meet like-minded people and coordinate more spontaneous activities in real time, expanding that
+              powerful circle naturally through shared execution.
+            </p>
+          </div>
+          <p>- bryan chew, founder🫰</p>
         </div>
       </div>
     </div>
@@ -560,10 +822,12 @@ import logo from "../assets/transparentlogo.png";
         <div class="cta-blob cta-blob-1" aria-hidden="true"></div>
         <div class="cta-blob cta-blob-2" aria-hidden="true"></div>
         <div class="cta-content">
-          <h2 class="cta-title">be first through the door.</h2>
+          <p class="cta-eyebrow">YOU ARE THE AVERAGE OF YOUR 5 FRIENDS.</p>
+          <h2 class="cta-title">
+            stop collecting connections.<br />upgrade your inner circle now.
+          </h2>
           <p class="cta-sub">
-            early members get priority access, exclusive in-app badges, and the
-            chance to shape what soonest becomes.
+            join the exclusive waitlist for 3 months of free access to Soonest+.
           </p>
 
           <form id="form-cta" class="form-row form-row-dark">
@@ -574,9 +838,9 @@ import logo from "../assets/transparentlogo.png";
               required
               autocomplete="email"
             />
-            <button type="submit" class="form-btn form-btn-white">
-              join waitlist
-            </button>
+            <button type="submit" class="form-btn form-btn-white"
+              >join waitlist</button
+            >
           </form>
           <div
             id="success-cta"
@@ -588,8 +852,8 @@ import logo from "../assets/transparentlogo.png";
           </div>
 
           <div class="cta-perks">
+            <span class="cta-perk">✅ 3 months free Soonest+</span>
             <span class="cta-perk">✅ early access</span>
-            <span class="cta-perk">✅ exclusive badge</span>
             <span class="cta-perk">✅ shape the app</span>
           </div>
         </div>
@@ -601,17 +865,25 @@ import logo from "../assets/transparentlogo.png";
   <footer class="footer">
     <div class="footer-inner">
       <div class="footer-logo-lockup">
-        <Image src={logo} alt="Soonest" class="footer-logo-img" />
+        <Image
+          src={logo}
+          alt="Soonest"
+          class="footer-logo-img"
+          width={64}
+          height={64}
+          loading="lazy"
+        />
         <span class="footer-logo-name">soonest</span>
       </div>
       <p class="footer-tag">made with ❤️ in singapore</p>
-      <p class="footer-copy">© 2025 soonest. all rights reserved.</p>
     </div>
   </footer>
 </Layout>
 
-<style>
-  /* Float-up-disappear cycle: fade in from below, drift up, fade out, stay hidden, repeat */
+<style is:inline>
+  @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Lora:ital,wght@0,400;1,600&family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@800&family=DM+Mono:wght@400;500&display=swap");
+
+  /* ── Float-up-disappear loop ── */
   @keyframes float-up-loop {
     0% {
       opacity: 0;
@@ -635,11 +907,34 @@ import logo from "../assets/transparentlogo.png";
     }
   }
 
+  @keyframes pin-pulse {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 0.35;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.9);
+      opacity: 0;
+    }
+  }
+
+  @keyframes manifesto-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* ── Layout ── */
   .section-inner {
-    max-width: 1000px;
+    max-width: 1440px;
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 40px;
   }
 
   /* ── Blobs ── */
@@ -705,7 +1000,7 @@ import logo from "../assets/transparentlogo.png";
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    max-width: 860px;
+    max-width: 1320px;
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -736,20 +1031,6 @@ import logo from "../assets/transparentlogo.png";
     align-items: center;
     gap: 10px;
   }
-  .nav-chip {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    background: rgba(124, 58, 237, 0.08);
-    padding: 5px 12px;
-    border-radius: 100px;
-    display: none;
-  }
-  @media (min-width: 480px) {
-    .nav-chip {
-      display: inline;
-    }
-  }
   .nav-btn {
     font-family: "Nunito", sans-serif;
     font-weight: 800;
@@ -779,21 +1060,23 @@ import logo from "../assets/transparentlogo.png";
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 88vh;
-    padding: 60px 24px 80px;
+    min-height: 92vh;
+    padding: 60px 24px 100px;
     overflow: hidden;
   }
   .hero-inner {
-    max-width: 680px;
+    max-width: 1440px;
     width: 100%;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 26px;
+    gap: 28px;
     position: relative;
     z-index: 2;
   }
+
+  /* Badge */
   .launch-badge {
     display: inline-flex;
     align-items: center;
@@ -817,37 +1100,52 @@ import logo from "../assets/transparentlogo.png";
     flex-shrink: 0;
     animation: clay-breathe 2.4s ease-in-out infinite;
   }
-  .hero-subheadline {
-    font-family: "Nunito", sans-serif;
-    font-weight: 600;
-    font-size: clamp(2.8rem, 8vw, 5.2rem);
-    color: var(--text-primary);
-    line-height: 1.06;
-    letter-spacing: -2px;
+
+  /* Headline */
+  .hero-headline-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     animation: fade-up 0.7s 0.1s ease both;
+  }
+  .irl-headline {
+    color: #7c3aed;
+    text-decoration: underline;
+    text-underline-offset: 0.3rem;
   }
   .hero-headline {
     font-family: "Nunito", sans-serif;
-    font-weight: 900;
-    font-size: clamp(2.8rem, 8vw, 5.2rem);
+    font-weight: 700;
+    font-size: clamp(1.5rem, 2.5vw, 5rem);
     color: var(--text-primary);
-    line-height: 1.06;
-    letter-spacing: -2px;
-    animation: fade-up 0.7s 0.1s ease both;
-  }
-  .gradient-text {
-    background: linear-gradient(135deg, #332f3a 5%, #7c3aed 45%, #db2777 85%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    display: inline-block;
-  }
-  @media (max-width: 300px) {
-    .spontaneously {
-      word-break: break-all;
-    }
+    line-height: 1.1;
+    letter-spacing: -1.5px;
   }
 
+  /* Flip line */
+  .flip-line {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: calc(clamp(2.9rem, 10vw, 11rem) * 2);
+  }
+  .flip-word {
+    display: inline-block;
+    white-space: nowrap;
+    text-align: center;
+    font-size: clamp(2.9rem, 10vw, 11rem);
+    font-weight: 800;
+    line-height: 0.9;
+    font-style: normal;
+    line-height: 1;
+    color: #7c3aed;
+    font-family: "Lora", sans-serif;
+    transition:
+      transform 0.42s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      opacity 0.42s ease;
+  }
+
+  /* Sub + form */
   .hero-sub {
     font-size: clamp(1rem, 2.5vw, 1.18rem);
     color: var(--text-secondary);
@@ -855,8 +1153,6 @@ import logo from "../assets/transparentlogo.png";
     line-height: 1.75;
     animation: fade-up 0.7s 0.2s ease both;
   }
-
-  /* Form */
   .form-card {
     width: 100%;
     max-width: 500px;
@@ -933,16 +1229,11 @@ import logo from "../assets/transparentlogo.png";
     color: var(--text-secondary);
     animation: fade-up 0.7s 0.4s ease both;
   }
-  .footnote-count {
-    font-family: "Nunito", sans-serif;
-    font-weight: 800;
-    color: var(--accent);
-  }
 
-  /* Floating notification bubbles */
+  /* Floating notifs */
   .hero-notif {
     position: absolute;
-    display: none;
+    display: flex;
     align-items: center;
     gap: 10px;
     background: rgba(255, 255, 255, 0.88);
@@ -953,9 +1244,6 @@ import logo from "../assets/transparentlogo.png";
     pointer-events: none;
     max-width: 210px;
   }
-  .hero-notif {
-    display: flex;
-  }
   .notif-ava {
     width: 32px;
     height: 32px;
@@ -963,27 +1251,7 @@ import logo from "../assets/transparentlogo.png";
     flex-shrink: 0;
     border: 2px solid rgba(255, 255, 255, 0.85);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-    display: inline-block;
-  }
-
-  /* Gradient palette for CSS-only avatar circles */
-  .ava-1 {
-    background: linear-gradient(135deg, #a78bfa, #7c3aed);
-  }
-  .ava-2 {
-    background: linear-gradient(135deg, #f9a8d4, #db2777);
-  }
-  .ava-3 {
-    background: linear-gradient(135deg, #93c5fd, #3b82f6);
-  }
-  .ava-4 {
-    background: linear-gradient(135deg, #6ee7b7, #10b981);
-  }
-  .ava-5 {
-    background: linear-gradient(135deg, #fcd34d, #f59e0b);
-  }
-  .ava-6 {
-    background: linear-gradient(135deg, #fca5a5, #ef4444);
+    object-fit: cover;
   }
   .notif-body {
     font-size: 0.76rem;
@@ -994,11 +1262,6 @@ import logo from "../assets/transparentlogo.png";
     font-weight: 700;
   }
 
-  /* Floaters: fill-mode:backwards keeps each element at opacity:0 during its delay.
-     1s base delay on every element gives the page time to render before anything appears.
-     Stagger is 0.8s per element, alternating left/right. */
-
-  /* Notifications */
   .notif-1 {
     top: 5%;
     left: 2%;
@@ -1020,55 +1283,9 @@ import logo from "../assets/transparentlogo.png";
     animation: float-up-loop 14s 8.2s linear infinite backwards;
   }
 
-  /* Floating MBTI pills */
-  .hero-mbti {
-    position: absolute;
-    display: none;
-    font-family: "Nunito", sans-serif;
-    font-weight: 900;
-    font-size: 0.82rem;
-    color: #fff;
-    border-radius: 100px;
-    padding: 7px 14px;
-    box-shadow:
-      6px 6px 16px rgba(0, 0, 0, 0.15),
-      inset 2px 2px 6px rgba(255, 255, 255, 0.3);
-    pointer-events: none;
-  }
-  .hero-mbti {
-    display: block;
-  }
-
-  .mbti-p1 {
-    top: 42%;
-    left: 6%;
-    animation: float-up-loop 14s 4.2s linear infinite backwards;
-  }
-  .mbti-p2 {
-    top: 28%;
-    right: 10%;
-    animation: float-up-loop 14s 5s linear infinite backwards;
-  }
-  .mbti-p4 {
-    bottom: 20%;
-    left: 10%;
-    animation: float-up-loop 14s 9s linear infinite backwards;
-  }
-  .mbti-p3 {
-    bottom: 28%;
-    right: 6%;
-    animation: float-up-loop 14s 9.8s linear infinite backwards;
-  }
-  .mbti-p5 {
-    top: 54%;
-    right: 14%;
-    animation: float-up-loop 14s 13s linear infinite backwards;
-  }
-
-  /* Floating activity emojis */
+  /* Emoji floaters */
   .hero-emoji {
     position: absolute;
-    display: none;
     font-size: 1.3rem;
     background: rgba(255, 255, 255, 0.82);
     backdrop-filter: blur(10px);
@@ -1078,10 +1295,6 @@ import logo from "../assets/transparentlogo.png";
     pointer-events: none;
     line-height: 1;
   }
-  .hero-emoji {
-    display: block;
-  }
-
   .e6 {
     top: 11%;
     left: 4%;
@@ -1132,15 +1345,15 @@ import logo from "../assets/transparentlogo.png";
   .section {
     position: relative;
     z-index: 1;
-    padding: 0 0 100px;
+    padding: 0 0 120px;
   }
   .section-head {
     text-align: center;
-    margin-bottom: 52px;
+    margin-bottom: 60px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 18px;
   }
   .section-badge {
     display: inline-flex;
@@ -1150,381 +1363,1483 @@ import logo from "../assets/transparentlogo.png";
     padding: 6px 18px;
     font-size: 0.82rem;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-  }
-  .mbti-badge {
-    background: linear-gradient(90deg, #a78bfa, #7c3aed);
-    color: #fff;
   }
   .section-title {
     font-family: "Nunito", sans-serif;
     font-weight: 900;
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: clamp(2rem, 5vw, 3.2rem);
     color: var(--text-primary);
-    line-height: 1.12;
+    line-height: 1.1;
     letter-spacing: -1px;
   }
   .section-sub {
     font-size: 1.05rem;
     color: var(--text-secondary);
     max-width: 480px;
-    line-height: 1.7;
+    line-height: 1.75;
   }
 
-  /* ── Events scroll ── */
-  .events-outer {
+  /* ── Section 2: Manifesto ── */
+  .manifesto-section {
+    padding-top: 40px;
+  }
+  .manifesto-outer {
+    max-width: 1320px;
+    margin: 0 auto 80px;
+    padding: 0 40px;
+  }
+  .manifesto-text {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2.2rem, 7vw, 6rem);
+    color: var(--text-primary);
+    line-height: 1.1;
+    letter-spacing: -2px;
+  }
+  .manifesto-word {
+    display: inline-block;
+    margin-right: 0.25em;
+  }
+  .manifesto-ul {
+    display: block;
+    height: 10px;
+    width: 0;
+    background: linear-gradient(90deg, #7c3aed, #7c3aed);
+    border-radius: 20px;
+    margin-top: 4px;
+  }
+
+  /* Problem cards */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  @media (min-width: 700px) {
+    .problem-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .problem-card {
+    background: #1a1230;
+    border-radius: 28px;
+    padding: 32px 28px;
+    position: relative;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+    transition:
+      transform 0.3s ease,
+      box-shadow 0.3s ease;
   }
-  .events-scroll {
-    display: flex;
-    gap: 28px;
-    justify-content: safe center;
-    overflow-x: auto;
-    padding: 20px 32px 36px;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+  .problem-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(124, 58, 237, 0.08) 0%,
+      transparent 60%
+    );
+    pointer-events: none;
   }
-  .events-scroll::-webkit-scrollbar {
-    display: none;
+  .problem-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.35);
   }
-  @media (min-width: 1100px) {
-    .events-scroll {
-      padding-left: max(32px, calc((100vw - 1780px) / 2));
-      padding-right: max(32px, calc((100vw - 1780px) / 2));
+  .problem-num {
+    font-family: "Syne", sans-serif;
+    font-weight: 800;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: rgba(167, 139, 250, 0.5);
+    margin-bottom: 16px;
+  }
+  .problem-icon {
+    font-size: 2rem;
+    margin-bottom: 14px;
+  }
+  .problem-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.15rem;
+    color: #fff;
+    margin-bottom: 14px;
+    line-height: 1.3;
+  }
+  .problem-body {
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.75;
+  }
+
+  /* ── Section 3: How It Works ── */
+  .hiw-title {
+    font-family: "Space Grotesk", sans-serif;
+    letter-spacing: -2px;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+  }
+  .hiw-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+  @media (min-width: 860px) {
+    .hiw-layout {
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+      gap: 56px;
     }
   }
 
-  .event-card {
-    flex-shrink: 0;
-    width: 230px;
-    scroll-snap-align: start;
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(16px);
+  /* ── Map mock ── */
+  .map-wrap {
+    position: relative;
+    width: 100%;
+    height: 540px;
     border-radius: 28px;
-    padding: 22px 20px;
-    box-shadow: var(--shadow-card);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition:
-      transform 0.25s,
-      box-shadow 0.25s;
-    border: 1.5px solid rgba(255, 255, 255, 0.7);
-  }
-  .event-card:hover {
-    transform: translateY(-5px);
+    overflow: hidden;
+    background: #080e1c;
     box-shadow:
-      20px 20px 40px rgba(160, 150, 180, 0.24),
-      -12px -12px 10px rgba(255, 255, 255, 0.95);
+      0 40px 100px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  /* vignette for depth */
+  .map-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    background: radial-gradient(
+      120% 90% at 50% 40%,
+      transparent 55%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+  }
+  @media (min-width: 860px) {
+    .hiw-layout {
+      align-items: center;
+    }
+  }
+  .mm-surface {
+    position: absolute;
+    inset: 0;
   }
 
-  .event-cat {
-    display: inline-block;
-    border-radius: 100px;
-    padding: 4px 12px;
-    font-size: 0.76rem;
-    font-weight: 700;
-    width: fit-content;
+  /* Water — organic bay shape, bottom-left */
+  .mm-water {
+    position: absolute;
+    bottom: -18%;
+    left: -8%;
+    width: 56%;
+    height: 58%;
+    background: #071422;
+    border-radius: 44% 56% 48% 36% / 52% 44% 56% 48%;
+    box-shadow:
+      inset 0 0 60px rgba(10, 50, 120, 0.18),
+      inset 0 0 20px rgba(10, 70, 160, 0.1);
   }
-  .event-title {
-    font-family: "Nunito", sans-serif;
-    font-weight: 800;
-    font-size: 1rem;
-    color: var(--text-primary);
-    line-height: 1.3;
+
+  /* Expressway — widest, dashed center line */
+  .mm-hwy {
+    position: absolute;
   }
-  .event-meta {
-    font-size: 0.8rem;
-    color: var(--text-secondary);
+  .mm-hwy-h {
+    top: 40%;
+    left: 0;
+    right: 0;
+    height: 26px;
+    background: linear-gradient(180deg, #1a2c48, #1e3354 50%, #1a2c48);
   }
-  .event-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 4px;
+  .mm-hwy-h::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    left: 0;
+    right: 0;
+    height: 1.5px;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 220, 60, 0.28) 0,
+      rgba(255, 220, 60, 0.28) 16px,
+      transparent 16px,
+      transparent 28px
+    );
   }
-  .event-avatars {
-    display: flex;
+  .mm-hwy-v {
+    left: 38%;
+    top: 0;
+    bottom: 0;
+    width: 22px;
+    background: linear-gradient(90deg, #1a2c48, #1e3354 50%, #1a2c48);
   }
-  .event-ava {
-    width: 30px;
-    height: 30px;
+  .mm-hwy-v::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255, 220, 60, 0.28) 0,
+      rgba(255, 220, 60, 0.28) 16px,
+      transparent 16px,
+      transparent 28px
+    );
+  }
+
+  /* Major arterials */
+  .mm-road {
+    position: absolute;
+    background: #122038;
+  }
+  .mm-r-h1 {
+    top: 20%;
+    left: 0;
+    right: 0;
+    height: 13px;
+  }
+  .mm-r-h2 {
+    top: 62%;
+    left: 0;
+    right: 0;
+    height: 13px;
+  }
+  .mm-r-h3 {
+    top: 80%;
+    left: 38%;
+    right: 0;
+    height: 10px;
+  }
+  .mm-r-v1 {
+    left: 18%;
+    top: 0;
+    bottom: 0;
+    width: 12px;
+  }
+  .mm-r-v2 {
+    left: 62%;
+    top: 0;
+    bottom: 40%;
+    width: 12px;
+  }
+
+  /* Minor / local streets */
+  .mm-local {
+    position: absolute;
+    background: #0e1a2c;
+  }
+  .mm-l-h1 {
+    top: 12%;
+    left: 38%;
+    right: 0;
+    height: 7px;
+  }
+  .mm-l-h2 {
+    top: 52%;
+    left: 0;
+    right: 62%;
+    height: 7px;
+  }
+  .mm-l-h3 {
+    top: 72%;
+    left: 18%;
+    right: 0;
+    height: 7px;
+  }
+  .mm-l-v1 {
+    left: 50%;
+    top: 40%;
+    bottom: 0;
+    width: 7px;
+  }
+  .mm-l-v2 {
+    left: 76%;
+    top: 0;
+    bottom: 40%;
+    width: 7px;
+  }
+
+  /* Building blocks */
+  .mm-blk {
+    position: absolute;
+    border-radius: 4px;
+    background: #0c1828;
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 255, 255, 0.04),
+      inset 0 6px 14px rgba(0, 0, 0, 0.35);
+    /* faint building windows */
+    background-image: radial-gradient(
+      rgba(120, 150, 200, 0.1) 0.6px,
+      transparent 0.6px
+    );
+    background-size: 6px 6px;
+    background-position: 3px 3px;
+  }
+  /* Lit buildings — warm windows */
+  .mm-lit {
+    background-image: radial-gradient(
+      rgba(255, 214, 140, 0.22) 0.7px,
+      transparent 0.9px
+    );
+    background-size: 7px 7px;
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255, 200, 120, 0.06),
+      inset 0 6px 14px rgba(0, 0, 0, 0.35),
+      0 0 18px rgba(255, 190, 90, 0.04);
+  }
+  .mm-b1 {
+    top: 3%;
+    left: 2%;
+    width: 13%;
+    height: 14%;
+    background: #0d1b2c;
+  }
+  .mm-b2 {
+    top: 3%;
+    left: 20%;
+    width: 9%;
+    height: 14%;
+  }
+  .mm-b3 {
+    top: 22%;
+    left: 2%;
+    width: 13%;
+    height: 14%;
+    background: #0b1625;
+  }
+  .mm-b4 {
+    top: 22%;
+    left: 20%;
+    width: 9%;
+    height: 9%;
+  }
+  .mm-b5 {
+    top: 3%;
+    left: 42%;
+    width: 16%;
+    height: 14%;
+  }
+  .mm-b6 {
+    top: 3%;
+    left: 66%;
+    width: 12%;
+    height: 9%;
+    background: #0d1b2c;
+  }
+  .mm-b7 {
+    top: 3%;
+    left: 80%;
+    width: 17%;
+    height: 14%;
+  }
+  .mm-b8 {
+    top: 14%;
+    left: 66%;
+    width: 30%;
+    height: 22%;
+    background: #0b1625;
+  }
+  .mm-b9 {
+    top: 44%;
+    left: 42%;
+    width: 16%;
+    height: 14%;
+  }
+
+  /* Park — dotted texture */
+  .mm-park {
+    position: absolute;
+    top: 3%;
+    right: 3%;
+    width: 14%;
+    height: 24%;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: rgba(16, 185, 129, 0.04);
+    background-image: radial-gradient(
+      circle,
+      rgba(16, 185, 129, 0.2) 1px,
+      transparent 1px
+    );
+    background-size: 7px 7px;
+    border: 1px solid rgba(16, 185, 129, 0.12);
+  }
+
+  /* Grid overlay */
+  .mm-grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(40, 70, 130, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(40, 70, 130, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  /* Street labels */
+  .mm-label {
+    position: absolute;
+    font-family: "DM Mono", monospace;
+    font-size: 0.5rem;
+    letter-spacing: 0.14em;
+    color: rgba(150, 175, 220, 0.32);
+    white-space: nowrap;
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+  .mm-label-v {
+    transform: rotate(90deg);
+    transform-origin: left center;
+  }
+  .mm-water-label {
+    color: rgba(90, 140, 220, 0.4);
+    font-style: italic;
+    letter-spacing: 0.18em;
+  }
+
+  /* Route line — flowing dashes */
+  .mm-route {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 6;
+    overflow: visible;
+  }
+  .mm-route path {
+    animation: mm-route-flow 1.1s linear infinite;
+  }
+  @keyframes mm-route-flow {
+    to {
+      stroke-dashoffset: -9.6;
+    }
+  }
+
+  /* You-are-here */
+  .mm-you {
+    position: absolute;
+    z-index: 8;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .mm-you-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    margin-left: -8px;
-    display: inline-block;
-    flex-shrink: 0;
+    background: #3b82f6;
+    border: 2.5px solid #fff;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
-  .event-ava:first-child {
-    margin-left: 0;
-  }
-  .event-ava-more {
-    width: 30px;
-    height: 30px;
+  .mm-you-acc {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
-    background: rgba(124, 58, 237, 0.12);
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    margin-left: -8px;
+    background: radial-gradient(
+      circle,
+      rgba(59, 130, 246, 0.28) 0%,
+      rgba(59, 130, 246, 0.06) 55%,
+      transparent 70%
+    );
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    transform: translate(-50%, -50%);
+    animation: mp-ring-pulse 2.8s ease-in-out infinite;
+  }
+
+  /* Compass */
+  .mm-compass {
+    position: absolute;
+    top: 56px;
+    right: 14px;
+    z-index: 10;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(6, 10, 22, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--accent);
   }
-  .event-going {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: var(--text-secondary);
+  .mm-compass-n {
+    position: absolute;
+    top: 3px;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.46rem;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .mm-compass-needle {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 11px solid #db2777;
+    transform: translateY(-2px);
+    filter: drop-shadow(0 0 3px rgba(219, 39, 119, 0.5));
   }
 
-  /* ── Timeline ── */
-  .timeline {
+  /* Scale bar */
+  .mm-scale {
+    position: absolute;
+    bottom: 14px;
+    left: 14px;
+    z-index: 10;
     display: flex;
     flex-direction: column;
-    gap: 0;
-    max-width: 680px;
-    margin: 0 auto;
+    gap: 3px;
+    align-items: flex-start;
+  }
+  .mm-scale-bar {
+    width: 48px;
+    height: 5px;
+    border-bottom: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-left: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-right: 1.5px solid rgba(255, 255, 255, 0.4);
+  }
+  .mm-scale-txt {
+    font-family: "DM Mono", monospace;
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.05em;
   }
 
-  /* Mobile-first: 2-col (track | card), time shown as badge inside card */
-  .tl-item {
-    display: grid;
-    grid-template-columns: 20px 1fr;
-    gap: 0 14px;
-    align-items: start;
+  /* Top bar */
+  .mm-topbar {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  .tl-time {
-    display: none;
+  .mm-live-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(6, 10, 22, 0.84);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 100px;
+    padding: 5px 13px;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.74rem;
+    color: rgba(255, 255, 255, 0.85);
   }
-  .tl-track {
+  .mm-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+    flex-shrink: 0;
+    animation: clay-breathe 2s ease-in-out infinite;
+  }
+  .mm-location {
+    background: rgba(6, 10, 22, 0.75);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 100px;
+    padding: 5px 13px;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.42);
+    font-family: "DM Sans", sans-serif;
+  }
+  .mm-activity-count {
+    margin-left: auto;
+    background: rgba(124, 58, 237, 0.22);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    border-radius: 100px;
+    padding: 5px 13px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #c4b5fd;
+    font-family: "Nunito", sans-serif;
+  }
+
+  /* Pins */
+  .mp {
+    position: absolute;
+    z-index: 10;
     display: flex;
     flex-direction: column;
     align-items: center;
+    cursor: pointer;
+    transform-origin: bottom center;
+    opacity: 0; /* GSAP sets to 1 */
   }
-  .tl-dot {
-    width: 18px;
-    height: 18px;
+  /* Pulse ring uses CSS var --c from the parent .mp inline style */
+  .mp-ring {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    flex-shrink: 0;
-    box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.18),
-      inset 2px 2px 5px rgba(255, 255, 255, 0.4);
-    margin-top: 12px;
+    background: radial-gradient(circle, var(--c) 0%, transparent 66%);
+    opacity: 0.22;
+    transform: translate(-50%, 0);
+    animation: mp-ring-pulse 2.4s ease-in-out infinite;
+    pointer-events: none;
   }
-  .tl-line {
-    width: 2px;
-    flex: 1;
-    background: rgba(124, 58, 237, 0.15);
-    min-height: 28px;
-    margin-top: 6px;
+  @keyframes mp-ring-pulse {
+    0%,
+    100% {
+      transform: translate(-50%, 0) scale(1);
+      opacity: 0.22;
+    }
+    50% {
+      transform: translate(-50%, 0) scale(1.75);
+      opacity: 0;
+    }
   }
-  .tl-line-last {
-    background: transparent;
-  }
-  .tl-card {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(14px);
-    border-radius: 20px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-card);
+  /* Circle icon */
+  .mp-icon {
+    position: relative;
+    z-index: 2;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, var(--gfrom), var(--c));
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    flex-wrap: wrap;
-    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    line-height: 1;
+    box-shadow:
+      0 5px 20px rgba(0, 0, 0, 0.55),
+      0 0 0 2.5px rgba(255, 255, 255, 0.15);
     transition:
-      transform 0.22s,
-      box-shadow 0.22s;
+      transform 0.22s ease,
+      box-shadow 0.22s ease;
   }
-  .tl-card:hover {
-    transform: translateY(-3px);
+  .mp:hover .mp-icon {
+    transform: scale(1.12) translateY(-3px);
+    box-shadow:
+      0 12px 30px rgba(0, 0, 0, 0.65),
+      0 0 0 2.5px rgba(255, 255, 255, 0.22);
   }
-  .tl-time-badge {
-    flex-basis: 100%;
-    order: -1;
+  /* Teardrop pointer */
+  .mp-stem {
+    width: 0;
+    height: 0;
+    z-index: 2;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 9px solid var(--c);
+    margin-top: -1px;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
+  }
+  /* Tooltip card */
+  .mp-card {
+    position: absolute;
+    z-index: 20;
+    bottom: calc(100% + 14px);
+    left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background: rgba(6, 10, 22, 0.96);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 18px;
+    padding: 13px 16px;
+    min-width: 175px;
+    width: max-content;
+    max-width: 215px;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.2s ease,
+      transform 0.2s ease;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  }
+  .mp:hover .mp-card {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  /* Align to right side for right-edge pins */
+  .mp-card-left {
+    left: auto;
+    right: calc(100% + 12px);
+    bottom: 0;
+    top: auto;
+    transform: translateX(0) translateY(5px);
+  }
+  .mp:hover .mp-card-left {
+    transform: translateX(0) translateY(0);
+  }
+  /* Below for top-edge pins */
+  .mp-card-below {
+    bottom: auto;
+    top: calc(100% + 14px);
+    transform: translateX(-50%) translateY(-5px);
+  }
+  .mp:hover .mp-card-below {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .mp-cat {
+    display: block;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .mp-name {
     font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 0.9rem;
+    color: #fff;
+    line-height: 1.3;
+    margin-bottom: 4px;
+  }
+  .mp-meta {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.38);
+    margin-bottom: 8px;
+  }
+  .mp-avs {
+    display: flex;
+    gap: 4px;
+  }
+  .mp-av {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.58rem;
+    font-weight: 800;
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Filter bar */
+  .mm-fbar {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background: rgba(6, 10, 22, 0.88);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 100px;
+    padding: 5px 7px;
+    white-space: nowrap;
+  }
+  .mm-chip {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.38);
+    padding: 5px 13px;
+    border-radius: 100px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    font-family: "DM Sans", sans-serif;
+    transition:
+      color 0.18s,
+      background 0.18s;
+  }
+  .mm-chip:hover {
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .mm-chip-on {
+    background: #7c3aed !important;
+    color: #fff !important;
+  }
+
+  /* HIW Steps */
+  .hiw-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  .hiw-step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  .step-num {
+    font-family: "Space Grotesk", sans-serif;
     font-weight: 800;
     font-size: 0.72rem;
+    letter-spacing: 0.08em;
     color: var(--accent);
     background: rgba(124, 58, 237, 0.1);
     border-radius: 100px;
-    padding: 3px 10px;
-    width: fit-content;
+    padding: 5px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .step-title {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--text-primary);
     margin-bottom: 4px;
   }
-  .tl-emoji {
-    font-size: 1.4rem;
-    line-height: 1;
-    flex-shrink: 0;
-    margin-top: 2px;
+  .step-kicker {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--accent);
+    margin-bottom: 8px;
   }
-  .tl-content {
+  .step-body {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  /* ── Section 4: Profiles (vertical phone screens) ── */
+  .profiles-wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 60px 28px;
+    max-width: 360px;
+    margin: 0 auto;
+    perspective: 2200px;
+  }
+  @media (min-width: 900px) {
+    .profiles-wrap {
+      grid-template-columns: repeat(3, 1fr);
+      max-width: 1080px;
+      gap: 32px;
+      align-items: center;
+    }
+  }
+
+  /* Device */
+  .phone {
+    position: relative;
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+    border-radius: 50px;
+    padding: 9px;
+    background: linear-gradient(160deg, #2c2540 0%, #181122 55%, #221a33 100%);
+    box-shadow:
+      0 60px 110px -36px rgba(60, 30, 110, 0.55),
+      0 26px 50px -28px rgba(0, 0, 0, 0.4),
+      inset 0 0 0 1.5px rgba(255, 255, 255, 0.08),
+      inset 0 2px 3px rgba(255, 255, 255, 0.14);
+    transition:
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.5s ease;
+    will-change: transform;
+  }
+  @media (min-width: 900px) {
+    .pc-2 {
+      margin-top: -26px;
+      z-index: 3;
+    }
+    .pc-2 .phone-glow {
+      opacity: 0.95;
+    }
+    .phone:hover {
+      transform: translateY(-14px) scale(1.03);
+      box-shadow:
+        0 80px 130px -38px rgba(60, 30, 110, 0.6),
+        0 30px 60px -26px rgba(0, 0, 0, 0.45),
+        inset 0 0 0 1.5px rgba(255, 255, 255, 0.1);
+      z-index: 5;
+    }
+  }
+
+  .phone-glow {
+    position: absolute;
+    inset: 8%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--pc), transparent 68%);
+    filter: blur(46px);
+    opacity: 0.55;
+    transition: opacity 0.5s ease;
+  }
+  .phone:hover .phone-glow {
+    opacity: 0.95;
+  }
+
+  .phone-screen {
+    position: relative;
+    height: 100%;
+    background: radial-gradient(
+      140% 60% at 50% 0%,
+      color-mix(in srgb, var(--pc) 7%, #ffffff) 0%,
+      #fbfaff 46%
+    );
+    border-radius: 42px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: inset 0 0 0 1px rgba(20, 12, 40, 0.06);
+  }
+  /* Dynamic-island */
+  .phone-screen::before {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 78px;
+    height: 18px;
+    background: #14101f;
+    border-radius: 100px;
+    z-index: 30;
+  }
+
+  /* Status bar */
+  .ps-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 22px 5px;
+    color: #2a2435;
+  }
+  .ps-time {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: -0.02em;
+  }
+  .ps-status-ic {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #2a2435;
+  }
+
+  /* Cover */
+  .ps-cover {
+    position: relative;
+    height: 104px;
+    margin: 4px 10px 0;
+    border-radius: 22px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .ps-cover-grad {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--pc-from) 0%, var(--pc) 100%);
+  }
+  .ps-cover-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.22) 1.2px,
+      transparent 1.2px
+    );
+    background-size: 13px 13px;
+    mask-image: linear-gradient(120deg, #000 30%, transparent 90%);
+    -webkit-mask-image: linear-gradient(120deg, #000 30%, transparent 90%);
+  }
+  .ps-live {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(10, 8, 20, 0.32);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 100px;
+    padding: 3px 9px;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+  }
+  .ps-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7);
+    animation: clay-breathe 2s ease-in-out infinite;
+  }
+  .ps-distance {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(10, 8, 20, 0.32);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 100px;
+    padding: 3px 9px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .ps-doing {
+    position: absolute;
+    bottom: 10px;
+    left: 12px;
+    right: 12px;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.82rem;
+    color: #fff;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  }
+
+  /* Body */
+  .ps-scroll {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    padding: 0 16px 14px;
+    overflow: hidden;
+  }
+
+  .ps-id {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 10px;
+    padding-left: 2px;
+  }
+  .ps-ava-wrap {
+    position: relative;
+    width: 66px;
+    height: 66px;
+  }
+  .ps-ava {
+    width: 66px;
+    height: 66px;
+    border-radius: 22px;
+    object-fit: cover;
+    border: 3px solid #fbfaff;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+    display: block;
+  }
+  .ps-ava-status {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: #4ade80;
+    border: 2.5px solid #fbfaff;
+  }
+  .ps-id-text {
+    margin-top: 8px;
+  }
+  .ps-name-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .ps-name {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.18rem;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .ps-verified {
+    flex-shrink: 0;
+  }
+  .ps-role {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-top: 1px;
+  }
+
+  /* Ledger */
+  .ps-ledger {
+    background: color-mix(in srgb, var(--pc) 6%, #fff);
+    border: 1px solid color-mix(in srgb, var(--pc) 16%, transparent);
+    border-radius: 16px;
+    padding: 12px 13px;
+  }
+  .ps-ledger-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .ps-ledger-label {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.72rem;
+    color: var(--text-primary);
+  }
+  .ps-ledger-pct {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 0.86rem;
+    color: var(--pc);
+  }
+  .ps-ledger-bar {
+    height: 7px;
+    border-radius: 100px;
+    background: color-mix(in srgb, var(--pc) 12%, #eee);
+    overflow: hidden;
+  }
+  .ps-ledger-fill {
+    display: block;
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--pc-from), var(--pc));
+  }
+  .ps-ledger-note {
+    font-size: 0.66rem;
+    color: var(--text-secondary);
+    margin-top: 7px;
+  }
+
+  /* Stat tiles */
+  .ps-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .ps-stat {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(20, 12, 40, 0.06);
+    border-radius: 14px;
+    padding: 9px 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .ps-stat b {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .ps-stat span {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  /* Prompt block */
+  .ps-block {
+    background: #fff;
+    border: 1px solid rgba(20, 12, 40, 0.07);
+    border-radius: 16px;
+    padding: 13px 14px;
+    box-shadow: 0 4px 14px rgba(80, 50, 140, 0.05);
+  }
+  .ps-block-q {
+    display: block;
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.64rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--pc);
+    margin-bottom: 6px;
+  }
+  .ps-block-a {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    line-height: 1.55;
+  }
+
+  /* Tags */
+  .ps-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ps-tag {
+    font-size: 0.71rem;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--pc) 9%, #fff);
+    color: var(--pc);
+    border-radius: 100px;
+    padding: 4px 11px;
+  }
+
+  /* Recent feed */
+  .ps-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .ps-feed-h {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 1px;
+  }
+  .ps-feed-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(20, 12, 40, 0.05);
+    border-radius: 13px;
+    padding: 8px 10px;
+  }
+  .ps-feed-ic {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--pc) 12%, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+  .ps-feed-txt {
     flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
   }
-  .tl-title {
+  .ps-feed-txt b {
     font-family: "Nunito", sans-serif;
     font-weight: 800;
-    font-size: 0.95rem;
+    font-size: 0.76rem;
     color: var(--text-primary);
+    line-height: 1.2;
   }
-  .tl-loc {
-    font-size: 0.78rem;
+  .ps-feed-txt span {
+    font-size: 0.64rem;
     color: var(--text-secondary);
   }
-  .tl-people {
+  .ps-feed-chk {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--pc) 16%, #fff);
+    color: var(--pc);
     display: flex;
     align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-  }
-  .tl-ava {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    margin-left: -6px;
-    display: inline-block;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 900;
     flex-shrink: 0;
   }
-  .tl-ava:first-child {
-    margin-left: 0;
-  }
-  .tl-with {
-    font-size: 0.73rem;
-    color: var(--text-secondary);
-    margin-left: 4px;
-    flex: 1;
-  }
 
-  /* Desktop: restore 3-col with external time label */
-  @media (min-width: 560px) {
-    .tl-item {
-      grid-template-columns: 72px 24px 1fr;
-      gap: 0 16px;
-    }
-    .tl-time {
-      display: block;
-      font-family: "Nunito", sans-serif;
-      font-weight: 800;
-      font-size: 0.82rem;
-      color: var(--text-secondary);
-      text-align: right;
-      padding-top: 14px;
-    }
-    .tl-dot {
-      width: 24px;
-      height: 24px;
-      margin-top: 8px;
-    }
-    .tl-card {
-      border-radius: 24px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
-      gap: 14px;
-      flex-wrap: nowrap;
-    }
-    .tl-time-badge {
-      display: none;
-    }
-    .tl-emoji {
-      font-size: 1.6rem;
-    }
-    .tl-title {
-      font-size: 1rem;
-    }
-    .tl-ava {
-      width: 26px;
-      height: 26px;
-    }
-  }
-
-  /* ── MBTI grid ── */
-  .mbti-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  @media (min-width: 700px) {
-    .mbti-grid {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-  .mbti-group {
+  /* Action bar */
+  .ps-actions {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+    padding: 11px 16px calc(11px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(20, 12, 40, 0.06);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(8px);
   }
-  .mbti-group-label {
+  .ps-act {
+    border: none;
+    border-radius: 14px;
+    padding: 11px;
     font-family: "Nunito", sans-serif;
     font-weight: 800;
-    font-size: 0.8rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition:
+      transform 0.16s,
+      filter 0.16s;
   }
-  .mbti-pills {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+  .ps-act:active {
+    transform: scale(0.95);
   }
-  .mbti-pill {
-    background: var(--g);
+  .ps-act-ghost {
+    flex: 1;
+    background: color-mix(in srgb, var(--pc) 9%, #fff);
+    color: var(--pc);
+  }
+  .ps-act-main {
+    flex: 1.4;
+    background: linear-gradient(135deg, var(--pc-from), var(--pc));
     color: #fff;
+    box-shadow: 0 8px 18px -6px var(--pc);
+  }
+  .ps-act-main:hover {
+    filter: brightness(1.06);
+  }
+
+  /* ── Section 5: Premium ── */
+  .prem-badge {
+    background: linear-gradient(90deg, #a78bfa, #7c3aed);
+    color: #fff;
+  }
+  .prem-title {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+  }
+
+  .prem-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-radius: 28px;
+    overflow: hidden;
+    border: 1.5px solid rgba(255, 255, 255, 0.7);
+    box-shadow: var(--shadow-card);
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(16px);
+    margin-bottom: 28px;
+  }
+  .prem-feat {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    padding: 28px 28px;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+    transition: background 0.2s;
+  }
+  .prem-feat:last-child {
+    border-bottom: none;
+  }
+  .prem-feat:hover {
+    background: rgba(124, 58, 237, 0.03);
+  }
+
+  .pf-icon-wrap {
+    width: 48px;
+    height: 48px;
     border-radius: 16px;
-    padding: 12px 6px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+  }
+  .pf-title {
     font-family: "Nunito", sans-serif;
     font-weight: 900;
-    font-size: 0.88rem;
-    letter-spacing: 0.5px;
-    cursor: default;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+  }
+  .pf-desc {
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    line-height: 1.75;
+  }
+
+  .prem-dev-note {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1.5px solid rgba(251, 191, 36, 0.25);
+    border-radius: 20px;
+    padding: 20px 22px;
+  }
+  .pdn-flash {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .prem-dev-note p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+  .prem-dev-note strong {
+    color: var(--text-primary);
+  }
+
+  /* ── Founder section ── */
+  .founder-section {
+    padding-bottom: 100px;
+  }
+  .founder-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
+  .founder-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .founder-avatar-wrap {
     position: relative;
+    display: inline-block;
+  }
+  .founder-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(124, 58, 237, 0.25);
     box-shadow:
-      4px 4px 10px rgba(0, 0, 0, 0.14),
-      -2px -2px 6px rgba(255, 255, 255, 0.3),
-      inset 2px 2px 5px rgba(255, 255, 255, 0.28),
-      inset -2px -2px 5px rgba(0, 0, 0, 0.1);
-    transition:
-      transform 0.22s,
-      box-shadow 0.22s;
+      0 8px 24px rgba(124, 58, 237, 0.18),
+      0 2px 8px rgba(0, 0, 0, 0.08);
+    display: block;
   }
-  .mbti-pill:hover {
-    transform: translateY(-4px) scale(1.06);
-    box-shadow:
-      7px 7px 16px rgba(0, 0, 0, 0.2),
-      -2px -2px 6px rgba(255, 255, 255, 0.3),
-      inset 2px 2px 5px rgba(255, 255, 255, 0.28),
-      inset -2px -2px 5px rgba(0, 0, 0, 0.1);
+  .founder-name {
+    font-family: "Nunito", sans-serif;
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--text-primary);
   }
-  .mbti-pill::after {
-    content: attr(data-name);
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--text-primary);
-    color: #fff;
-    font-family: "DM Sans", sans-serif;
-    font-weight: 600;
-    font-size: 0.73rem;
-    padding: 4px 10px;
-    border-radius: 10px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.18s;
-    z-index: 10;
+  .founder-role {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    font-weight: 500;
   }
-  .mbti-pill:hover::after {
-    opacity: 1;
+  .founder-headline {
+    font-family: "Nunito", sans-serif;
+    font-weight: 900;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: var(--text-primary);
+    text-align: center;
+    line-height: 1.12;
+    letter-spacing: -0.5px;
+  }
+  .founder-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .founder-body p {
+    font-size: 1.05rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    text-align: center;
   }
 
   /* ── Final CTA ── */
@@ -1571,16 +2886,25 @@ import logo from "../assets/transparentlogo.png";
     position: relative;
     z-index: 1;
   }
+  .cta-eyebrow {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    color: rgba(167, 139, 250, 0.7);
+    margin-bottom: 16px;
+  }
   .cta-title {
     font-family: "Nunito", sans-serif;
     font-weight: 900;
-    font-size: clamp(2rem, 5vw, 3rem);
+    font-size: clamp(2rem, 5vw, 3.2rem);
     color: #fff;
     letter-spacing: -1px;
     margin-bottom: 16px;
+    line-height: 1.1;
   }
   .cta-sub {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.65);
     font-size: 1.05rem;
     max-width: 460px;
     margin: 0 auto 32px;
@@ -1589,7 +2913,7 @@ import logo from "../assets/transparentlogo.png";
   .form-row-dark {
     max-width: 480px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.1);
     box-shadow:
       inset 6px 6px 14px rgba(0, 0, 0, 0.2),
       inset -4px -4px 10px rgba(255, 255, 255, 0.06);
@@ -1670,13 +2994,12 @@ import logo from "../assets/transparentlogo.png";
     font-size: 0.88rem;
     color: var(--text-secondary);
   }
-  .footer-copy {
-    font-size: 0.8rem;
-    color: #9994a2;
-  }
 </style>
 
 <script>
+  /* ─────────────────────────────────────────
+     Waitlist form submission
+  ───────────────────────────────────────── */
   const SUPABASE_URL = "https://supabase.hangoutstudios.com";
   const SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzY0NjkxMjAwLCJleHAiOjE5MjI0NTc2MDB9.RB4UMWyk4yUl0GvrbJ_B1f9u6AEar6prsBUTqN3ftWQ";
@@ -1702,7 +3025,6 @@ import logo from "../assets/transparentlogo.png";
   function setupForm(formId: string, successId: string) {
     const form = document.getElementById(formId) as HTMLFormElement | null;
     if (!form) return;
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = form.querySelector("button") as HTMLButtonElement;
@@ -1710,10 +3032,8 @@ import logo from "../assets/transparentlogo.png";
         'input[type="email"]',
       ) as HTMLInputElement;
       const email = emailInput.value.trim();
-
       btn.disabled = true;
       btn.innerHTML = "sending…";
-
       try {
         await submitToWaitlist(email);
         form.style.display = "none";
@@ -1730,24 +3050,391 @@ import logo from "../assets/transparentlogo.png";
       }
     });
   }
-
   setupForm("form-hero", "success-hero");
   setupForm("form-cta", "success-cta");
 
-  // Count-up animation for waitlist number
+  /* ─────────────────────────────────────────
+     Waitlist count-up
+  ───────────────────────────────────────── */
   const countEl = document.getElementById("waitlist-count");
   if (countEl) {
-    const target = 200;
-    const duration = 1800;
-    const start = performance.now();
+    const target = 200,
+      duration = 1800,
+      start = performance.now();
     const tick = (now: number) => {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3);
+      const p = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
       countEl.textContent = String(Math.round(eased * target));
-      if (progress < 1) requestAnimationFrame(tick);
+      if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   }
+
+  /* ─────────────────────────────────────────
+     Hero flip animation
+  ───────────────────────────────────────── */
+  const flipWords = [
+    {
+      text: "scale<br>your grind",
+      color: "#7C3AED",
+      font: "'Space Grotesk', sans-serif",
+      style: "normal",
+    },
+    {
+      text: "cut<br>toxicity",
+      color: "#EA580C",
+      font: "'Syne', sans-serif",
+      style: "normal",
+    },
+    {
+      text: "choose<br>friends wisely",
+      color: "#F7868F",
+      font: "'Lora', Georgia, serif",
+      style: "italic",
+    },
+    {
+      text: "lock in<br>together",
+      color: "#6366F1",
+      font: "'Plus Jakarta Sans', sans-serif",
+      style: "normal",
+    },
+    {
+      text: "never skip<br>a workout",
+      color: "#059669",
+      font: "'Nunito', sans-serif",
+      style: "normal",
+    },
+    {
+      text: "run a<br>sub-20 5k",
+      color: "#DC2626",
+      font: "'DM Mono', monospace",
+      style: "normal",
+    },
+    {
+      text: "talk over<br>coffee",
+      color: "#B45309",
+      font: "'Syne', sans-serif",
+      style: "normal",
+    },
+    {
+      text: "level up<br>your inner circle",
+      color: "#DB2777",
+      font: "'DM Sans', sans-serif",
+      style: "normal",
+    },
+  ];
+
+  const flipEl = document.getElementById("flip-word") as HTMLElement | null;
+  if (flipEl) {
+    let idx = 1; // first word is already set to [0]
+
+    function doFlip() {
+      // Exit
+      flipEl!.style.transform = "translateY(-20px)";
+      flipEl!.style.opacity = "0";
+
+      setTimeout(() => {
+        const w = flipWords[idx % flipWords.length];
+        flipEl!.innerHTML = w.text;
+        flipEl!.style.color = w.color;
+        flipEl!.style.fontFamily = w.font;
+        flipEl!.style.fontStyle = w.style;
+        idx++;
+
+        // Reset below, then transition in
+        flipEl!.style.transition = "none";
+        flipEl!.style.transform = "translateY(20px)";
+        flipEl!.style.opacity = "0";
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            flipEl!.style.transition =
+              "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.45s ease";
+            flipEl!.style.transform = "translateY(0)";
+            flipEl!.style.opacity = "1";
+          });
+        });
+      }, 380);
+    }
+
+    setInterval(doFlip, 2800);
+  }
+</script>
+
+<!-- GSAP animations — classic inline script guarantees load order -->
+<script is:inline>
+  (function () {
+    function loadScript(src, cb) {
+      var s = document.createElement("script");
+      s.src = src;
+      s.onload = cb;
+      s.onerror = function () {
+        console.warn("[soonest] GSAP failed to load:", src);
+      };
+      document.head.appendChild(s);
+    }
+
+    function runAnimations() {
+      var gsap = window.gsap;
+      var ST = window.ScrollTrigger;
+      if (!gsap || !ST) return;
+      gsap.registerPlugin(ST);
+
+      /* Manifesto — word-by-word reveal */
+      var m = document.getElementById("manifesto-text");
+      if (m) {
+        var words = (m.textContent || "").trim().split(/\s+/);
+        m.innerHTML = words
+          .map(function (w, i) {
+            var inner =
+              i === words.length - 1
+                ? w + '<span class="manifesto-ul"></span>'
+                : w;
+            var extra = /together/i.test(w)
+              ? "font-style:italic;color:#7C3AED;"
+              : "";
+            return (
+              '<span class="manifesto-word" style="display:inline-block;margin-right:0.25em;opacity:0;transform:translateY(24px);' +
+              extra +
+              '">' +
+              inner +
+              "</span>"
+            );
+          })
+          .join("");
+        var mTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: "#manifesto-text",
+            start: "top 80%",
+            once: true,
+          },
+        });
+        mTl.to(".manifesto-word", {
+          opacity: 1,
+          y: 0,
+          stagger: 0.06,
+          duration: 0.9,
+          ease: "power3.out",
+        });
+        var ulAt = (words.length - 1) * 0.06 + 0.45;
+        mTl.to(
+          ".manifesto-ul",
+          {
+            width: "100%",
+            duration: 0.55,
+            ease: "power2.out",
+          },
+          ulAt,
+        );
+      }
+
+      /* Problem cards */
+      gsap.from(".problem-card", {
+        opacity: 0,
+        y: 60,
+        stagger: 0.14,
+        duration: 0.8,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".problem-grid",
+          start: "top 82%",
+          once: true,
+        },
+      });
+
+      /* Map — surface settle + buildings rise */
+      gsap.from("#map-stage .mm-surface", {
+        opacity: 0,
+        scale: 1.08,
+        duration: 1.1,
+        ease: "power2.out",
+        scrollTrigger: { trigger: "#map-stage", start: "top 80%", once: true },
+      });
+      gsap.from("#map-stage .mm-blk", {
+        opacity: 0,
+        y: 12,
+        scale: 0.88,
+        stagger: { each: 0.035, from: "random" },
+        duration: 0.5,
+        ease: "power2.out",
+        scrollTrigger: { trigger: "#map-stage", start: "top 80%", once: true },
+      });
+
+      /* Map chrome — topbar, you-marker, compass, scale */
+      gsap.from(
+        "#map-stage .mm-topbar, #map-stage .mm-you, #map-stage .mm-compass, #map-stage .mm-scale",
+        {
+          opacity: 0,
+          y: 8,
+          stagger: 0.08,
+          delay: 0.25,
+          duration: 0.6,
+          ease: "power2.out",
+          scrollTrigger: {
+            trigger: "#map-stage",
+            start: "top 78%",
+            once: true,
+          },
+        },
+      );
+
+      /* Map pins — staggered pop-in */
+      var pins = document.querySelectorAll(".mp");
+      pins.forEach(function (pin, i) {
+        gsap.fromTo(
+          pin,
+          { opacity: 0, scale: 0, y: 12 },
+          {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            duration: 0.55,
+            ease: "back.out(1.7)",
+            delay: 0.4 + i * 0.16,
+            scrollTrigger: {
+              trigger: "#map-stage",
+              start: "top 74%",
+              once: true,
+            },
+          },
+        );
+      });
+
+      /* HIW steps */
+      gsap.from(".hiw-step", {
+        opacity: 0,
+        x: 30,
+        stagger: 0.18,
+        duration: 0.7,
+        ease: "power2.out",
+        scrollTrigger: { trigger: ".hiw-steps", start: "top 82%", once: true },
+      });
+
+      /* Universal section-head reveal */
+      gsap.utils.toArray(".section-head").forEach(function (el) {
+        gsap.from(el.children, {
+          opacity: 0,
+          y: 26,
+          stagger: 0.1,
+          duration: 0.7,
+          ease: "power3.out",
+          scrollTrigger: { trigger: el, start: "top 86%", once: true },
+        });
+      });
+
+      /* Profiles — phone screens rise + fan, inner detail stagger */
+      gsap.utils.toArray(".phone").forEach(function (ph, i) {
+        var tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: ".profiles-wrap",
+            start: "top 78%",
+            once: true,
+          },
+        });
+        tl.from(
+          ph,
+          {
+            opacity: 0,
+            y: 90,
+            rotateX: 16,
+            scale: 0.9,
+            duration: 0.9,
+            ease: "power3.out",
+            delay: i * 0.14,
+            clearProps: "transform",
+          },
+          0,
+        );
+        var fill = ph.querySelector(".ps-ledger-fill");
+        if (fill) {
+          tl.from(
+            fill,
+            { width: 0, duration: 0.9, ease: "power2.out" },
+            0.45 + i * 0.14,
+          );
+        }
+        tl.from(
+          ph.querySelectorAll(".ps-stat, .ps-feed-row"),
+          {
+            opacity: 0,
+            y: 14,
+            stagger: 0.06,
+            duration: 0.5,
+            ease: "power2.out",
+          },
+          0.5 + i * 0.14,
+        );
+      });
+
+      /* Founder */
+      gsap.from(".founder-profile, .founder-headline, .founder-body p", {
+        opacity: 0,
+        y: 30,
+        stagger: 0.08,
+        duration: 0.7,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".founder-wrap",
+          start: "top 80%",
+          once: true,
+        },
+      });
+
+      /* Final CTA card */
+      gsap.from(".cta-card", {
+        opacity: 0,
+        y: 50,
+        scale: 0.96,
+        duration: 0.85,
+        ease: "power3.out",
+        scrollTrigger: { trigger: ".cta-card", start: "top 86%", once: true },
+      });
+
+      /* Ambient blob parallax */
+      gsap.to(".blob-violet", {
+        yPercent: 14,
+        ease: "none",
+        scrollTrigger: {
+          trigger: "body",
+          start: "top top",
+          end: "bottom bottom",
+          scrub: true,
+        },
+      });
+      gsap.to(".blob-pink", {
+        yPercent: -12,
+        ease: "none",
+        scrollTrigger: {
+          trigger: "body",
+          start: "top top",
+          end: "bottom bottom",
+          scrub: true,
+        },
+      });
+
+      /* Premium features (if present) */
+      gsap.from(".prem-feat", {
+        opacity: 0,
+        y: 30,
+        stagger: 0.12,
+        duration: 0.6,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".prem-features",
+          start: "top 82%",
+          once: true,
+        },
+      });
+    }
+
+    loadScript(
+      "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js",
+      function () {
+        loadScript(
+          "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js",
+          runAnimations,
+        );
+      },
+    );
+  })();
 </script>
