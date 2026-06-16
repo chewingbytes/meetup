@@ -8,15 +8,12 @@ export default function EventCard({
   event: EventProps;
   onPress: () => void;
 }) {
-  const startDate = new Date(event.start_at);
-  const formattedDate = startDate.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-  const formattedTime = startDate.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = event.startDate
+    ? new Date(event.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "TBD";
+  const formattedTime = (!event.startAnytime && event.startTime)
+    ? new Date(event.startTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+    : event.startAnytime ? "Anytime" : "";
 
   const isPaid = event.is_paid && (event.price ?? 0) > 0;
 

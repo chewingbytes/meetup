@@ -65,12 +65,12 @@ export default function CommunityContent({ community }: CommunityContentProps) {
       .filter(
         (ev) =>
           ev.community_id === community.id &&
-          (!ev.start_at || new Date(ev.start_at) >= new Date()),
+          (!ev.startDate || new Date(ev.startDate) >= new Date()),
       )
       .sort(
         (a, b) =>
-          new Date(a.start_at || 0).getTime() -
-          new Date(b.start_at || 0).getTime(),
+          new Date(a.startDate || 0).getTime() -
+          new Date(b.startDate || 0).getTime(),
       );
   }, [events, community]);
 
@@ -124,10 +124,10 @@ export default function CommunityContent({ community }: CommunityContentProps) {
   const eventsByDate = useMemo(() => {
     const map: Record<string, EventProps[]> = {};
     upcomingEvents.forEach((ev) => {
-      if (!ev.start_at) return;
-      const dateKey = ev.start_at.includes("T")
-        ? ev.start_at.split("T")[0]
-        : new Date(ev.start_at).toISOString().split("T")[0];
+      if (!ev.startDate) return;
+      const dateKey = ev.startDate.includes("T")
+        ? ev.startDate.split("T")[0]
+        : new Date(ev.startDate).toISOString().split("T")[0];
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(ev);
     });

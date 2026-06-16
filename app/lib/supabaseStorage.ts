@@ -171,11 +171,87 @@ export async function uploadVerificationImages({
   return { idFront, idBack, selfie: selfie ?? null };
 }
 
-export async function uploadAvatarImage(userId: string, localImageUri: string) {
+export async function uploadFavouriteImage(
+  userId: string,
+  placeId: string,
+  localImageUri: string,
+) {
   const client = assertStorageClient();
   const extension = getExtensionFromUri(localImageUri);
   const mimeType = getMimeType(extension);
-  const filePath = `${userId}/${Date.now()}.${extension}`;
+  const filePath = `${userId}/favouriteplaces/${placeId}/${Date.now()}.${extension}`;
+
+  const response = await fetch(localImageUri);
+  if (!response.ok) throw new Error("Failed to read image file.");
+  const arrayBuffer = await response.arrayBuffer();
+
+  const { error } = await client.storage
+    .from(normalizedStorageBucket)
+    .upload(filePath, arrayBuffer, { contentType: mimeType, upsert: false, cacheControl: "3600" });
+
+  if (error) throw new Error(error.message || "Favourite image upload failed.");
+
+  const { data } = client.storage.from(normalizedStorageBucket).getPublicUrl(filePath);
+  return { filePath, publicUrl: data.publicUrl };
+}
+
+export async function listFavouriteImages(userId: string, placeId: string): Promise<string[]> {
+  const client = assertStorageClient();
+  const folder = `${userId}/favouriteplaces/${placeId}`;
+  const { data, error } = await client.storage.from(normalizedStorageBucket).list(folder);
+  if (error || !data) return [];
+  return data
+    .filter((f) => f.name !== ".emptyFolderPlaceholder")
+    .map((f) => {
+      const { data: urlData } = client.storage
+        .from(normalizedStorageBucket)
+        .getPublicUrl(`${folder}/${f.name}`);
+      return urlData.publicUrl;
+    });
+}
+
+/**
+ * Lists all images in userId/{subfolder}/ and returns their public URLs,
+ * sorted newest-first (filenames are Date.now() timestamps).
+ */
+export async function listSubfolderImages(userId: string, subfolder: string): Promise<string[]> {
+  const client = assertStorageClient();
+  const folder = `${userId}/${subfolder}`;
+  const { data, error } = await client.storage.from(normalizedStorageBucket).list(folder, {
+    sortBy: { column: "name", order: "desc" },
+  });
+  if (error || !data) return [];
+
+  console.log("DATA from profile:", data);
+  return data
+    .filter((f) => f.name !== ".emptyFolderPlaceholder" && f.name)
+    .map((f) => {
+      const { data: urlData } = client.storage
+        .from(normalizedStorageBucket)
+        .getPublicUrl(`${folder}/${f.name}`);
+      return urlData.publicUrl;
+    });
+}
+
+/**
+ * Deletes a file from storage given its full public URL.
+ * Extracts the path by stripping the bucket public-URL prefix.
+ */
+export async function deleteStorageImage(publicUrl: string): Promise<void> {
+  const client = assertStorageClient();
+  const prefix = `${normalizedStorageUrl}/storage/v1/object/public/${normalizedStorageBucket}/`;
+  if (!publicUrl.startsWith(prefix)) return;
+  const path = publicUrl.slice(prefix.length).split("?")[0];
+  const { error } = await client.storage.from(normalizedStorageBucket).remove([path]);
+  if (error) throw new Error(error.message || "Failed to delete image.");
+}
+
+export async function uploadAvatarImage(userId: string, localImageUri: string, subfolder?: string) {
+  const client = assertStorageClient();
+  const extension = getExtensionFromUri(localImageUri);
+  const mimeType = getMimeType(extension);
+  const folder = subfolder ? `${userId}/${subfolder}` : userId;
+  const filePath = `${folder}/${Date.now()}.${extension}`;
 
   const response = await fetch(localImageUri);
   if (!response.ok) {

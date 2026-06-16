@@ -4,6 +4,7 @@
 
 import { NeoLoader } from "@/components/ui/neo-loader";
 import { ClayBackground } from "@/components/ui/clay-background";
+import { getCategoryConfig } from "@/utils/categories";
 import { ClayButton } from "@/components/ui/clay-button";
 import { ClayCard } from "@/components/ui/clay-card";
 import { C } from "@/theme/clay";
@@ -67,7 +68,9 @@ export default function EventDetail() {
   const [isSubmittingTestimonial, setIsSubmittingTestimonial] = useState(false);
 
   const { eventDetails, fetchEventById } = useEventStore();
-  const event = id ? (eventDetails[id as string] as EventProps | undefined) : null;
+  const event = id
+    ? (eventDetails[id as string] as EventProps | undefined)
+    : null;
 
   useEffect(() => {
     let mounted = true;
@@ -80,45 +83,49 @@ export default function EventDetail() {
             const result = await checkEventMembership(user.id, id as string);
             setJoined(result?.isMember || false);
             setIsOrganizer(result?.isOrganizer || false);
-          } catch { setJoined(false); }
+          } catch {
+            setJoined(false);
+          }
         }
       } catch {}
     }
     loadEvent();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [id, user, fetchEventById]);
 
   const formattedStart = useMemo(() => {
-    if (!event?.start_at) return null;
-    return new Date(event.start_at).toLocaleDateString("en-SG", {
-      weekday: "long", month: "long", day: "numeric",
+    if (!event?.startDate) return null;
+    return new Date(event.startDate).toLocaleDateString("en-SG", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
     });
-  }, [event?.start_at]);
+  }, [event?.startDate]);
 
   const formattedTime = useMemo(() => {
-    if (!event?.start_at) return null;
-    return new Date(event.start_at).toLocaleTimeString("en-SG", {
-      hour: "2-digit", minute: "2-digit",
+    if (event?.startAnytime || !event?.startTime) return "anytime";
+    return new Date(event.startTime).toLocaleTimeString("en-SG", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
-  }, [event?.start_at]);
+  }, [event?.startTime, event?.startAnytime]);
 
-  const priceLabel = useMemo(() => {
-    if (event?.is_paid && event.price && event.price > 0) return `$${event.price.toFixed(2)}`;
-    return "Free";
-  }, [event]);
+  // const priceLabel = useMemo(() => {
+  //   if (event?.is_paid && event.price && event.price > 0) return `$${event.price.toFixed(2)}`;
+  //   return "Free";
+  // }, [event]);
 
   const isPastEvent = useMemo(() => {
     if (!event?.end_at) return false;
     return new Date(event.end_at) < new Date();
   }, [event?.end_at]);
 
-  const heroGrad = HERO_GRADIENTS[
-    (event?.name?.charCodeAt(0) ?? 0) % HERO_GRADIENTS.length
-  ];
-
   const onShare = async () => {
-    try { await Share.share({ message: `Check out ${event?.name} on Hangout!` }); }
-    catch {}
+    try {
+      await Share.share({ message: `Check out ${event?.name} on Hangout!` });
+    } catch {}
   };
 
   const handleJoin = async () => {
@@ -128,8 +135,11 @@ export default function EventDetail() {
       await joinEvent(user.id, event.id);
       setJoined(true);
       Alert.alert("You're in!", "See you there. 🎉");
-    } catch (err: any) { Alert.alert("Error", err.message); }
-    finally { setIsJoining(false); }
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const handleLeave = async () => {
@@ -144,26 +154,37 @@ export default function EventDetail() {
             setIsLeaving(true);
             await leaveEvent(user.id, event.id);
             setJoined(false);
-          } catch (err: any) { Alert.alert("Error", err.message); }
-          finally { setIsLeaving(false); }
+          } catch (err: any) {
+            Alert.alert("Error", err.message);
+          } finally {
+            setIsLeaving(false);
+          }
         },
       },
     ]);
   };
 
   const handleSubmitTestimonial = async () => {
-    if (!testimonialText.trim()) { Alert.alert("Write something first!"); return; }
+    if (!testimonialText.trim()) {
+      Alert.alert("Write something first!");
+      return;
+    }
     try {
       setIsSubmittingTestimonial(true);
       await createEventTestimonial({
-        user_id: user?.id, event_id: event?.id,
-        rating: testimonialRating, text: testimonialText,
+        user_id: user?.id,
+        event_id: event?.id,
+        rating: testimonialRating,
+        text: testimonialText,
       });
       setShowTestimonialModal(false);
       setTestimonialText("");
       Alert.alert("Thanks!", "Your feedback was submitted.");
-    } catch (error: any) { Alert.alert("Error", error.message); }
-    finally { setIsSubmittingTestimonial(false); }
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    } finally {
+      setIsSubmittingTestimonial(false);
+    }
   };
 
   if (!event) {
@@ -185,16 +206,37 @@ export default function EventDetail() {
         {/* ── Hero image ── */}
         <View style={styles.hero}>
           {event.cover_image ? (
-            <Image source={{ uri: event.cover_image }} style={styles.heroImg} resizeMode="cover" />
+            <Image
+              source={{ uri: event.cover_image }}
+              style={styles.heroImg}
+              resizeMode="cover"
+            />
           ) : (
-            <LinearGradient colors={heroGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroImg}>
-              <Text style={styles.heroInitial}>{event.name?.charAt(0)?.toUpperCase() ?? "E"}</Text>
+            <LinearGradient
+              colors={getCategoryConfig(event.category ?? undefined).gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroImg}
+            >
+              {(() => {
+                const { Icon } = getCategoryConfig(event.category ?? undefined);
+                return (
+                  <Icon
+                    size={72}
+                    color="rgba(255,255,255,0.85)"
+                    strokeWidth={1.5}
+                  />
+                );
+              })()}
             </LinearGradient>
           )}
 
           {/* Header chrome over image */}
           <View style={[styles.heroChromeRow, { paddingTop: insets.top + 12 }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.heroBtn}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.heroBtn}
+            >
               <ArrowLeft size={20} color={C.textPrimary} strokeWidth={2.5} />
             </TouchableOpacity>
             <View style={{ flex: 1 }} />
@@ -203,15 +245,14 @@ export default function EventDetail() {
             </TouchableOpacity>
           </View>
 
-          {/* Price badge */}
-          <View style={[
+          {/* <View style={[
             styles.priceBadge,
             event.is_paid && event.price && event.price > 0
               ? { backgroundColor: C.accentAmber }
               : { backgroundColor: C.accentGreen },
           ]}>
             <Text style={styles.priceText}>{priceLabel}</Text>
-          </View>
+          </View> */}
         </View>
 
         <View style={styles.body}>
@@ -222,17 +263,23 @@ export default function EventDetail() {
           <View style={styles.tagRow}>
             {event.visibility === "private" && (
               <View style={[styles.tag, { backgroundColor: C.accentMuted }]}>
-                <Text style={[styles.tagText, { color: C.accent }]}>Private</Text>
+                <Text style={[styles.tagText, { color: C.accent }]}>
+                  Private
+                </Text>
               </View>
             )}
             {event.require_approval && (
               <View style={[styles.tag, { backgroundColor: C.pinkMuted }]}>
-                <Text style={[styles.tagText, { color: C.accentPink }]}>Approval required</Text>
+                <Text style={[styles.tagText, { color: C.accentPink }]}>
+                  Approval required
+                </Text>
               </View>
             )}
             {isPastEvent && (
               <View style={[styles.tag, { backgroundColor: "#F3F4F6" }]}>
-                <Text style={[styles.tagText, { color: C.textSecondary }]}>Past hangout</Text>
+                <Text style={[styles.tagText, { color: C.textSecondary }]}>
+                  Past hangout
+                </Text>
               </View>
             )}
           </View>
@@ -246,38 +293,67 @@ export default function EventDetail() {
                 </View>
                 <View>
                   <Text style={styles.infoLabel}>{formattedStart}</Text>
-                  {formattedTime && <Text style={styles.infoSub}>{formattedTime}</Text>}
+                  {formattedTime && (
+                    <Text style={styles.infoSub}>{formattedTime}</Text>
+                  )}
                 </View>
               </View>
             )}
             {(event.location_text || event.location_instructions) && (
-              <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: "rgba(124,58,237,0.06)", paddingTop: C.Space.lg }]}>
+              <View
+                style={[
+                  styles.infoRow,
+                  {
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(124,58,237,0.06)",
+                    paddingTop: C.Space.lg,
+                  },
+                ]}
+              >
                 <View style={styles.infoIconWrap}>
                   <MapPin size={18} color={C.accent} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>{event.location_text || "TBD"}</Text>
+                  <Text style={styles.infoLabel}>
+                    {event.location_text || "TBD"}
+                  </Text>
                   {event.location_instructions && (
-                    <Text style={styles.infoSub}>{event.location_instructions}</Text>
+                    <Text style={styles.infoSub}>
+                      {event.location_instructions}
+                    </Text>
                   )}
                 </View>
               </View>
             )}
             {(event.capacity != null || participants.length > 0) && (
-              <View style={[styles.infoRow, { borderTopWidth: 1, borderTopColor: "rgba(124,58,237,0.06)", paddingTop: C.Space.lg }]}>
+              <View
+                style={[
+                  styles.infoRow,
+                  {
+                    borderTopWidth: 1,
+                    borderTopColor: "rgba(124,58,237,0.06)",
+                    paddingTop: C.Space.lg,
+                  },
+                ]}
+              >
                 <View style={styles.infoIconWrap}>
                   <Users size={18} color={C.accent} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>
-                    {event.capacity ? `${participants.length} / ${event.capacity}` : `${participants.length} going`}
+                    {event.capacity
+                      ? `${participants.length} / ${event.capacity}`
+                      : `${participants.length} going`}
                   </Text>
                   {event.capacity && (
                     <View style={styles.capacityBar}>
                       <View
                         style={[
                           styles.capacityFill,
-                          { width: `${Math.min((participants.length / event.capacity) * 100, 100)}%` as any },
+                          {
+                            width:
+                              `${Math.min((participants.length / event.capacity) * 100, 100)}%` as any,
+                          },
                         ]}
                       />
                     </View>
@@ -287,11 +363,23 @@ export default function EventDetail() {
             )}
           </ClayCard>
 
+          {/* Description */}
+          {event.description && (
+            <ClayCard style={styles.descCard}>
+              <Text style={styles.subheading}>About this hangout</Text>
+              <Text style={styles.descText}>{event.description}</Text>
+            </ClayCard>
+          )}
+
           {/* Participants */}
           {participants.length > 0 && (
             <View style={styles.participantsWrap}>
               <Text style={styles.subheading}>Who's going</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10 }}
+              >
                 {participants.slice(0, 8).map((p: any, i: number) => (
                   <TouchableOpacity
                     key={p.id}
@@ -303,14 +391,19 @@ export default function EventDetail() {
                       style={styles.participantAvatar}
                     >
                       {p.avatar_url ? (
-                        <Image source={{ uri: p.avatar_url }} style={StyleSheet.absoluteFillObject} />
+                        <Image
+                          source={{ uri: p.avatar_url }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
                       ) : (
                         <Text style={styles.participantInitial}>
                           {p.username?.charAt(0)?.toUpperCase() ?? "?"}
                         </Text>
                       )}
                     </LinearGradient>
-                    <Text style={styles.participantName} numberOfLines={1}>{p.username ?? "—"}</Text>
+                    <Text style={styles.participantName} numberOfLines={1}>
+                      {p.username ?? "—"}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -321,17 +414,31 @@ export default function EventDetail() {
           <View style={styles.actions}>
             {isOrganizer ? (
               <View style={styles.hostingBadge}>
-                <LinearGradient colors={C.Gradients.amber} style={styles.hostingGrad}>
+                <LinearGradient
+                  colors={C.Gradients.amber}
+                  style={styles.hostingGrad}
+                >
                   <Text style={styles.hostingText}>Hosting this hangout ✓</Text>
                 </LinearGradient>
               </View>
             ) : !isPastEvent ? (
               !joined ? (
-                <ClayButton onPress={handleJoin} loading={isJoining} size="lg" fullWidth>
+                <ClayButton
+                  onPress={handleJoin}
+                  loading={isJoining}
+                  size="lg"
+                  fullWidth
+                >
                   {event.require_approval ? "Apply Now" : "RSVP Now"}
                 </ClayButton>
               ) : (
-                <ClayButton onPress={handleLeave} loading={isLeaving} variant="secondary" size="lg" fullWidth>
+                <ClayButton
+                  onPress={handleLeave}
+                  loading={isLeaving}
+                  variant="secondary"
+                  size="lg"
+                  fullWidth
+                >
                   {isLeaving ? "Leaving…" : "Attending ✓"}
                 </ClayButton>
               )
@@ -344,24 +451,22 @@ export default function EventDetail() {
               style={styles.rateBtn}
               activeOpacity={0.85}
             >
-              <LinearGradient colors={C.Gradients.amber} style={styles.rateBtnGrad}>
+              <LinearGradient
+                colors={C.Gradients.amber}
+                style={styles.rateBtnGrad}
+              >
                 <Star size={18} color="#fff" strokeWidth={2} fill="#fff" />
                 <Text style={styles.rateBtnText}>Rate this hangout</Text>
               </LinearGradient>
             </TouchableOpacity>
           )}
 
-          {/* Description */}
-          {event.description && (
-            <ClayCard style={styles.descCard}>
-              <Text style={styles.subheading}>About this hangout</Text>
-              <Text style={styles.descText}>{event.description}</Text>
-            </ClayCard>
-          )}
-
           {/* Organizer */}
           <Text style={styles.organizerText}>
-            Organized by {(event as any).organizer?.username ?? event.organizer_id ?? "Unknown"}
+            Organized by{" "}
+            {(event as any).organizer?.username ??
+              event.organizer_id ??
+              "Unknown"}
           </Text>
         </View>
       </ScrollView>
@@ -383,11 +488,18 @@ export default function EventDetail() {
             {/* Star rating */}
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable key={star} onPress={() => setTestimonialRating(star)}>
+                <Pressable
+                  key={star}
+                  onPress={() => setTestimonialRating(star)}
+                >
                   <Star
                     size={32}
-                    color={star <= testimonialRating ? C.accentAmber : "#E5E7EB"}
-                    fill={star <= testimonialRating ? C.accentAmber : "transparent"}
+                    color={
+                      star <= testimonialRating ? C.accentAmber : "#E5E7EB"
+                    }
+                    fill={
+                      star <= testimonialRating ? C.accentAmber : "transparent"
+                    }
                     strokeWidth={1.5}
                   />
                 </Pressable>
@@ -419,11 +531,25 @@ export default function EventDetail() {
 }
 
 const styles = StyleSheet.create({
-  loader: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: C.canvas },
+  loader: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.canvas,
+  },
 
   hero: { height: 280, position: "relative" },
-  heroImg: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
-  heroInitial: { fontFamily: C.Fonts.heading, fontSize: 80, color: "rgba(255,255,255,0.7)" },
+  heroImg: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroInitial: {
+    fontFamily: C.Fonts.heading,
+    fontSize: 80,
+    color: "rgba(255,255,255,0.7)",
+  },
   heroChromeRow: {
     position: "absolute",
     top: 0,
@@ -442,7 +568,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
   },
@@ -459,7 +585,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  priceText: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.base, color: "#fff" },
+  priceText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
+  },
 
   body: { padding: C.Space.xl, gap: C.Space.xl },
   titleRow: { flexDirection: "row", alignItems: "flex-start" },
@@ -471,7 +601,11 @@ const styles = StyleSheet.create({
     lineHeight: C.FontSizes.xxl * 1.15,
   },
   tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: -8 },
-  tag: { borderRadius: C.Radii.full, paddingHorizontal: 12, paddingVertical: 4 },
+  tag: {
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
   tagText: { fontFamily: C.Fonts.bodyMedium, fontSize: C.FontSizes.xs },
 
   infoCard: { gap: C.Space.lg },
@@ -484,8 +618,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  infoLabel: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.base, color: C.textPrimary },
-  infoSub: { fontFamily: C.Fonts.body, fontSize: C.FontSizes.sm, color: C.textSecondary, marginTop: 2 },
+  infoLabel: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+  infoSub: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    marginTop: 2,
+  },
   capacityBar: {
     height: 4,
     backgroundColor: C.accentMuted,
@@ -523,7 +666,11 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  participantInitial: { fontFamily: C.Fonts.bodyBold, fontSize: 18, color: "#fff" },
+  participantInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 18,
+    color: "#fff",
+  },
   participantName: {
     fontFamily: C.Fonts.bodyMedium,
     fontSize: 10,
@@ -537,7 +684,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowColor: C.accentAmber,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.20,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 5,
   },
@@ -546,14 +693,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: C.Radii.xl,
   },
-  hostingText: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.lg, color: "#fff" },
+  hostingText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.lg,
+    color: "#fff",
+  },
 
   rateBtn: {
     borderRadius: C.Radii.xl,
     overflow: "hidden",
     shadowColor: C.accentAmber,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.20,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 5,
   },
@@ -564,7 +715,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
   },
-  rateBtnText: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.lg, color: "#fff" },
+  rateBtnText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.lg,
+    color: "#fff",
+  },
 
   descCard: {},
   descText: {
@@ -583,7 +738,11 @@ const styles = StyleSheet.create({
   },
 
   // ── Testimonial modal ──
-  modalWrap: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(51,47,58,0.45)" },
+  modalWrap: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(51,47,58,0.45)",
+  },
   modalSheet: {
     backgroundColor: C.surface,
     borderTopLeftRadius: C.Radii.xxl,
@@ -596,8 +755,16 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 16,
   },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  modalTitle: { fontFamily: C.Fonts.heading, fontSize: C.FontSizes.xl, color: C.textPrimary },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+  },
   starsRow: { flexDirection: "row", gap: 8, justifyContent: "center" },
   testimonialInput: {
     backgroundColor: "#EFEBF5",

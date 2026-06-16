@@ -10,8 +10,10 @@ export interface TopicProps {
 export interface EventProps {
   id: string;
   name: string;
-  start_at: string;
-  end_at: string;
+  startDate?: string | null;
+  startTime?: string | null;
+  startAnytime?: boolean;
+  end_at?: string | null;
   location_text?: string;
   location_lat?: number;
   location_lng?: number;
@@ -19,13 +21,13 @@ export interface EventProps {
   cover_image?: string | null;
   is_paid?: boolean;
   price?: number;
-  description_md?: string;
-  description_html?: string;
+  description?: string;
   capacity?: number | null;
   require_approval?: boolean;
   visibility?: "public" | "private";
   community_id?: string | null;
   organizer_id?: string | null;
+  category?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: any;
@@ -59,6 +61,22 @@ export interface UserProfile {
   full_name?: string;
   bio?: string;
   avatar_url?: string | null;
+  photo_urls?: string[] | null;
+  instagram_handle?: string | null;
+  tiktok_handle?: string | null;
+  interests?: string[] | string | null;
+  school?: string | null;
+  year_of_study?: string | null;
+  personality_type?: string | null;
+  personality_answers?: any;
+  social_preference?: string | null;
+  verified?: string | null;
+  // pivot fields
+  occupation?: string | null;
+  location?: string | null;
+  date_of_birth?: string | null;
+  prompt_key?: string | null;
+  prompt_answer?: string | null;
   created_at?: string;
   updated_at?: string;
 }

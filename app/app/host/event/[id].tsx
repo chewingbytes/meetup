@@ -65,14 +65,13 @@ export default function EditEvent() {
       const data = await api.getEvent(id as string);
 
       // Parse date/time for form
-      const start = new Date(data.start_at);
-      const dateStr = start.toISOString().split("T")[0];
-      const timeStr = start.toTimeString().slice(0, 5);
+      const dateStr = data.startDate ? new Date(data.startDate).toISOString().split("T")[0] : "";
+      const timeStr = data.startTime ? new Date(data.startTime).toTimeString().slice(0, 5) : "";
 
       setEvent(data);
       setForm({
         name: data.name,
-        description: data.description_md || "",
+        description: data.description || "",
         location_text: data.location_text || "",
         start_date: dateStr,
         start_time: timeStr,
@@ -124,9 +123,11 @@ export default function EditEvent() {
       // For this mock/demo, we assume the API handles it or it's a URL
       const payload = {
         name: form.name,
-        description_md: form.description,
+        description: form.description,
         location_text: form.location_text,
-        start_at: startAt.toISOString(),
+        startDate: startAt.toISOString(),
+        startTime: startAt.toISOString(),
+        startAnytime: false,
         end_at: endAt.toISOString(),
         capacity: form.capacity ? parseInt(form.capacity) : null,
         is_paid: form.is_paid,

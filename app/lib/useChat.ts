@@ -28,7 +28,7 @@ export interface Channel {
 }
 
 export const useChat = (channelId: string | null) => {
-  const { user, userSettings } = useAuth();
+  const { user, userSettings, userProfile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -156,7 +156,7 @@ export const useChat = (channelId: string | null) => {
           // Track user presence
           await presenceChannel.track({
             id: user.id,
-            username: user.user_metadata?.full_name || 'Anonymous',
+            username: userProfile?.username || user.user_metadata?.full_name || 'Anonymous',
             online_at: new Date().toISOString(),
           });
         }
@@ -176,7 +176,7 @@ export const useChat = (channelId: string | null) => {
         const { error: sendError } = await supabase.from('messages').insert({
           channel_id: channelId,
           user_id: user.id,
-          username: user.user_metadata?.full_name || 'Anonymous',
+          username: userProfile?.username || user.user_metadata?.full_name || 'Anonymous',
           text,
           created_at: new Date().toISOString(),
         });

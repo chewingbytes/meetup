@@ -30,8 +30,10 @@ const mapSampleEvents = (): EventProps[] => {
     return {
       id: ev.id,
       name: ev.title,
-      description_md: ev.description,
-      start_at: start.toISOString(),
+      description: ev.description,
+      startDate: start.toISOString(),
+      startTime: start.toISOString(),
+      startAnytime: false,
       end_at: end.toISOString(),
       location_text: ev.location,
       cover_image: ev.image,
@@ -58,6 +60,7 @@ interface EventStoreState {
 
   // Actions
   fetchEvents: (force?: boolean) => Promise<void>;
+  fetchEventsByBounds: (bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => Promise<void>;
   fetchEventById: (id: string, force?: boolean) => Promise<EventProps | null>;
   setEvents: (events: EventProps[]) => void;
   setEventDetails: (id: string, event: EventProps) => void;
@@ -135,6 +138,53 @@ export const useEventStore = create<EventStoreState>((set, get) => ({
       console.error("❌ Event fetch error:", err);
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  // Fetch events within a lat/lng bounding box (used by the map)
+  // Intentionally does NOT set isLoading — this is a silent background refresh
+  // so the full-screen overlay doesn't flash on every region change.
+  // Merges by ID so existing object references are preserved: React key
+  // reconciliation skips remounting markers whose event object didn't change,
+  // preventing native view create/destroy cycles on every pan.
+  fetchEventsByBounds: async (bounds) => {
+    console.log(`[STORE] fetch start | lat=[${bounds.minLat.toFixed(4)},${bounds.maxLat.toFixed(4)}] lng=[${bounds.minLng.toFixed(4)},${bounds.maxLng.toFixed(4)}] existing=${get().events.length}`);
+    const t0 = Date.now();
+    try {
+      const data = await api.getEvents(bounds);
+      const fetchMs = Date.now() - t0;
+      console.log(`[STORE] server replied in ${fetchMs}ms | isArray=${Array.isArray(data)} count=${Array.isArray(data) ? data.length : "N/A"}`);
+      if (Array.isArray(data)) {
+        const existing = get().events;
+        const existingById = new Map(existing.map((e) => [e.id, e]));
+
+        // ACCUMULATE + STABLE REFS:
+        // Only append genuinely new events. Never replace existing object references
+        // with fresh server objects — even identical data creates a new JS object,
+        // which breaks React.memo's shallow prop comparison and causes every
+        // EventMarker to re-render on every fetch.
+        const added = data.filter((e) => !existingById.has(e.id));
+        // Cap: when the store grows past 1000, keep the 1000 most recently added.
+        // At ~2-3KB per event object this is ~2-3MB of JS memory — acceptable.
+        // Raising from 300 prevents evicting events the user already visited when
+        // they pan back to a prior region.
+        const appended = added.length > 0 ? [...existing, ...added] : existing;
+        const merged = appended.length > 1000 ? appended.slice(appended.length - 1000) : appended;
+
+        const hasChanges = added.length > 0;
+
+        console.log(
+          `[STORE] done in ${fetchMs}ms | returned=${data.length} existing=${existing.length} merged=${merged.length} hasChanges=${hasChanges}`,
+        );
+        if (hasChanges) {
+          set({ events: merged, lastFetchTime: Date.now(), error: null });
+          console.log(`[STORE] store updated → ${merged.length} events`);
+        } else {
+          console.log("[STORE] store skipped — no changes");
+        }
+      }
+    } catch (err: any) {
+      console.error(`[STORE] fetchEventsByBounds error after ${Date.now() - t0}ms:`, err);
     }
   },
 

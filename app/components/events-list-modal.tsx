@@ -84,22 +84,22 @@ export default function EventsListModal({
       list = list.filter((e) => !e.end_at || new Date(e.end_at) >= now);
     } else if (dateFilter === "today") {
       list = list.filter((e) => {
-        if (!e.start_at) return false;
-        const d = new Date(e.start_at);
+        if (!e.startDate) return false;
+        const d = new Date(e.startDate);
         return d.toDateString() === now.toDateString();
       });
     } else if (dateFilter === "week") {
       const end = new Date(now);
       end.setDate(end.getDate() + 7);
       list = list.filter((e) => {
-        if (!e.start_at) return false;
-        const d = new Date(e.start_at);
+        if (!e.startDate) return false;
+        const d = new Date(e.startDate);
         return d >= now && d <= end;
       });
     } else if (dateFilter === "weekend") {
       list = list.filter((e) => {
-        if (!e.start_at) return false;
-        const day = new Date(e.start_at).getDay();
+        if (!e.startDate) return false;
+        const day = new Date(e.startDate).getDay();
         return day === 0 || day === 6;
       });
     }
@@ -132,7 +132,7 @@ export default function EventsListModal({
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.title}>Hangouts</Text>
+              <Text style={styles.title}>Activities</Text>
               <Text style={styles.sub}>{filtered.length} found</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -146,7 +146,7 @@ export default function EventsListModal({
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search hangouts…"
+              placeholder="Search activities…"
               placeholderTextColor={C.textTertiary}
               style={styles.searchInput}
               autoCapitalize="none"
@@ -184,7 +184,7 @@ export default function EventsListModal({
               <View style={styles.emptyIconWrap}>
                 <Zap size={24} color={C.accent} strokeWidth={2} />
               </View>
-              <Text style={styles.emptyTitle}>No hangouts found</Text>
+              <Text style={styles.emptyTitle}>No activities found</Text>
               <Text style={styles.emptySub}>Try adjusting your filters.</Text>
             </View>
           ) : (
@@ -231,7 +231,7 @@ export default function EventsListModal({
                         {item.name}
                       </Text>
                       <View style={styles.cardMetaRow}>
-                        {item.start_at && (
+                        {item.startDate && (
                           <View style={styles.cardMeta}>
                             <Calendar
                               size={10}
@@ -239,11 +239,11 @@ export default function EventsListModal({
                               strokeWidth={2.5}
                             />
                             <Text style={styles.cardMetaText}>
-                              {fmtDate(item.start_at)}
+                              {fmtDate(item.startDate)}
                             </Text>
                           </View>
                         )}
-                        {item.start_at && fmtTime(item.start_at) && (
+                        {!item.startAnytime && item.startTime && (
                           <View style={styles.cardMeta}>
                             <Clock
                               size={10}
@@ -251,7 +251,7 @@ export default function EventsListModal({
                               strokeWidth={2.5}
                             />
                             <Text style={styles.cardMetaText}>
-                              {fmtTime(item.start_at)}
+                              {fmtTime(item.startTime)}
                             </Text>
                           </View>
                         )}
@@ -273,31 +273,6 @@ export default function EventsListModal({
                       )}
                     </View>
 
-                    {/* Price badge */}
-                    <View
-                      style={[
-                        styles.priceBadge,
-                        item.is_paid && item.price && item.price > 0
-                          ? { backgroundColor: C.amberMuted }
-                          : { backgroundColor: C.greenMuted },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.priceText,
-                          {
-                            color:
-                              item.is_paid && item.price && item.price > 0
-                                ? C.accentAmber
-                                : C.accentGreen,
-                          },
-                        ]}
-                      >
-                        {item.is_paid && item.price && item.price > 0
-                          ? `$${item.price}`
-                          : "Free"}
-                      </Text>
-                    </View>
                   </TouchableOpacity>
                 );
               }}

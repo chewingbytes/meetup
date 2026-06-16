@@ -14,9 +14,6 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "This app uses location to show nearby events and communities on the map."
-      },
-      "config": {
-        "googleMapsApiKey": "process.env.GOOGLE_MAPS_API_KEY"
       }
     },
     "android": {
@@ -28,10 +25,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.chewingbytes.meetup2",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
     },
     "web": {
       "output": "static",
@@ -49,7 +43,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-maps",
       "expo-font",
       "expo-web-browser",
       "expo-notifications",

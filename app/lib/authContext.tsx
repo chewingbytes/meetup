@@ -12,6 +12,9 @@ interface UserProfile {
   full_name: string;
   bio: string;
   avatar_url: string;
+  photo_urls?: string[] | null;
+  instagram_handle?: string | null;
+  tiktok_handle?: string | null;
   created_at: string;
   updated_at: string;
   personality_type?: string | null;
@@ -21,6 +24,11 @@ interface UserProfile {
   year_of_study?: string | null;
   personality_answers?: Record<string, string> | null;
   verified: "true" | "pending" | "false" | null;
+  occupation?: string | null;
+  location?: string | null;
+  date_of_birth?: string | null;
+  prompt_key?: string | null;
+  prompt_answer?: string | null;
 }
 
 interface UserSettings {

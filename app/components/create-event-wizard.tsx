@@ -48,7 +48,6 @@ import {
 } from "react-native";
 // Note: Modal is kept for the internal time-picker only. The wizard root is NOT a Modal.
 import MapView, { Marker } from "react-native-maps";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
 const SHEET_H = SCREEN_H * 0.74;
@@ -130,17 +129,11 @@ async function searchNominatim(query: string): Promise<AddressSuggestion[]> {
 }
 
 interface Props {
-  visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function CreateEventWizard({
-  visible,
-  onClose,
-  onSuccess,
-}: Props) {
-  const insets = useSafeAreaInsets();
+export default function CreateEventWizard({ onClose, onSuccess }: Props) {
   const { user } = useAuth();
 
   const [step, setStep] = useState(1);
@@ -171,7 +164,6 @@ export default function CreateEventWizard({
   const progressAnim = useRef(new Animated.Value(1 / TOTAL_STEPS)).current;
 
   useEffect(() => {
-    if (!visible) return;
     setStep(1);
     setForm(BLANK);
     setSubmitError(null);
@@ -180,7 +172,7 @@ export default function CreateEventWizard({
     setAddrQuery("");
     setAddrSuggestions([]);
     progressAnim.setValue(1 / TOTAL_STEPS);
-  }, [visible]);
+  }, []);
 
   useEffect(() => {
     Animated.timing(progressAnim, {
@@ -327,29 +319,16 @@ export default function CreateEventWizard({
     setSubmitError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      let start_at: string | undefined;
-      // let end_at: string | undefined;
-      // if (form.startDate) {
-      //   const d = new Date(form.startDate);
-      //   if (!form.startAnytime && form.startTime) {
-      //     d.setHours(form.startTime.getHours(), form.startTime.getMinutes(), 0, 0);
-      //   } else {
-      //     d.setHours(0, 0, 0, 0);
-      //   }
-      //   start_at = d.toISOString();
-      //   const endD = new Date(form.startDate);
-      //   endD.setHours(23, 59, 0, 0);
-      //   end_at = endD.toISOString();
-      // }
-
       console.log("creating form:", form);
 
       const payload: any = {
         organizerId: user?.id ?? null,
         name: form.name.trim(),
         cover_url: form.cover ?? undefined,
-        start_at,
-        end_at: null,
+        startDate: form.startDate ? form.startDate.toISOString() : null,
+        startTime: (!form.startAnytime && form.startTime) ? form.startTime.toISOString() : null,
+        startAnytime: form.startAnytime,
+        end_at: form.startDate ? (() => { const d = new Date(form.startDate!); d.setHours(23, 59, 0, 0); return d.toISOString(); })() : null,
         location_text: form.locationText,
         location_lat: form.locationLat,
         location_lng: form.locationLng,
@@ -452,8 +431,7 @@ export default function CreateEventWizard({
   });
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={styles.root}>
         {/* ── Header ── */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -501,7 +479,7 @@ export default function CreateEventWizard({
         <View
           style={[
             styles.footer,
-            { paddingBottom: Math.max(insets.bottom, 20) },
+            { paddingBottom: 16 },
           ]}
         >
           {step < TOTAL_STEPS ? (
@@ -595,8 +573,7 @@ export default function CreateEventWizard({
             </View>
           </View>
         </Modal>
-      </View>
-    </Modal>
+    </View>
   );
 }
 
@@ -1339,8 +1316,8 @@ const styles = StyleSheet.create({
 
   // Keep root for legacy ref
   root: {
-    flex: 1,
-    backgroundColor: C.canvas,
+    height: SCREEN_H * 0.76,
+    backgroundColor: C.surface,
   },
 
   // ── Header ──
@@ -1350,9 +1327,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(124,58,237,0.08)",
-    backgroundColor: "rgba(244,241,250,0.98)",
   },
   headerBtn: {
     width: 40,
@@ -1412,9 +1386,6 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: "rgba(244,241,250,0.98)",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(124,58,237,0.08)",
   },
   nextBtn: {
     borderRadius: C.Radii.xl,
@@ -1486,7 +1457,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   timePickerSheet: {
-    backgroundColor: C.surface,
+    backgroundColor: "#000",
     borderTopLeftRadius: C.Radii.xxl,
     borderTopRightRadius: C.Radii.xxl,
     paddingBottom: 32,
@@ -1509,12 +1480,12 @@ const styles = StyleSheet.create({
   timePickerCancel: {
     fontFamily: C.Fonts.bodyMedium,
     fontSize: C.FontSizes.base,
-    color: C.textSecondary,
+    color: C.textInverse,
   },
   timePickerTitle: {
     fontFamily: C.Fonts.heading,
     fontSize: C.FontSizes.base,
-    color: C.textPrimary,
+    color: C.textInverse,
   },
   timePickerDone: {
     fontFamily: C.Fonts.bodyBold,

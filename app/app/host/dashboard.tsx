@@ -196,11 +196,8 @@ export default function HostDashboard() {
                   <View className="flex-row items-center gap-2 mb-1">
                     <Calendar size={16} color="#666" />
                     <Text className="font-bold text-gray-600 text-xs">
-                      {new Date(event.start_at).toLocaleDateString()} •{" "}
-                      {new Date(event.start_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {event.startDate ? new Date(event.startDate).toLocaleDateString() : "TBD"}
+                      {!event.startAnytime && event.startTime ? ` • ${new Date(event.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}
                     </Text>
                   </View>
 

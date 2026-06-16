@@ -35,11 +35,11 @@ export default function MyTestimonialsScreen() {
   };
 
   const upcomingEvents = events.filter(
-    (ev) => !ev.start_at || new Date(ev.start_at) >= new Date()
+    (ev) => !ev.startDate || new Date(ev.startDate) >= new Date()
   );
 
   const pastEvents = events.filter(
-    (ev) => ev.start_at && new Date(ev.start_at) < new Date()
+    (ev) => ev.startDate && new Date(ev.startDate) < new Date()
   );
 
   const displayEvents = activeTab === 'upcoming' ? upcomingEvents : pastEvents;
@@ -112,7 +112,7 @@ export default function MyTestimonialsScreen() {
                   {activeTab === 'upcoming' ? "You haven't joined any hangouts yet." : "No past hangouts to show."}
                 </Text>
                 {activeTab === 'upcoming' && (
-                   <TouchableOpacity onPress={() => router.push('/explore')} className="mt-6 bg-neo-yellow border-4 border-black px-6 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-1">
+                   <TouchableOpacity onPress={() => router.push('/')} className="mt-6 bg-neo-yellow border-4 border-black px-6 py-3 shadow-[4px_4px_0px_0px_#000] active:translate-y-1">
                       <Text className="font-black uppercase">Explore Hangouts</Text>
                    </TouchableOpacity>
                 )}

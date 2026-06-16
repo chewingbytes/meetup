@@ -100,7 +100,7 @@ export default function LoginScreen() {
               <Text style={styles.headline}>
                 Sign in to{"\n"}
                 <Text style={[styles.headline, { color: C.accent }]}>
-                  Hangout
+                  Soonest
                 </Text>
               </Text>
               <Text style={styles.subline}>

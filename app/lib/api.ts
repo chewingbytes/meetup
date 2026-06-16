@@ -125,7 +125,16 @@ export const getCommunitiesByTopic = (topicId: number) =>
   request(`/topics/${topicId}/communities`);
 
 // Events
-export const getEvents = () => request("/events");
+export const getEvents = (bounds?: { minLat: number; maxLat: number; minLng: number; maxLng: number }) => {
+  if (!bounds) return request("/events");
+  const p = new URLSearchParams({
+    minLat: String(bounds.minLat),
+    maxLat: String(bounds.maxLat),
+    minLng: String(bounds.minLng),
+    maxLng: String(bounds.maxLng),
+  });
+  return request(`/events?${p}`);
+};
 export const getMyEvents = (user_id: string) =>
   request(`/events/my-events?user_id=${user_id}`);
 export const getEvent = (id: string) => request(`/events/${id}`);
@@ -180,13 +189,30 @@ export const deleteProfile = (userId: string, headers?: Record<string, string>) 
 export const submitVerification = (userId: string) =>
   request(`/profile/${userId}/verify`, { method: "PATCH" });
 
-// Friendships (stubs)
-export const getFriendRequests = () => request("/friends/requests");
+// Friends
+export const getFriendRequests = (userId: string) =>
+  request(`/friends/requests?userId=${encodeURIComponent(userId)}`);
 export const respondFriend = (id: string, action: "accept" | "decline") =>
   request(`/friends/${id}/respond`, {
     method: "POST",
     body: JSON.stringify({ action }),
   });
+export const getFriends = (userId: string) =>
+  request(`/friends?userId=${encodeURIComponent(userId)}`);
+export const searchUsers = (q: string, userId: string) =>
+  request(`/friends/search?q=${encodeURIComponent(q)}&userId=${encodeURIComponent(userId)}`);
+export const sendFriendRequest = (requester_id: string, addressee_id: string) =>
+  request("/friends/send", {
+    method: "POST",
+    body: JSON.stringify({ requester_id, addressee_id }),
+  });
+export const getOrCreateDM = (user1_id: string, user2_id: string) =>
+  request("/friends/dm", {
+    method: "POST",
+    body: JSON.stringify({ user1_id, user2_id }),
+  });
+export const getDMs = (userId: string) =>
+  request(`/friends/dms?userId=${encodeURIComponent(userId)}`);
 
 // Testimonials
 export const getTestimonials = (event_id?: string, community_id?: string) =>

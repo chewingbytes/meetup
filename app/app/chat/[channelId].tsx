@@ -6,17 +6,21 @@
  */
 
 import { C } from "@/theme/clay";
+import { getCategoryConfig } from "@/utils/categories";
 import { useAuth } from "@/lib/authContext";
 import { useChat } from "@/lib/useChat";
+import { supabase } from "@/lib/supabase";
+import { getAvatarPublicUrl } from "@/lib/supabaseStorage";
 import { useChatNotificationStore } from "@/lib/stores/chatNotificationStore";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter, Stack } from "expo-router";
 import { ChevronLeft, MessageSquare, Send } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -54,23 +58,58 @@ function fmtTime(iso: string) {
 }
 
 export default function ChatScreen() {
-  const { channelId, channelName } = useLocalSearchParams<{
-    channelId: string;
-    channelName: string;
-  }>();
+  const { channelId, channelName, eventId, category, isDM, friendName, friendAvatar } =
+    useLocalSearchParams<{
+      channelId: string;
+      channelName: string;
+      eventId: string;
+      category: string;
+      isDM?: string;
+      friendName?: string;
+      friendAvatar?: string;
+    }>();
+  const isDirectMessage = isDM === "true";
+  const catConfig = getCategoryConfig(category);
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userProfile } = useAuth();
-  const myUsername = userProfile?.username ?? "";
+  const { user } = useAuth();
+  const myUserId = user?.id ?? "";
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [userAvatars, setUserAvatars] = useState<Record<string, string | null>>({});
+  const fetchedIds = useRef<Set<string>>(new Set());
 
   const markRead = useChatNotificationStore((s) => s.markRead);
   const setActiveChannel = useChatNotificationStore((s) => s.setActiveChannel);
 
   const { messages, onlineUsers, sendMessage, isLoading, error } =
     useChat(channelId);
+
+  // Batch-fetch profile avatars for any new senders
+  useEffect(() => {
+    const newIds = messages
+      .map((m) => m.user_id)
+      .filter((id) => id && id !== myUserId && !fetchedIds.current.has(id));
+    const unique = [...new Set(newIds)];
+    if (unique.length === 0) return;
+    unique.forEach((id) => fetchedIds.current.add(id));
+    supabase
+      .from("profiles")
+      .select("id, avatar_url")
+      .in("id", unique)
+      .then(({ data }) => {
+        if (!data) return;
+        const map: Record<string, string | null> = {};
+        data.forEach((p: any) => {
+          if (!p.avatar_url) { map[p.id] = null; return; }
+          map[p.id] = p.avatar_url.startsWith("http")
+            ? p.avatar_url
+            : getAvatarPublicUrl(p.avatar_url);
+        });
+        setUserAvatars((prev) => ({ ...prev, ...map }));
+      });
+  }, [messages, myUserId]);
 
   useEffect(() => {
     if (channelId) {
@@ -117,28 +156,59 @@ export default function ChatScreen() {
           <ChevronLeft size={20} color={C.textPrimary} strokeWidth={2.5} />
         </TouchableOpacity>
 
-        <View style={styles.headerInfo}>
-          {/* Channel icon */}
-          <LinearGradient
-            colors={C.Gradients.primary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.channelIcon}
-          >
-            <Text style={styles.channelIconText}>#</Text>
-          </LinearGradient>
+        <TouchableOpacity
+          style={styles.headerInfo}
+          onPress={() =>
+            !isDirectMessage && eventId
+              ? router.push({ pathname: "/events/[id]", params: { id: eventId } })
+              : undefined
+          }
+          activeOpacity={!isDirectMessage && eventId ? 0.7 : 1}
+        >
+          {isDirectMessage ? (
+            friendAvatar ? (
+              <Image
+                source={{ uri: friendAvatar.startsWith("http") ? friendAvatar : friendAvatar }}
+                style={styles.dmHeaderAvatar}
+              />
+            ) : (
+              <LinearGradient
+                colors={C.Gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.channelIcon}
+              >
+                <Text style={styles.dmAvatarInitial}>
+                  {(friendName ?? channelName ?? "?").charAt(0).toUpperCase()}
+                </Text>
+              </LinearGradient>
+            )
+          ) : (
+            <LinearGradient
+              colors={catConfig.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.channelIcon}
+            >
+              <catConfig.Icon size={18} color="#fff" strokeWidth={2.2} />
+            </LinearGradient>
+          )}
 
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {channelName ?? "general"}
+              {isDirectMessage ? (friendName ?? channelName) : (channelName ?? "general")}
             </Text>
             <Text style={styles.headerSub}>
-              {(onlineUsers?.length ?? 0) > 0
+              {isDirectMessage
+                ? "Direct message"
+                : (onlineUsers?.length ?? 0) > 0
                 ? `${onlineUsers!.length} online`
-                : "Group chat"}
+                : eventId
+                ? "tap to view event"
+                : "group chat"}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* ── Messages ── */}
@@ -164,14 +234,14 @@ export default function ChatScreen() {
                   <View style={styles.emptyIcon}>
                     <MessageSquare size={28} color={C.accent} strokeWidth={2} />
                   </View>
-                  <Text style={styles.emptyTitle}>#{channelName}</Text>
+                  <Text style={styles.emptyTitle}>{channelName}</Text>
                   <Text style={styles.emptySub}>
                     Be the first to say something!
                   </Text>
                 </View>
               }
               renderItem={({ item, index }) => {
-                const isMe = item.username === myUsername;
+                const isMe = item.user_id === myUserId;
                 const grad = authorGradient(item.username ?? "?");
 
                 // Show author name only when sender changes
@@ -188,17 +258,24 @@ export default function ChatScreen() {
                   >
                     {/* Avatar — only for others */}
                     {!isMe && (
-                      <LinearGradient
-                        colors={grad}
-                        style={[
-                          styles.avatar,
-                          !showAuthor && styles.avatarHidden,
-                        ]}
-                      >
-                        <Text style={styles.avatarText}>
-                          {item.username?.charAt(0)?.toUpperCase() ?? "?"}
-                        </Text>
-                      </LinearGradient>
+                      userAvatars[item.user_id] ? (
+                        <Image
+                          source={{ uri: userAvatars[item.user_id]! }}
+                          style={[styles.avatar, !showAuthor && styles.avatarHidden]}
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={grad}
+                          style={[
+                            styles.avatar,
+                            !showAuthor && styles.avatarHidden,
+                          ]}
+                        >
+                          <Text style={styles.avatarText}>
+                            {item.username?.charAt(0)?.toUpperCase() ?? "?"}
+                          </Text>
+                        </LinearGradient>
+                      )
                     )}
 
                     <View
@@ -339,9 +416,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  channelIconText: {
-    fontFamily: C.Fonts.heading,
-    fontSize: 18,
+  dmHeaderAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  dmAvatarInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 15,
     color: "#fff",
   },
   headerTitle: {
@@ -381,6 +463,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    overflow: "hidden",
   },
   avatarHidden: { opacity: 0 },
   avatarText: {

@@ -128,7 +128,7 @@ export default function CreateCommunity() {
       dateCreated: new Date().toISOString(),
     };
 
-    router.push("/explore");
+    router.push("/");
   }
 
   const progress = (step / TOTAL_STEPS) * 100;

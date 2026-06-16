@@ -1,78 +1,83 @@
-import { NeoButtonLoader } from "@/components/ui/neo-loader";
+import { C } from "@/theme/clay";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, ArrowRight, KeyRound } from "lucide-react-native";
+import { ArrowRight, ChevronLeft, KeyRound } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+const TOTAL_STEPS = 3;
+
 export default function OtpStep() {
   const router = useRouter();
-  const { email } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
+  const { email } = useLocalSearchParams<{ email: string }>();
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
-  const handleOtpChange = (text: string, index: number) => {
-    const newOtp = [...otp];
-    newOtp[index] = text;
-    setOtp(newOtp);
+  const isFull = otp.every((d) => d !== "");
 
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-    }
-  };
+  function handleChange(text: string, i: number) {
+    const next = [...otp];
+    next[i] = text;
+    setOtp(next);
+    if (text && i < 5) inputRefs.current[i + 1]?.focus();
+  }
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  function handleKeyPress(e: any, i: number) {
+    if (e.nativeEvent.key === "Backspace" && !otp[i] && i > 0) {
+      inputRefs.current[i - 1]?.focus();
     }
-  };
+  }
 
   const handleVerify = async () => {
-    const code = otp.join("");
-    if (code.length !== 6) {
-      Alert.alert("Error", "Please enter the full 6-digit code.");
+    if (!isFull) {
+      Alert.alert("Incomplete", "Please enter the full 6-digit code.");
       return;
     }
-
     setIsLoading(true);
-    // Mimic API Verification
+    // Verification logic wired later
     setTimeout(() => {
       setIsLoading(false);
-      // Navigate to next Step
       router.push("/verify/face" as any);
-    }, 1500);
+    }, 1000);
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#FFFDF5" }}>
-      <View
-        style={{ paddingTop: insets.top, zIndex: 50 }}
-        className="bg-[#FFD93D] px-5 pb-4 border-b-4 border-black"
+    <View style={[s.root, { backgroundColor: C.canvas }]}>
+      {/* Header */}
+      <LinearGradient
+        colors={C.Gradients.primary}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[s.header, { paddingTop: insets.top + 12 }]}
       >
-        <View className="flex-row items-center justify-between mt-4">
-          {/* <TouchableOpacity
-            onPress={() => router.back()}
-            className="bg-white border-2 border-black p-2 shadow-[2px_2px_0px_0px_#000]"
-          >
-            <ArrowLeft size={24} color="#000" strokeWidth={3} />
-          </TouchableOpacity> */}
-          <Text className="text-xl font-black uppercase tracking-tighter">
-            Step 2 of 3
-          </Text>
-          <View className="w-10" />
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <ChevronLeft size={20} color={C.accent} strokeWidth={2.5} />
+        </TouchableOpacity>
+        <View style={s.headerCenter}>
+          <Text style={s.headerStep}>Step 2 of {TOTAL_STEPS}</Text>
+          <Text style={s.headerTitle}>Verify Code</Text>
         </View>
+        <View style={{ width: 36 }} />
+      </LinearGradient>
+
+      {/* Progress */}
+      <View style={s.progressTrack}>
+        <View style={[s.progressFill, { width: `${(2 / TOTAL_STEPS) * 100}%` }]} />
       </View>
 
       <KeyboardAvoidingView
@@ -80,60 +85,72 @@ export default function OtpStep() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={{
-            padding: 20,
-            flexGrow: 1,
-            justifyContent: "center",
-          }}
+          contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 32 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <View className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_#000] mb-8">
-            <View className="absolute -top-8 left-1/2 -translate-x-8 bg-[#C4B5FD] border-4 border-black p-4 -rotate-3 shadow-[4px_4px_0px_0px_#000]">
-              <KeyRound size={32} color="black" />
-            </View>
+          {/* Icon badge */}
+          <View style={s.iconWrap}>
+            <LinearGradient
+              colors={C.Gradients.amber}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.iconBadge}
+            >
+              <KeyRound size={34} color="#fff" strokeWidth={2} />
+            </LinearGradient>
+          </View>
 
-            <Text className="text-3xl font-black uppercase text-center mt-8 mb-2">
-              Enter Code
-            </Text>
-            <Text className="font-bold text-center text-gray-500 mb-8">
-              We sent a 6-digit code to {email || "your email"}.
+          {/* Card */}
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Enter the code</Text>
+            <Text style={s.cardBody}>
+              We sent a 6-digit code to{"\n"}
+              <Text style={s.emailHighlight}>{email || "your email"}</Text>
             </Text>
 
-            <View className="flex-row justify-between gap-1 mb-8">
-              {otp.map((digit, index) => (
+            {/* OTP boxes */}
+            <View style={s.otpRow}>
+              {otp.map((digit, i) => (
                 <TextInput
-                  key={index}
-                  ref={(ref) => (inputRefs.current[index] = ref)}
+                  key={i}
+                  ref={(r) => { inputRefs.current[i] = r; }}
                   value={digit}
-                  onChangeText={(text) => handleOtpChange(text, index)}
-                  onKeyPress={(e) => handleKeyPress(e, index)}
-                  className="w-11 h-14 border-4 border-black bg-gray-50 text-center font-black text-2xl"
+                  onChangeText={(t) => handleChange(t, i)}
+                  onKeyPress={(e) => handleKeyPress(e, i)}
+                  style={[s.otpBox, digit ? s.otpBoxFilled : null]}
                   keyboardType="number-pad"
                   maxLength={1}
+                  textAlign="center"
                 />
               ))}
             </View>
 
             <TouchableOpacity
               onPress={handleVerify}
-              disabled={isLoading}
-              className="bg-neo-accent border-4 border-black p-4 flex-row items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#000] active:translate-y-1 active:shadow-none bg-[#FF6B6B]"
+              disabled={isLoading || !isFull}
+              style={[s.btn, (!isFull || isLoading) && s.btnDisabled]}
+              activeOpacity={0.85}
             >
-              {isLoading ? (
-                <NeoButtonLoader color="black" />
-              ) : (
-                <>
-                  <Text className="font-black text-lg uppercase text-white">
-                    Verify Code
-                  </Text>
-                  <ArrowRight size={24} color="white" strokeWidth={3} />
-                </>
-              )}
+              <LinearGradient
+                colors={isFull ? C.Gradients.primary : (["#D1D5DB", "#C4C9D4"] as any)}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={s.btnGrad}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Text style={s.btnText}>Verify Code</Text>
+                    <ArrowRight size={18} color="#fff" strokeWidth={2.5} />
+                  </>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => router.back()} className="mt-4">
-              <Text className="text-center font-bold text-xs uppercase underline">
-                Wrong Email? Go Back
-              </Text>
+            <TouchableOpacity onPress={() => router.back()} style={s.backLink}>
+              <Text style={s.backLinkText}>Wrong email? Go back</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -141,3 +158,152 @@ export default function OtpStep() {
     </View>
   );
 }
+
+const CARD_SHADOW = {
+  shadowColor: "#7C3AED",
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.11,
+  shadowRadius: 24,
+  elevation: 8,
+  borderWidth: 1,
+  borderTopColor: "rgba(255,255,255,0.9)",
+  borderLeftColor: "rgba(255,255,255,0.55)",
+  borderRightColor: "rgba(255,255,255,0.2)",
+  borderBottomColor: "rgba(255,255,255,0.1)",
+} as const;
+
+const s = StyleSheet.create({
+  root: { flex: 1 },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+    gap: 12,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: { flex: 1, alignItems: "center", gap: 1 },
+  headerStep: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.xs,
+    color: "rgba(255,255,255,0.75)",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  headerTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.md,
+    color: "#fff",
+  },
+
+  progressTrack: { height: 3, backgroundColor: "#EDE9FE" },
+  progressFill: { height: "100%", backgroundColor: C.accent },
+
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    gap: 20,
+    alignItems: "center",
+  },
+
+  iconWrap: { marginBottom: -12, zIndex: 1 },
+  iconBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#F59E0B",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  card: {
+    ...CARD_SHADOW,
+    backgroundColor: C.surface,
+    borderRadius: C.Radii.xl,
+    padding: C.Space.xl,
+    width: "100%",
+    paddingTop: 32,
+    gap: 20,
+    alignItems: "center",
+  },
+  cardTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+  },
+  cardBody: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    textAlign: "center",
+    lineHeight: C.FontSizes.sm * 1.6,
+  },
+  emailHighlight: {
+    fontFamily: C.Fonts.bodyBold,
+    color: C.accent,
+  },
+
+  otpRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  otpBox: {
+    width: 46,
+    height: 56,
+    borderRadius: C.Radii.md,
+    backgroundColor: "#F8F5FF",
+    borderWidth: 1.5,
+    borderColor: "#EDE9FE",
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+  },
+  otpBoxFilled: {
+    borderColor: C.accent,
+    backgroundColor: C.accentMuted,
+  },
+
+  btn: {
+    borderRadius: C.Radii.xl,
+    overflow: "hidden",
+    width: "100%",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  btnDisabled: { shadowOpacity: 0, elevation: 0 },
+  btnGrad: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  btnText: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
+  },
+
+  backLink: { paddingVertical: 4 },
+  backLinkText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.xs,
+    color: C.textTertiary,
+    textDecorationLine: "underline",
+  },
+});
