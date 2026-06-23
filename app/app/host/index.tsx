@@ -136,7 +136,7 @@ export default function HostScreen() {
     };
     console.log("Publishing event:", payload);
     Alert.alert("Event hosted", "Your event was published (mock).", [
-      { text: "OK", onPress: () => router.replace("/" as any) },
+      { text: "OK", onPress: () => router.replace("/home" as any) },
     ]);
   };
 
@@ -334,7 +334,7 @@ export default function HostScreen() {
                 : "Create new event"}
             </Text>
             <Text style={{ color: "#6b7280", marginTop: 4 }}>
-              Fill in the event details below.
+              Fill in the hangout details below.
             </Text>
           </View>
         </View>

@@ -1,106 +1,175 @@
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
-import { Link } from "expo-router";
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { validateSingaporeSchoolEmail } from "@/lib/schoolEmailValidation";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react-native";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 
-export default function SignupScreen() {
-  const [fullName, setFullName] = useState("");
+export default function RegisterScreen() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const isSchoolEmail =
-    email.endsWith(".edu") ||
-    email.includes("student") ||
-    email.includes(".edu.sg");
-
-  const handleSignup = async () => {
-    setLoading(true);
-    setErrorMsg("");
-
-    try {
-      const res = await fetch("http://localhost:4000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrorMsg(data.error || "Registration failed");
-      } else {
-        alert("Account created! Please log in.");
-      }
-    } catch (err) {
-      setErrorMsg("Network error");
+  const handleProceedToOnboarding = () => {
+    // Validation logic (simplified for UI demo)
+    if (!email.trim() || !password.trim()) {
+      // Alert.alert("Error", "Required");
     }
-
-    setLoading(false);
+    router.push({
+      pathname: "/onboarding",
+      params: { email, password },
+    });
   };
 
   return (
-    <View className="flex-1 bg-white px-6 justify-center">
-      <Text className="text-3xl font-bold mb-2">Create Account</Text>
-      <Text className="text-gray-500 mb-8">Join with your school email</Text>
-
-      <Text className="mb-1 font-medium">Full Name</Text>
-      <TextInput
-        placeholder="John Tan"
-        className="border rounded-xl px-4 py-3 mb-4"
-        value={fullName}
-        onChangeText={setFullName}
-      />
-
-      <Text className="mb-1 font-medium">School Email</Text>
-      <TextInput
-        placeholder="name@student.school.edu"
-        className={`border rounded-xl px-4 py-3 mb-1 ${
-          email.length > 0 && !isSchoolEmail ? "border-red-500" : ""
-        }`}
-        value={email}
-        onChangeText={setEmail}
-      />
-
-      {email.length > 0 && !isSchoolEmail && (
-        <Text className="text-red-500 mb-4">
-          Only valid school emails are allowed.
-        </Text>
-      )}
-
-      <Text className="mb-1 font-medium">Password</Text>
-      <TextInput
-        placeholder="••••••••"
-        secureTextEntry
-        className="border rounded-xl px-4 py-3 mb-6"
-        value={password}
-        onChangeText={setPassword}
-      />
-
-      {errorMsg.length > 0 && (
-        <Text className="text-red-500 text-center mb-4">{errorMsg}</Text>
-      )}
-
-      <TouchableOpacity
-        disabled={!isSchoolEmail || loading}
-        onPress={handleSignup}
-        className={`py-4 rounded-xl mb-4 ${
-          isSchoolEmail ? "bg-blue-600" : "bg-gray-300"
-        }`}
+    <SafeAreaView className="flex-1 bg-neo-bg" edges={["top"]}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <Text className="text-white text-center font-semibold">
-          {loading ? "Creating..." : "Sign Up"}
-        </Text>
-      </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+            <View className="flex-grow p-6">
+            {/* Back Button */}
+            <TouchableOpacity
+              activeOpacity={1}
+          onPress={() => {
+            router.back();
+          }}
+          className="mb-8 self-start active:translate-y-[2px] active:shadow-none shadow-[4px_4px_0px_0px_#000]"
+        >
+          <View className="bg-white border-4 border-black p-3">
+            <ArrowLeft size={24} color="#000" strokeWidth={3} />
+          </View>
+        </TouchableOpacity>
 
-      <View className="flex-row justify-center mt-8">
-        <Text className="text-gray-500">Already have an account? </Text>
-        <Link href="/login" asChild>
-          <TouchableOpacity>
-            <Text className="text-blue-600 font-semibold">Login</Text>
+        {/* Header */}
+        <View className="mb-10">
+          <Text className="text-6xl font-black uppercase text-black leading-[0.9] tracking-tighter mb-4 pt-1">
+            Join{" "}
+            <Text className="text-neo-red underline decoration-4 decoration-black underline-offset-4">
+              The
+            </Text>{" "}
+            Club.
+          </Text>
+          <View className="bg-neo-yellow border-4 border-black p-4 rotate-1 shadow-[4px_4px_0px_0px_#000] self-start max-w-[80%]">
+            <Text className="text-black font-bold uppercase tracking-widest leading-tight">
+              School Email Only!
+            </Text>
+          </View>
+        </View>
+
+        {/* Card */}
+        <View className="bg-white border-4 border-black p-6 mb-6 shadow-[8px_8px_0px_0px_#000]">
+          {/* Email */}
+          <View className="mb-6 gap-2">
+            <Text className="font-bold text-lg uppercase tracking-wider text-black">
+              School Email
+            </Text>
+            <Input
+              placeholder="you@school.edu.sg"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          {/* Password */}
+          <View className="mb-6 gap-2">
+            <Text className="font-bold text-lg uppercase tracking-wider text-black">
+              Password
+            </Text>
+            <View className="relative justify-center">
+              <Input
+                placeholder="Create password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                className="pr-12"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                className="absolute right-4 z-10"
+                style={{ top: 20 }}
+              >
+                {showPassword ? (
+                  <EyeOff size={24} color="#000" strokeWidth={3} />
+                ) : (
+                  <Eye size={24} color="#000" strokeWidth={3} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Confirm Password */}
+          <View className="mb-8 gap-2">
+            <Text className="font-bold text-lg uppercase tracking-wider text-black">
+              Confirm Password
+            </Text>
+            <View className="relative justify-center">
+              <Input
+                placeholder="Repeat password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry={!showConfirmPassword}
+                className="pr-12"
+              />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 z-10"
+                style={{ top: 20 }}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff size={24} color="#000" strokeWidth={3} />
+                ) : (
+                  <Eye size={24} color="#000" strokeWidth={3} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Button
+            onPress={handleProceedToOnboarding}
+            className="w-full" // Neo Green isn't defined, fallback to default or add logic? Button uses variants.
+            variant="default" // Red
+          >
+            START ONBOARDING
+          </Button>
+        </View>
+
+        {/* Login Link */}
+        <View className="mt-4 flex-row justify-center items-center gap-2 mb-10">
+          <Text className="font-medium text-black/60 uppercase">
+            Already a member?
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/login")}>
+            <Text className="font-black underline decoration-4 decoration-neo-yellow text-lg uppercase">
+              Log In
+            </Text>
           </TouchableOpacity>
-        </Link>
-      </View>
-    </View>
+        </View>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

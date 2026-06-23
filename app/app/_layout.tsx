@@ -1,15 +1,69 @@
 import { Stack } from "expo-router";
+import {
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+  useFonts as useNunito,
+} from "@expo-google-fonts/nunito";
+import {
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_700Bold,
+  useFonts as useDMSans,
+} from "@expo-google-fonts/dm-sans";
+import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
+
+import { AuthProvider } from "@/lib/authContext";
 import "../global.css";
 
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
+  const [nunitoLoaded] = useNunito({
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
+  });
+
+  const [dmSansLoaded] = useDMSans({
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_700Bold,
+  });
+
+  const fontsLoaded = nunitoLoaded && dmSansLoaded;
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
-    <>
+    <AuthProvider>
       <Stack
         screenOptions={{
-          headerShown: false, // 👈 this removes the top bar globally
-          animation: "none"
+          headerShown: false,
+          animation: "none",
+          contentStyle: { backgroundColor: "#F4F1FA" },
         }}
-      />
-    </>
+      >
+        {/* Settings: slides in from right, back slides out to right */}
+        <Stack.Screen
+          name="settings/index"
+          options={{ animation: "slide_from_right" }}
+        />
+        {/* Friends: slides up from bottom, back slides back down */}
+        <Stack.Screen
+          name="friends/index"
+          options={{ animation: "slide_from_right" }}
+        />
+        <Stack.Screen
+          name="profile/[id]"
+          options={{ animation: "slide_from_right" }}
+        />
+      </Stack>
+    </AuthProvider>
   );
 }

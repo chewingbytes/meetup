@@ -1,59 +1,81 @@
 import * as React from "react";
-import { View, ViewProps } from "react-native";
+import { View, ViewProps, Text, TextProps } from "react-native";
 
 interface CardProps extends ViewProps {
-  className?: string;
+  className?: string; // Add className prop for nativewind
 }
 
-function Card({ className = "", ...props }: CardProps) {
+function Card({ className, style, ...props }: CardProps) {
+  const shadowStyle = {
+    elevation: 0, 
+    shadowColor: "#000",
+    shadowOffset: { width: 8, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+  };
+
   return (
     <View
-      className={`bg-white dark:bg-gray-800 text-black dark:text-white flex flex-col gap-6 rounded-xl border border-gray-200 dark:border-gray-700 py-6 shadow-sm ${className}`}
+      style={[shadowStyle, style]} /* Override shadow */
+      className={`bg-white border-4 border-black mb-6 ${className || ''}`}
       {...props}
     />
   );
 }
 
-function CardHeader({ className = "", ...props }: CardProps) {
+function CardHeader({ className, style, ...props }: CardProps) {
   return (
     <View
-      className={`flex flex-col gap-2 px-6 ${className}`}
+      className={`p-4 border-b-4 border-black bg-neo-bg ${className || ''}`}
+      style={style}
       {...props}
     />
   );
 }
 
-function CardTitle({ className = "", ...props }: CardProps) {
+function CardTitle({ className, style, ...props }: TextProps & { className?: string }) {
   return (
-    <View className={`font-semibold text-base ${className}`} {...props} />
-  );
-}
-
-function CardDescription({ className = "", ...props }: CardProps) {
-  return (
-    <View
-      className={`text-gray-500 dark:text-gray-400 text-sm ${className}`}
+    <Text
+      className={`text-2xl font-bold uppercase tracking-tighter text-black ${className || ''}`}
+      style={style}
       {...props}
     />
   );
 }
 
-function CardAction({ className = "", ...props }: CardProps) {
+function CardDescription({ className, style, ...props }: TextProps & { className?: string }) {
   return (
-    <View
-      className={`self-start justify-end ${className}`}
+    <Text
+      className={`text-base text-black/70 font-medium mt-1 ${className || ''}`}
+      style={style}
       {...props}
     />
   );
 }
 
-function CardContent({ className = "", ...props }: CardProps) {
-  return <View className={`px-6 ${className}`} {...props} />;
+function CardAction({ className, style, ...props }: CardProps) {
+  return (
+    <View
+      className={`justify-end ${className || ''}`}
+      style={style}
+      {...props}
+    />
+  );
 }
 
-function CardFooter({ className = "", ...props }: CardProps) {
+function CardContent({ className, style, ...props }: CardProps) {
   return (
-    <View className={`flex flex-row items-center px-6 pt-6 ${className}`} {...props} />
+    <View className={`p-4 ${className || ''}`} style={style} {...props} />
+  );
+}
+
+function CardFooter({ className, style, ...props }: CardProps) {
+  return (
+    <View
+      className={`flex-row items-center p-4 border-t-4 border-black bg-neo-white ${className || ''}`}
+      style={style}
+      {...props}
+    />
   );
 }
 

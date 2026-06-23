@@ -14,37 +14,66 @@ interface AvatarFallbackProps extends TextProps {
   children: string;
 }
 
-export function Avatar({ size = 40, className = "", style, ...props }: AvatarProps) {
-  return (
-    <View
-      style={[{ width: size, height: size, borderRadius: size / 2, overflow: "hidden" }, style]}
-      className={`bg-gray-200 ${className}`}
-      {...props}
-    />
-  );
-}
-
-export function AvatarImage({ size = 40, className = "", style, ...props }: AvatarImageProps) {
-  return (
-    <Image
-      style={[{ width: size, height: size, borderRadius: size / 2 }, style]}
-      className={className}
-      {...props}
-    />
-  );
-}
-
-export function AvatarFallback({ size = 40, children, className = "", style, ...props }: AvatarFallbackProps) {
+export function Avatar({ size = 40, style, ...props }: AvatarProps) {
   return (
     <View
       style={[
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: "#E5E7EB", alignItems: "center", justifyContent: "center" },
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          overflow: "hidden",
+          backgroundColor: "#27272a",
+          borderWidth: 2,
+          borderColor: "#4f46e5",
+        },
         style,
       ]}
-      className={className}
+      {...props}
+    />
+  );
+}
+
+export function AvatarImage({ size = 40, style, ...props }: AvatarImageProps) {
+  return (
+    <Image
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+        },
+        style,
+      ]}
+      {...props}
+    />
+  );
+}
+
+export function AvatarFallback({
+  size = 40,
+  children,
+  style,
+  ...props
+}: AvatarFallbackProps) {
+  return (
+    <View
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: "#4f46e5",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+        style,
+      ]}
       {...props}
     >
-      <Text style={{ fontSize: size / 2, fontWeight: "bold", color: "#111827" }}>{children}</Text>
+      <Text style={{ fontSize: size / 2.5, fontWeight: "700", color: "#fff" }}>
+        {children}
+      </Text>
     </View>
   );
 }

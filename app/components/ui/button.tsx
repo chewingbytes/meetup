@@ -1,55 +1,72 @@
 import React from "react";
-import { Text, TouchableOpacity } from "react-native";
-import { tv, type VariantProps } from "tailwind-variants";
+import { Text, Pressable, View } from "react-native";
 
-const buttonStyles = tv({
-  base: "flex flex-row items-center justify-center rounded-md active:opacity-80",
-  variants: {
-    variant: {
-      default: "bg-primary",
-      destructive: "bg-red-600",
-      outline: "border border-gray-300",
-      secondary: "bg-secondary",
-      ghost: "",
-      link: "",
-    },
-    size: {
-      default: "h-10 px-4",
-      sm: "h-8 px-3",
-      lg: "h-12 px-6",
-      icon: "h-10 w-10",
-    },
-  },
-  defaultVariants: {
-    variant: "default",
-    size: "default",
-  },
-});
-
-type ButtonProps = {
+interface ButtonProps {
   children: React.ReactNode;
-  className?: string;
-  variant?: VariantProps<typeof buttonStyles>["variant"];
-  size?: VariantProps<typeof buttonStyles>["size"];
   onPress?: () => void;
   disabled?: boolean;
-};
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  className?: string; // For additional styling
+}
 
 export const Button = ({
   children,
-  className,
-  variant,
-  size,
   onPress,
-  disabled,
+  disabled = false,
+  variant = 'default',
+  size = 'default',
+  className = "",
 }: ButtonProps) => {
+
+  const baseClasses = "flex-row items-center justify-center border-4 border-black active:translate-x-[2px] active:translate-y-[2px] active:shadow-none";
+  const shadowStyle = {
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 0,
+  };
+
+  // Variant styles
+  const variantStyles = {
+    default: "bg-neo-red",
+    destructive: "bg-red-500",
+    outline: "bg-white",
+    secondary: "bg-neo-yellow",
+    ghost: "bg-transparent border-transparent active:bg-neo-yellow active:border-black",
+  };
+
+  // Size styles
+  const sizeStyles = {
+    default: "h-14 px-6",
+    sm: "h-10 px-4",
+    lg: "h-16 px-8",
+    icon: "h-14 w-14 items-center justify-center px-0",
+  };
+  
+  // Text styles
+  const textBase = "font-space-bold uppercase tracking-wider text-black text-center font-bold";
+  const textSize = {
+    default: "text-base",
+    sm: "text-sm",
+    lg: "text-lg",
+    icon: "text-xl",
+  };
+
   return (
-    <TouchableOpacity
-      disabled={disabled}
+    <Pressable
       onPress={onPress}
-      className={buttonStyles({ variant, size, className })}
+      disabled={disabled}
+      className={`${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${className} ${disabled ? 'opacity-50' : ''}`}
+      style={({ pressed }) => [
+        variant !== 'ghost' && !pressed ? shadowStyle : {}, // conditional shadow
+        // NativeWind handles the rest via className
+      ]}
     >
-      <Text className="text-white font-medium">{children}</Text>
-    </TouchableOpacity>
+      <Text className={`${textBase} ${textSize[size]}`}>
+        {children}
+      </Text>
+    </Pressable>
   );
 };
