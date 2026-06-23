@@ -24,28 +24,65 @@ const router = express.Router();
 const AVATAR_BUCKET = "soonest";
 const AVATAR_PREFIX = "avatars";
 let bucketReady = false;
+// Last storage error seen — surfaced by GET /webapp/debug/storage for diagnosis.
+let lastAvatarError: string | null = null;
 
-async function ensureAvatarBucket(): Promise<void> {
-  if (bucketReady) return;
-  try {
-    await supabase.storage.createBucket(AVATAR_BUCKET, { public: true });
-  } catch {
-    /* already exists — ignore */
+/** Make sure the logical Supabase Storage bucket exists. We don't latch the
+ *  "ready" flag on failure, so a transient/config error is retried next call. */
+async function ensureAvatarBucket(): Promise<boolean> {
+  if (bucketReady) return true;
+  // createBucket is idempotent enough for us: it errors if the bucket already
+  // exists, which is success for our purposes.
+  const { error } = await supabase.storage.createBucket(AVATAR_BUCKET, {
+    public: true,
+  });
+  if (error && !/exist/i.test(error.message)) {
+    lastAvatarError = `createBucket: ${error.message}`;
+    console.warn("[webapp] createBucket failed:", error.message);
+    return false;
   }
   bucketReady = true;
+  return true;
 }
 
 function isGoogleAvatar(url: unknown): url is string {
   return typeof url === "string" && /googleusercontent\.com/.test(url);
 }
 
+/** Browser-facing public URL for a stored avatar. Prefers AVATAR_PUBLIC_BASE (so
+ *  we can serve over the public HTTPS domain even when SUPABASE_URL is an
+ *  internal http://IP), falling back to supabase-js's getPublicUrl. */
+function publicAvatarUrl(path: string): string | null {
+  const base = process.env.AVATAR_PUBLIC_BASE?.replace(/\/$/, "");
+  if (base) return `${base}/storage/v1/object/public/${AVATAR_BUCKET}/${path}`;
+  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+  return data?.publicUrl ?? null;
+}
+
+/** Rewrite a stored Supabase Storage URL onto the public HTTPS base so browsers
+ *  never receive an insecure http://IP URL (mixed content). Applied at read time
+ *  so older rows self-heal. Non-storage URLs (Google, native app) and the
+ *  no-base case pass through untouched. */
+function normalizeStoredAvatar<T extends string | null | undefined>(url: T): T {
+  if (!url) return url;
+  const base = process.env.AVATAR_PUBLIC_BASE?.replace(/\/$/, "");
+  if (!base) return url;
+  const idx = url.indexOf("/storage/v1/object/");
+  if (idx === -1) return url;
+  return (base + url.slice(idx)) as T;
+}
+
 /** Download a remote avatar and re-host it in our public bucket. Returns the
  *  hosted public URL, or null on failure (caller falls back to the source). */
 async function cacheAvatar(uid: string, sourceUrl: string): Promise<string | null> {
   try {
-    await ensureAvatarBucket();
+    if (!(await ensureAvatarBucket())) return null;
     const resp = await fetch(sourceUrl);
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      lastAvatarError = `fetch avatar: HTTP ${resp.status}`;
+      console.warn("[webapp] avatar fetch failed:", resp.status);
+      return null;
+    }
     const buf = Buffer.from(await resp.arrayBuffer());
     const contentType = resp.headers.get("content-type") || "image/jpeg";
     const ext = contentType.includes("png") ? "png" : "jpg";
@@ -54,13 +91,16 @@ async function cacheAvatar(uid: string, sourceUrl: string): Promise<string | nul
       .from(AVATAR_BUCKET)
       .upload(path, buf, { contentType, upsert: true });
     if (error) {
+      lastAvatarError = `upload: ${error.message}`;
       console.warn("[webapp] avatar upload failed:", error.message);
       return null;
     }
-    const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+    lastAvatarError = null;
+    const url = publicAvatarUrl(path);
     // Cache-bust so a re-uploaded avatar isn't served stale from the CDN.
-    return data?.publicUrl ? `${data.publicUrl}?v=${Date.now()}` : null;
+    return url ? `${url}?v=${Date.now()}` : null;
   } catch (e: any) {
+    lastAvatarError = `exception: ${e?.message || String(e)}`;
     console.warn("[webapp] cacheAvatar failed:", e?.message);
     return null;
   }
@@ -104,8 +144,8 @@ async function enrichEvents(events: any[]): Promise<any[]> {
     return {
       ...e,
       organizer_username: o?.username ?? null,
-      organizer_avatar_url: o?.avatar_url ?? null,
-      organizer_photo_url: o?.photo_url ?? null,
+      organizer_avatar_url: normalizeStoredAvatar(o?.avatar_url ?? null),
+      organizer_photo_url: normalizeStoredAvatar(o?.photo_url ?? null),
     };
   });
 }
@@ -315,7 +355,7 @@ router.post("/users", async (req, res) => {
       .select()
       .single();
     if (error) throw error;
-    res.status(200).json(data);
+    res.status(200).json({ ...data, avatar_url: normalizeStoredAvatar(data.avatar_url) });
   } catch (err: any) {
     // Unique-constraint backstop (handles a race past the check above).
     if (err?.code === "23505") {
@@ -339,10 +379,158 @@ router.get("/users/:id", async (req, res) => {
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ message: "Not found" });
-    res.json(data);
+    res.json({ ...data, avatar_url: normalizeStoredAvatar(data.avatar_url) });
   } catch (err: any) {
     console.error("[webapp] get user error:", err);
     res.status(500).json({ message: err.message || "Failed to fetch user" });
+  }
+});
+
+// Optional shared-secret guard for the debug routes. If ADMIN_TOKEN is set in
+// the server env, callers must pass ?token=… (or x-admin-token header); if it's
+// unset we allow it (dev convenience) but warn so it isn't left open forever.
+function debugAllowed(req: any): boolean {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) {
+    console.warn("[webapp] debug route hit with no ADMIN_TOKEN set — open to anyone");
+    return true;
+  }
+  const got = req.query?.token || req.headers?.["x-admin-token"];
+  return got === expected;
+}
+
+// ── Batch avatar lookup (powers chat message avatars) ────────────────────────
+// POST /api/webapp/avatars { ids: string[] } → { [id]: { instagram, avatar_url } }
+router.post("/avatars", async (req, res) => {
+  try {
+    const raw = Array.isArray(req.body?.ids) ? req.body.ids : [];
+    const ids = [...new Set(raw.filter((x: any) => typeof x === "string" && x))] as string[];
+    if (ids.length === 0) return res.json({});
+
+    const [{ data: profiles }, { data: webUsers }] = await Promise.all([
+      supabase.from("profiles").select("id, username, avatar_url").in("id", ids),
+      supabase.from("webapp_users").select("id, instagram, avatar_url").in("id", ids),
+    ]);
+
+    const out: Record<string, { instagram: string | null; avatar_url: string | null }> = {};
+    for (const p of profiles || [])
+      out[p.id] = { instagram: p.username ?? null, avatar_url: normalizeStoredAvatar(p.avatar_url ?? null) };
+    // Webapp identities win over native profiles for the same id.
+    for (const w of webUsers || [])
+      out[w.id] = { instagram: w.instagram ?? null, avatar_url: normalizeStoredAvatar(w.avatar_url ?? null) };
+
+    res.json(out);
+  } catch (err: any) {
+    console.error("[webapp] avatars error:", err);
+    res.status(500).json({ message: err.message || "Failed to fetch avatars" });
+  }
+});
+
+// ── Storage diagnostics: tells you EXACTLY why avatar uploads fail ────────────
+// GET /api/webapp/debug/storage[?token=…]
+router.get("/debug/storage", async (req, res) => {
+  if (!debugAllowed(req)) return res.status(403).json({ message: "forbidden" });
+  const report: Record<string, any> = {
+    bucket: AVATAR_BUCKET,
+    prefix: AVATAR_PREFIX,
+    supabase_url: process.env.SUPABASE_URL ?? null,
+    lastAvatarError,
+  };
+  try {
+    const { data: buckets, error: listErr } = await supabase.storage.listBuckets();
+    report.listBuckets = listErr
+      ? { error: listErr.message }
+      : (buckets || []).map((b: any) => ({ name: b.name, public: b.public }));
+
+    const { error: createErr } = await supabase.storage.createBucket(AVATAR_BUCKET, { public: true });
+    report.ensureBucket = createErr ? createErr.message : "created";
+
+    // Live round-trip via supabase-js — unwrap the (often opaque) error so we see
+    // the underlying S3/R2 cause instead of a bare "Error".
+    const testPath = `${AVATAR_PREFIX}/_diagnostic.txt`;
+    const { error: upErr } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(testPath, Buffer.from(`ok ${new Date().toISOString()}`), {
+        contentType: "text/plain",
+        upsert: true,
+      });
+    report.uploadTest = upErr
+      ? {
+          name: (upErr as any).name,
+          message: upErr.message,
+          status: (upErr as any).status,
+          statusCode: (upErr as any).statusCode,
+          originalError: (upErr as any).originalError
+            ? String((upErr as any).originalError)
+            : undefined,
+        }
+      : "ok";
+
+    // Raw REST upload — bypasses supabase-js error mangling so we capture the
+    // storage container's actual HTTP status + response body (the real reason).
+    try {
+      const base = (process.env.SUPABASE_URL || "").replace(/\/$/, "");
+      const rawRes = await fetch(
+        `${base}/storage/v1/object/${AVATAR_BUCKET}/${AVATAR_PREFIX}/_diagnostic_raw.txt`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.SUPABASE_ROLE_KEY}`,
+            "Content-Type": "text/plain",
+            "x-upsert": "true",
+          },
+          body: `raw ok ${new Date().toISOString()}`,
+        },
+      );
+      report.rawUpload = { status: rawRes.status, body: await rawRes.text() };
+    } catch (e: any) {
+      report.rawUpload = { fetchError: e?.message || String(e) };
+    }
+
+    const { data: pub } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(testPath);
+    report.publicUrl = pub?.publicUrl ?? null;
+
+    const { data: objs, error: lsErr } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .list(AVATAR_PREFIX, { limit: 20 });
+    report.objects = lsErr ? { error: lsErr.message } : (objs || []).map((o: any) => o.name);
+
+    res.json(report);
+  } catch (e: any) {
+    report.exception = e?.message || String(e);
+    res.status(500).json(report);
+  }
+});
+
+// ── Bulk-migrate existing Google avatar URLs into the bucket (run once after
+//    storage works). POST /api/webapp/debug/rehost-avatars[?token=…]
+router.post("/debug/rehost-avatars", async (req, res) => {
+  if (!debugAllowed(req)) return res.status(403).json({ message: "forbidden" });
+  try {
+    const { data: rows, error } = await supabase
+      .from("webapp_users")
+      .select("id, avatar_url")
+      .limit(1000);
+    if (error) throw error;
+
+    const targets = (rows || []).filter((r: any) => isGoogleAvatar(r.avatar_url));
+    let migrated = 0;
+    const failures: { id: string; reason: string | null }[] = [];
+
+    for (const r of targets) {
+      const hosted = await cacheAvatar(r.id, r.avatar_url);
+      if (hosted) {
+        await supabase.from("webapp_users").update({ avatar_url: hosted }).eq("id", r.id);
+        migrated++;
+      } else {
+        failures.push({ id: r.id, reason: lastAvatarError });
+      }
+    }
+
+    res.json({ candidates: targets.length, migrated, failures });
+  } catch (err: any) {
+    console.error("[webapp] rehost-avatars error:", err);
+    res.status(500).json({ message: err.message || "Failed to re-host avatars" });
   }
 });
 
@@ -508,7 +696,7 @@ router.get("/events/:id/requests", async (req, res) => {
       (rows || []).map((r: any) => ({
         webapp_user_id: r.webapp_user_id,
         instagram: userMap[r.webapp_user_id]?.instagram ?? null,
-        avatar_url: userMap[r.webapp_user_id]?.avatar_url ?? null,
+        avatar_url: normalizeStoredAvatar(userMap[r.webapp_user_id]?.avatar_url ?? null),
         joined_at: r.joined_at,
       })),
     );
@@ -603,7 +791,7 @@ router.get("/events/:id", async (req, res) => {
         participants.push({
           id: p.id,
           instagram: p.instagram_handle ?? null,
-          avatar_url: p.avatar_url ?? null,
+          avatar_url: normalizeStoredAvatar(p.avatar_url ?? null),
           main_interest: p.main_interest ?? null,
           source: "app",
           status: "approved",
@@ -634,7 +822,7 @@ router.get("/events/:id", async (req, res) => {
           participants.push({
             id: w.id,
             instagram: w.instagram ?? null,
-            avatar_url: w.avatar_url ?? null,
+            avatar_url: normalizeStoredAvatar(w.avatar_url ?? null),
             main_interest: null,
             source: "webapp",
             status: "approved",
