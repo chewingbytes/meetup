@@ -19,8 +19,10 @@ const router = express.Router();
 // ── Avatar caching (fixes Google's 429 hotlink throttling) ───────────────────
 // Browsers loading lh3.googleusercontent.com directly from many pins get rate
 // limited (HTTP 429). We download the Google avatar once and re-host it in our
-// own Supabase Storage bucket, then serve that stable public URL everywhere.
-const AVATAR_BUCKET = "webapp-avatars";
+// own Supabase Storage bucket (R2-backed "soonest" bucket), then serve that
+// stable public URL everywhere. Avatars live under the `avatars/` prefix.
+const AVATAR_BUCKET = "soonest";
+const AVATAR_PREFIX = "avatars";
 let bucketReady = false;
 
 async function ensureAvatarBucket(): Promise<void> {
@@ -47,7 +49,7 @@ async function cacheAvatar(uid: string, sourceUrl: string): Promise<string | nul
     const buf = Buffer.from(await resp.arrayBuffer());
     const contentType = resp.headers.get("content-type") || "image/jpeg";
     const ext = contentType.includes("png") ? "png" : "jpg";
-    const path = `${uid}.${ext}`;
+    const path = `${AVATAR_PREFIX}/${uid}.${ext}`;
     const { error } = await supabase.storage
       .from(AVATAR_BUCKET)
       .upload(path, buf, { contentType, upsert: true });
@@ -87,9 +89,16 @@ async function enrichEvents(events: any[]): Promise<any[]> {
       avatar_url: p.avatar_url ?? null,
       photo_url: p.photo_urls?.[0] ?? p.avatar_url ?? null,
     };
-  for (const w of webUsers || [])
-    if (!map[w.id])
-      map[w.id] = { username: w.instagram ?? null, avatar_url: w.avatar_url ?? null, photo_url: w.avatar_url ?? null };
+  // Webapp identities fill in (or override empty) profile fields — a webapp host
+  // may have an auth/profiles row with no username, so the IG handle is the name.
+  for (const w of webUsers || []) {
+    const cur = map[w.id];
+    map[w.id] = {
+      username: cur?.username ?? w.instagram ?? null,
+      avatar_url: cur?.avatar_url ?? w.avatar_url ?? null,
+      photo_url: cur?.photo_url ?? w.avatar_url ?? null,
+    };
+  }
   return events.map((e) => {
     const o = map[e.organizer_id];
     return {
