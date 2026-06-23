@@ -109,6 +109,22 @@ export function CreateActivitySheet({
     setSuggestions([]);
   };
 
+  // Wipe every field back to defaults so the next "Drop an activity" starts blank.
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setDateStr(toDateStr(new Date()));
+    setAnytime(true);
+    setTime("");
+    setRequireApproval(false);
+    setError(null);
+    setAuthForm(null);
+    setAddrQuery("");
+    setSuggestions([]);
+    onClearLocation();
+    clearCreateDraft();
+  };
+
   const resetAndClose = () => {
     setAuthForm(null);
     onClose();
@@ -168,7 +184,7 @@ export function CreateActivitySheet({
       if (user) {
         const created = await createEvent({ ...payload, organizerId: user.id });
         await joinWebappEvent(user.id, created.id).catch(() => {});
-        clearCreateDraft();
+        resetForm();
         onCreated(created);
       } else {
         setAuthForm(payload);
