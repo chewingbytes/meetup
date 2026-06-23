@@ -48,7 +48,22 @@ export default function RootLayout() {
           animation: "none",
           contentStyle: { backgroundColor: "#F4F1FA" },
         }}
-      />
+      >
+        {/* Settings: slides in from right, back slides out to right */}
+        <Stack.Screen
+          name="settings/index"
+          options={{ animation: "slide_from_right" }}
+        />
+        {/* Friends: slides up from bottom, back slides back down */}
+        <Stack.Screen
+          name="friends/index"
+          options={{ animation: "slide_from_right" }}
+        />
+        <Stack.Screen
+          name="profile/[id]"
+          options={{ animation: "slide_from_right" }}
+        />
+      </Stack>
     </AuthProvider>
   );
 }

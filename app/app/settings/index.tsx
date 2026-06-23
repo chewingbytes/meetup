@@ -41,9 +41,9 @@ const SAMPLE_THUMBSUP = 47;
 const SAMPLE_MEETUPS = 12;
 
 const PROMPT_DEFS = [
-  { key: "fixation", label: "current hyper-fixation", placeholder: "What are you obsessed with right now?" },
-  { key: "building", label: "what i'm building", placeholder: "A project, a habit, a skill…" },
-  { key: "striving", label: "striving towards", placeholder: "Your north star goal…" },
+  { key: "fixation", label: "what do you like to do in your free time?", placeholder: "What are you obsessed with right now?" },
+  { key: "building", label: "what are you actively working towards?", placeholder: "A project, a habit, a skill…" },
+  { key: "striving", label: "what are some goals you have in mind?", placeholder: "Your north star goal…" },
 ] as const;
 
 const PROMPT_ACCENTS = ["#7C3AED", "#DB2777", "#059669"] as const;
@@ -304,6 +304,7 @@ export default function ProfileIndex() {
       interests: Array.isArray(userProfile.interests)
         ? userProfile.interests.filter(Boolean)
         : [],
+      main_interest: userProfile.main_interest || "",
       instagram_handle: userProfile.instagram_handle || "",
       photo_urls: userProfile.avatar_url ? [userProfile.avatar_url] : [],
     });
@@ -388,6 +389,7 @@ export default function ProfileIndex() {
         school: form.school,
         year_of_study: form.year_of_study,
         interests: form.interests,
+        main_interest: form.main_interest || null,
         instagram_handle: (form.instagram_handle ?? "").trim() || null,
         photo_urls: finalUrls,
         avatar_url: finalUrls[0] || userProfile?.avatar_url || null,
@@ -555,12 +557,22 @@ export default function ProfileIndex() {
   };
 
   const toggleInterest = (item: string) => {
-    setForm((prev: any) => ({
-      ...prev,
-      interests: prev.interests.includes(item)
+    setForm((prev: any) => {
+      const has = prev.interests.includes(item);
+      const interests = has
         ? prev.interests.filter((i: string) => i !== item)
-        : [...prev.interests, item],
-    }));
+        : [...prev.interests, item];
+      // Keep the main interest valid: default it to the first one picked, and if
+      // the current main gets removed, fall back to whatever's left (or none).
+      let main_interest = prev.main_interest;
+      if (!has && !main_interest) main_interest = item;
+      if (has && main_interest === item) main_interest = interests[0] ?? "";
+      return { ...prev, interests, main_interest };
+    });
+  };
+
+  const setMainInterest = (item: string) => {
+    setForm((prev: any) => ({ ...prev, main_interest: item }));
   };
 
   const toggleNotification = async () => {
@@ -598,7 +610,7 @@ export default function ProfileIndex() {
   return (
     <ClayBackground>
       {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backBtn}
@@ -707,10 +719,11 @@ export default function ProfileIndex() {
                   <View style={styles.promptBubbleTailWrap}>
                     <View style={styles.promptBubbleTail} />
                   </View>
+                  <Text style={[styles.promptBubbleLabel, { color: accent }]}>{def.label}</Text>
                   <Text style={styles.promptBubbleText}>
-                    <Text style={[styles.promptBubbleQuote, { color: accent }]}>{"“"}</Text>
+                    <Text style={[styles.promptBubbleQuote, { color: accent }]}>{'”'}</Text>
                     {form.prompt_answer}
-                    <Text style={[styles.promptBubbleQuote, { color: accent }]}>{"”"}</Text>
+                    <Text style={[styles.promptBubbleQuote, { color: accent }]}>{'”'}</Text>
                   </Text>
                 </View>
               ) : null;
@@ -899,8 +912,7 @@ export default function ProfileIndex() {
             </ClayCard>
           )}
 
-          {/* ── Student verification ── */}
-          {isVerified ? (
+          {/* {isVerified ? (
             <View style={styles.verifiedBanner}>
               <LinearGradient
                 colors={C.Gradients.green}
@@ -955,9 +967,9 @@ export default function ProfileIndex() {
                 </View>
               </ClayCard>
             </TouchableOpacity>
-          )}
+          )} */}
 
-          {/* ── Personality quiz nudge ── */}
+          {/* ── Personality quiz nudge ──
           {needsQuiz && (
             <TouchableOpacity
               onPress={() => router.push("/settings/personality-quiz" as any)}
@@ -981,7 +993,7 @@ export default function ProfileIndex() {
               </LinearGradient>
             </TouchableOpacity>
           )}
-
+ */}
           {/* ── Extra photos strip (edit mode) ── */}
           {isEditing && (
             <View style={styles.photoStrip}>
@@ -1095,40 +1107,111 @@ export default function ProfileIndex() {
             Interests
           </Text>
           {isEditing ? (
-            <TouchableOpacity
-              style={styles.interestPickerTrigger}
-              onPress={() => setShowInterestPicker(true)}
-              activeOpacity={0.8}
-            >
-              {form.interests.length > 0 ? (
-                <View style={styles.tagsRow}>
-                  {form.interests.map((tag: string) => (
-                    <View key={tag} style={styles.tagSelected}>
-                      <Text style={styles.tagSelectedText}>{tag}</Text>
+            <>
+              <TouchableOpacity
+                style={styles.interestPickerTrigger}
+                onPress={() => setShowInterestPicker(true)}
+                activeOpacity={0.8}
+              >
+                {form.interests.length > 0 ? (
+                  <View style={styles.tagsRow}>
+                    {form.interests.map((tag: string) => (
+                      <View key={tag} style={styles.tagSelected}>
+                        <Text style={styles.tagSelectedText}>{tag}</Text>
+                      </View>
+                    ))}
+                    <View style={styles.tagAdd}>
+                      <Plus size={12} color={C.accent} strokeWidth={2.5} />
+                      <Text style={styles.tagAddText}>Edit</Text>
                     </View>
-                  ))}
-                  <View style={styles.tagAdd}>
-                    <Plus size={12} color={C.accent} strokeWidth={2.5} />
-                    <Text style={styles.tagAddText}>Edit</Text>
+                  </View>
+                ) : (
+                  <View style={styles.interestPlaceholder}>
+                    <Plus size={16} color={C.accent} strokeWidth={2.5} />
+                    <Text style={styles.interestPlaceholderText}>
+                      Choose your interests
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {form.interests.length > 0 && (
+                <View style={styles.mainInterestBlock}>
+                  <View style={styles.mainInterestHeader}>
+                    <Star size={13} color={C.accent} strokeWidth={2.5} fill={C.accent} />
+                    <Text style={styles.mainInterestTitle}>Main interest</Text>
+                  </View>
+                  <Text style={styles.mainInterestHint}>
+                    Shown on your map pin — people see this first, before they open
+                    your profile.
+                  </Text>
+                  <View style={styles.tagsRow}>
+                    {form.interests.map((tag: string) => {
+                      const isMain = form.main_interest === tag;
+                      return (
+                        <TouchableOpacity
+                          key={tag}
+                          onPress={() => setMainInterest(tag)}
+                          activeOpacity={0.8}
+                          style={[
+                            styles.mainChip,
+                            isMain && styles.mainChipActive,
+                          ]}
+                        >
+                          {isMain && (
+                            <Star size={11} color="#fff" strokeWidth={2.5} fill="#fff" />
+                          )}
+                          <Text
+                            style={[
+                              styles.mainChipText,
+                              isMain && styles.mainChipTextActive,
+                            ]}
+                          >
+                            {tag}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
-              ) : (
-                <View style={styles.interestPlaceholder}>
-                  <Plus size={16} color={C.accent} strokeWidth={2.5} />
-                  <Text style={styles.interestPlaceholderText}>
-                    Choose your interests
+              )}
+            </>
+          ) : (form.interests?.length ?? 0) > 0 ? (
+            <>
+              <View style={styles.tagsRow}>
+                {[...(form.interests ?? [])]
+                  .sort((a: string, b: string) =>
+                    a === form.main_interest ? -1 : b === form.main_interest ? 1 : 0,
+                  )
+                  .map((tag: string) => {
+                    const isMain = form.main_interest === tag;
+                    return (
+                      <View
+                        key={tag}
+                        style={isMain ? styles.tagMain : styles.tag}
+                      >
+                        {isMain && (
+                          <Star size={10} color="#fff" strokeWidth={2.5} fill="#fff" />
+                        )}
+                        <Text style={isMain ? styles.tagMainText : styles.tagText}>
+                          {tag}
+                        </Text>
+                      </View>
+                    );
+                  })}
+              </View>
+              {form.main_interest ? (
+                <View style={styles.mainInterestCaption}>
+                  <MapPin size={11} color={C.textSecondary} strokeWidth={2.5} />
+                  <Text style={styles.mainInterestCaptionText}>
+                    <Text style={styles.mainInterestCaptionStrong}>
+                      {form.main_interest}
+                    </Text>{" "}
+                    shows on your map pin
                   </Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          ) : (form.interests?.length ?? 0) > 0 ? (
-            <View style={styles.tagsRow}>
-              {(form.interests ?? []).map((tag: string) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
+              ) : null}
+            </>
           ) : (
             <Text style={styles.bioText}>No interests added yet.</Text>
           )}
@@ -1438,9 +1521,10 @@ const styles = StyleSheet.create({
   promptBubbleLabel: {
     fontFamily: C.Fonts.bodyBold,
     fontSize: C.FontSizes.xs,
+    textAlign: "center",
     textTransform: "uppercase",
     letterSpacing: 0.8,
-    marginBottom: 3,
+    marginBottom: 6,
   },
   promptBubbleText: {
     fontFamily: C.Fonts.body,
@@ -1713,6 +1797,74 @@ const styles = StyleSheet.create({
   tagAddText: {
     fontFamily: C.Fonts.bodyMedium,
     fontSize: C.FontSizes.sm,
+    color: C.accent,
+  },
+
+  // ── Main interest ──
+  mainInterestBlock: {
+    marginTop: C.Space.md,
+    paddingTop: C.Space.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(124,58,237,0.07)",
+    gap: 8,
+  },
+  mainInterestHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  mainInterestTitle: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+  mainInterestHint: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+    lineHeight: 16,
+  },
+  mainChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#F0EBF8",
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  mainChipActive: { backgroundColor: C.accent, borderColor: C.accent },
+  mainChipText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.accent,
+  },
+  mainChipTextActive: { color: "#fff", fontFamily: C.Fonts.bodyBold },
+  tagMain: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: C.accent,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  tagMainText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: "#fff",
+  },
+  mainInterestCaption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+  },
+  mainInterestCaptionText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.xs,
+    color: C.textSecondary,
+  },
+  mainInterestCaptionStrong: {
+    fontFamily: C.Fonts.bodyBold,
     color: C.accent,
   },
 

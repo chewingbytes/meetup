@@ -100,7 +100,7 @@ const profiles = [
 ---
 
 <Layout
-  title="soonest — the action-first social network"
+  title="soonest — the irl social network"
   description="Stop performative flexing. Find like-minded people who get the grind. Drop a pin, filter the vibe, link up for real."
 >
   <!-- ── Ambient blobs ── -->
@@ -150,8 +150,9 @@ const profiles = [
       </div>
 
       <p class="hero-sub">
-        stop just performatively flexing online. meet like-minded people who
-        actually push you forward.
+        stop just adding people to your connections list.
+        meet people who actually share your goals, ambitions,
+        and interests.
       </p>
 
       <div id="waitlist" class="form-card">
@@ -177,7 +178,9 @@ const profiles = [
         </div>
       </div>
 
-      <p class="hero-footnote">sign up now to enjoy early access and perks.</p>
+      <p class="hero-footnote">
+        join the exclusive waitlist for 3 months of free access to Soonest+.
+      </p>
     </div>
 
     <!-- Notification bubbles -->
@@ -273,9 +276,9 @@ const profiles = [
         <div class="section-badge">how it works</div>
         <h2 class="section-title">actually meet people.</h2>
         <p class="section-sub">
-          don't just add people to your connections list. browse, create and
-          join activities with like-minded individuals with just a click of a
-          button.
+          don't just add people to your connections list and forget. browse,
+          create and join activities with like-minded individuals with just a
+          click of a button.
         </p>
       </div>
 
@@ -349,7 +352,7 @@ const profiles = [
               <span>Live</span>
             </div>
             <span class="mm-location">📍 Downtown District</span>
-            <span class="mm-activity-count">12 active</span>
+            <span class="mm-activity-count">200+ active</span>
           </div>
 
           <!-- Compass -->
@@ -456,8 +459,8 @@ const profiles = [
                 training for a marathon? grinding late-night deep work? trying
                 to hit a new PR? or just want to grab a good dinner with good
                 people? drop a live pin on the map with the exact vibe or target
-                you’re chasing right now. find your parallel accountability
-                partner and cross the finish line together.
+                you’re chasing right now. find like-minded people and cross the
+                finish line together.
               </p>
             </div>
           </div>
@@ -477,12 +480,14 @@ const profiles = [
           <div class="hiw-step">
             <div class="step-num">03</div>
             <div class="step-content">
-              <h3 class="step-title">check the ledger</h3>
-              <p class="step-kicker">zero flake zone.</p>
+              <h3 class="step-title">
+                find real-life activities easily with other like-minded people
+              </h3>
+              <p class="step-kicker">just show up as you are.</p>
               <p class="step-body">
-                every profile features an automated reliability score based on
-                actual meetup attendance. we filter out the talkers so you only
-                link up with people who actually show up.
+                surrounding yourself with people who share your goals,
+                ambitions, and interests forces action. if your group chat lacks
+                ambition, you will naturally default to comfort.
               </p>
             </div>
           </div>
@@ -490,204 +495,202 @@ const profiles = [
       </div>
     </div>
   </section>
+</Layout>
 
-  <!-- ── Section 4: Profile Mocks (vertical phone screens) ── -->
-  <section class="section profiles-section">
-    <div class="section-inner">
-      <div class="section-head">
-        <div class="section-badge">the soonest profile</div>
-        <h2 class="section-title">no resume. no follower count.</h2>
-        <p class="section-sub">
-          just who you are, what you're working towards, and what you're down to
-          do — right now.
-        </p>
-      </div>
+<!-- ── Section 4: Profile Mocks (vertical phone screens) ── -->
+<section class="section profiles-section">
+  <div class="section-inner">
+    <div class="section-head">
+      <div class="section-badge">the soonest profile</div>
+      <h2 class="section-title">no resume. no follower count.</h2>
+      <p class="section-sub">
+        just who you are, what you're working towards, and what you're down to
+        do — right now.
+      </p>
+    </div>
 
-      <div class="profiles-wrap">
-        {
-          profiles.map((p, i) => (
-            <article
-              class={`phone pc-${i + 1}`}
-              style={`--pc:${p.accent};--pc-from:${p.accentFrom}`}
-            >
-              <div class="phone-glow" aria-hidden="true" />
-              <div class="phone-screen">
-                <div class="ps-status">
-                  <span class="ps-time">9:41</span>
-                  <span class="ps-status-ic">
-                    <svg width="17" height="11" viewBox="0 0 17 11" fill="none">
-                      <rect
-                        x="0"
-                        y="7"
-                        width="3"
-                        height="4"
-                        rx="1"
-                        fill="currentColor"
-                      />
-                      <rect
-                        x="4.5"
-                        y="5"
-                        width="3"
-                        height="6"
-                        rx="1"
-                        fill="currentColor"
-                      />
-                      <rect
-                        x="9"
-                        y="2.5"
-                        width="3"
-                        height="8.5"
-                        rx="1"
-                        fill="currentColor"
-                      />
-                      <rect
-                        x="13.5"
-                        y="0"
-                        width="3"
-                        height="11"
-                        rx="1"
-                        fill="currentColor"
-                        opacity="0.4"
-                      />
-                    </svg>
-                    <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
-                      <path
-                        d="M7.5 10.2 1 4.1a9 9 0 0 1 13 0L7.5 10.2Z"
+    <div class="profiles-wrap">
+      {
+        profiles.map((p, i) => (
+          <article
+            class={`phone pc-${i + 1}`}
+            style={`--pc:${p.accent};--pc-from:${p.accentFrom}`}
+          >
+            <div class="phone-glow" aria-hidden="true" />
+            <div class="phone-screen">
+              <div class="ps-status">
+                <span class="ps-time">9:41</span>
+                <span class="ps-status-ic">
+                  <svg width="17" height="11" viewBox="0 0 17 11" fill="none">
+                    <rect
+                      x="0"
+                      y="7"
+                      width="3"
+                      height="4"
+                      rx="1"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="4.5"
+                      y="5"
+                      width="3"
+                      height="6"
+                      rx="1"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="9"
+                      y="2.5"
+                      width="3"
+                      height="8.5"
+                      rx="1"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="13.5"
+                      y="0"
+                      width="3"
+                      height="11"
+                      rx="1"
+                      fill="currentColor"
+                      opacity="0.4"
+                    />
+                  </svg>
+                  <svg width="15" height="11" viewBox="0 0 15 11" fill="none">
+                    <path
+                      d="M7.5 10.2 1 4.1a9 9 0 0 1 13 0L7.5 10.2Z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.3"
+                      opacity="0.35"
+                    />
+                    <path
+                      d="M7.5 10.2 3.7 6.5a5.4 5.4 0 0 1 7.6 0L7.5 10.2Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <svg width="24" height="12" viewBox="0 0 24 12" fill="none">
+                    <rect
+                      x="0.5"
+                      y="0.5"
+                      width="20"
+                      height="11"
+                      rx="3"
+                      stroke="currentColor"
+                      opacity="0.45"
+                    />
+                    <rect
+                      x="2"
+                      y="2"
+                      width="15"
+                      height="8"
+                      rx="1.6"
+                      fill="currentColor"
+                    />
+                    <rect
+                      x="21.5"
+                      y="3.5"
+                      width="1.8"
+                      height="5"
+                      rx="0.9"
+                      fill="currentColor"
+                      opacity="0.45"
+                    />
+                  </svg>
+                </span>
+              </div>
+
+              <div class="ps-scroll">
+                <div class="ps-id">
+                  <div class="ps-ava-wrap">
+                    <Image
+                      src={p.img}
+                      alt={p.name}
+                      class="ps-ava"
+                      width={160}
+                      height={160}
+                    />
+                    <span class="ps-ava-status" />
+                  </div>
+                  <div class="ps-id-text">
+                    <div class="ps-name-row">
+                      <h3 class="ps-name">
+                        {p.name}, {p.age}
+                      </h3>
+                      <svg
+                        class="ps-verified"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
                         fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.3"
-                        opacity="0.35"
-                      />
-                      <path
-                        d="M7.5 10.2 3.7 6.5a5.4 5.4 0 0 1 7.6 0L7.5 10.2Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                    <svg width="24" height="12" viewBox="0 0 24 12" fill="none">
-                      <rect
-                        x="0.5"
-                        y="0.5"
-                        width="20"
-                        height="11"
-                        rx="3"
-                        stroke="currentColor"
-                        opacity="0.45"
-                      />
-                      <rect
-                        x="2"
-                        y="2"
-                        width="15"
-                        height="8"
-                        rx="1.6"
-                        fill="currentColor"
-                      />
-                      <rect
-                        x="21.5"
-                        y="3.5"
-                        width="1.8"
-                        height="5"
-                        rx="0.9"
-                        fill="currentColor"
-                        opacity="0.45"
-                      />
-                    </svg>
-                  </span>
-                </div>
-
-                <div class="ps-scroll">
-                  <div class="ps-id">
-                    <div class="ps-ava-wrap">
-                      <Image
-                        src={p.img}
-                        alt={p.name}
-                        class="ps-ava"
-                        width={160}
-                        height={160}
-                      />
-                      <span class="ps-ava-status" />
-                    </div>
-                    <div class="ps-id-text">
-                      <div class="ps-name-row">
-                        <h3 class="ps-name">
-                          {p.name}, {p.age}
-                        </h3>
-                        <svg
-                          class="ps-verified"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
+                      >
+                        <path
+                          d="M8 0.8l1.9 1.4 2.3-.2.9 2.2 2 1.2-.8 2.2.8 2.2-2 1.2-.9 2.2-2.3-.2L8 15.2 6.1 13.8l-2.3.2-.9-2.2-2-1.2.8-2.2-.8-2.2 2-1.2.9-2.2 2.3.2L8 0.8Z"
+                          fill="var(--pc)"
+                        />
+                        <path
+                          d="M5.4 8.1l1.7 1.7 3.5-3.6"
+                          stroke="#fff"
+                          stroke-width="1.4"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
                           fill="none"
-                        >
-                          <path
-                            d="M8 0.8l1.9 1.4 2.3-.2.9 2.2 2 1.2-.8 2.2.8 2.2-2 1.2-.9 2.2-2.3-.2L8 15.2 6.1 13.8l-2.3.2-.9-2.2-2-1.2.8-2.2-.8-2.2 2-1.2.9-2.2 2.3.2L8 0.8Z"
-                            fill="var(--pc)"
-                          />
-                          <path
-                            d="M5.4 8.1l1.7 1.7 3.5-3.6"
-                            stroke="#fff"
-                            stroke-width="1.4"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            fill="none"
-                          />
-                        </svg>
-                      </div>
-                      <p class="ps-role">
-                        {p.role} · {p.city}
-                      </p>
+                        />
+                      </svg>
                     </div>
-                  </div>
-
-                  <div class="ps-ledger">
-                    <div class="ps-ledger-top">
-                      <span class="ps-ledger-label">⚡ Reliability Ledger</span>
-                      <span class="ps-ledger-pct">{p.ledger}%</span>
-                    </div>
-                    <div class="ps-ledger-bar">
-                      <span
-                        class="ps-ledger-fill"
-                        style={`width:${p.ledger}%`}
-                      />
-                    </div>
-                    <p class="ps-ledger-note">{p.ledgerNote}</p>
-                  </div>
-
-                  <div class="ps-stats">
-                    {p.stats.map((s) => (
-                      <div class="ps-stat">
-                        <b>{s[0]}</b>
-                        <span>{s[1]}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div class="ps-block">
-                    <span class="ps-block-q">{p.promptQ}</span>
-                    <p class="ps-block-a">{p.promptA}</p>
-                  </div>
-
-                  <div class="ps-tags">
-                    {p.tags.map((t) => (
-                      <span class="ps-tag">{t}</span>
-                    ))}
-                  </div>
-
-                  <div class="ps-feed">
-                    <span class="ps-feed-h">recent meetups</span>
-                    {p.feed.map((f) => (
-                      <div class="ps-feed-row">
-                        <span class="ps-feed-ic">{f.ic}</span>
-                        <div class="ps-feed-txt">
-                          <b>{f.t}</b>
-                          <span>{f.s}</span>
-                        </div>
-                        <span class="ps-feed-chk">✓</span>
-                      </div>
-                    ))}
+                    <p class="ps-role">
+                      {p.role} · {p.city}
+                    </p>
                   </div>
                 </div>
 
-                {/* <div class="ps-actions">
+                <div class="ps-ledger">
+                  <div class="ps-ledger-top">
+                    <span class="ps-ledger-label">⚡ Reliability Ledger</span>
+                    <span class="ps-ledger-pct">{p.ledger}%</span>
+                  </div>
+                  <div class="ps-ledger-bar">
+                    <span class="ps-ledger-fill" style={`width:${p.ledger}%`} />
+                  </div>
+                  <p class="ps-ledger-note">{p.ledgerNote}</p>
+                </div>
+
+                <div class="ps-stats">
+                  {p.stats.map((s) => (
+                    <div class="ps-stat">
+                      <b>{s[0]}</b>
+                      <span>{s[1]}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div class="ps-block">
+                  <span class="ps-block-q">{p.promptQ}</span>
+                  <p class="ps-block-a">{p.promptA}</p>
+                </div>
+
+                <div class="ps-tags">
+                  {p.tags.map((t) => (
+                    <span class="ps-tag">{t}</span>
+                  ))}
+                </div>
+
+                <div class="ps-feed">
+                  <span class="ps-feed-h">recent meetups</span>
+                  {p.feed.map((f) => (
+                    <div class="ps-feed-row">
+                      <span class="ps-feed-ic">{f.ic}</span>
+                      <div class="ps-feed-txt">
+                        <b>{f.t}</b>
+                        <span>{f.s}</span>
+                      </div>
+                      <span class="ps-feed-chk">✓</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* <div class="ps-actions">
                   <button class="ps-act ps-act-ghost" type="button">
                     💬 Message
                   </button>
@@ -695,15 +698,15 @@ const profiles = [
                     Pull up 📍
                   </button>
                 </div> */}
-              </div>
-            </article>
-          ))
-        }
-      </div>
+            </div>
+          </article>
+        ))
+      }
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- <section class="section premium-section">
+<!-- <section class="section premium-section">
     <div class="section-inner">
       <div class="section-head">
         <div class="section-badge prem-badge">⚡ Soonest+</div>
@@ -762,123 +765,164 @@ const profiles = [
     </div>
   </section> -->
 
-  <!-- ── Why I Built Soonest ── -->
-  <section class="section founder-section">
-    <div class="section-inner">
-      <div class="founder-wrap">
-        <div class="founder-profile">
-          <div class="founder-avatar-wrap">
-            <Image
-              src={avaBryan}
-              alt="Bryan"
-              class="founder-avatar"
-              width={200}
-              height={200}
-            />
-          </div>
-          <div class="founder-name">bryan</div>
-          <div class="founder-role">💜 made with love by a fellow chap</div>
+<!-- ── Why I Built Soonest ── -->
+<section class="section founder-section">
+  <div class="section-inner">
+    <div class="founder-wrap">
+      <div class="founder-profile">
+        <div class="founder-avatar-wrap">
+          <Image
+            src={avaBryan}
+            alt="Bryan"
+            class="founder-avatar"
+            width={200}
+            height={200}
+          />
         </div>
+        <div class="founder-name">bryan</div>
+        <div class="founder-role">💜 made with love by a fellow chap</div>
+      </div>
 
-        <h2 class="founder-headline">why i built soonest</h2>
+      <h2 class="founder-headline">why i built soonest</h2>
 
+      <div class="founder-body">
         <div class="founder-body">
-          <div class="founder-body">
-            <p>
-              as a student entering my 20s, i realized how important it is to
-              build a circle of friends and peers who align with <span
-                style="font-weight: 800">your goals, values, and ambitions</span
-              >. i myself wouldn't have made this if it wasn't for a specific
-              someone i met recently. but that's a story for another day.
-            </p>
-            <p>
-              Finding people who share similar goals is one of the most
-              rewarding ways to grow, whether you are trying to improve your
-              fitness, build a business, or get better at a sport. and the best
-              way to do that is to meet people who share your drive or similar
-              interests and passions, and just start doing things together.
-            </p>
-            <p>
-              existing apps solve the wrong problems. dating apps optimize for
-              superficial romance, apps like meetup skew way too formal, and
-              forums lack any immediate real-world coordination.
-            </p>
-            <p>
-              that's why im fully commited to building Soonest, a faster, more
-              effective way to meet like-minded people and coordinate more spontaneous activities in real time, expanding that
-              powerful circle naturally through shared execution.
-            </p>
-          </div>
-          <p>- bryan chew, founder🫰</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Final CTA ── -->
-  <section class="section cta-section">
-    <div class="section-inner">
-      <div class="cta-card">
-        <div class="cta-blob cta-blob-1" aria-hidden="true"></div>
-        <div class="cta-blob cta-blob-2" aria-hidden="true"></div>
-        <div class="cta-content">
-          <p class="cta-eyebrow">YOU ARE THE AVERAGE OF YOUR 5 FRIENDS.</p>
-          <h2 class="cta-title">
-            stop collecting connections.<br />upgrade your inner circle now.
-          </h2>
-          <p class="cta-sub">
-            join the exclusive waitlist for 3 months of free access to Soonest+.
+          <p>
+            as a student entering my 20s, i realized how important it is to
+            build a circle of friends and peers who align with <span
+              style="font-weight: 800"
+              >your goals, values, interests, and ambitions</span
+            >. i myself wouldn't have made this if it wasn't for a specific
+            someone i met recently. but that's a story for another day.
           </p>
+          <p>
+            Finding people who share similar goals is one of the most rewarding
+            ways to grow, whether you are trying to improve your fitness, build
+            a business, or get better at a sport. and the best way to do that is
+            to meet people who share your drive or similar interests and
+            passions, and just start doing things together.
+          </p>
+          <p>
+            existing apps solve the wrong problems. dating apps optimize for
+            superficial romance, apps like meetup skew way too formal, and
+            forums lack any immediate real-world coordination.
+          </p>
+          <p>
+            that's why im fully commited to building Soonest, a faster, more
+            effective way to meet like-minded people and coordinate more
+            spontaneous activities in real time, expanding that powerful circle
+            naturally through shared execution.
+          </p>
+        </div>
+        <p>- bryan, founder🫰</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-          <form id="form-cta" class="form-row form-row-dark">
-            <input
-              type="email"
-              class="form-input form-input-dark"
-              placeholder="your@email.com"
-              required
-              autocomplete="email"
-            />
-            <button type="submit" class="form-btn form-btn-white"
-              >join waitlist</button
-            >
-          </form>
-          <div
-            id="success-cta"
-            class="success-msg success-msg-dark"
-            role="alert"
-            aria-live="polite"
+<!-- ── Final CTA ── -->
+<section class="section cta-section">
+  <div class="section-inner">
+    <div class="cta-card">
+      <div class="cta-blob cta-blob-1" aria-hidden="true"></div>
+      <div class="cta-blob cta-blob-2" aria-hidden="true"></div>
+      <div class="cta-content">
+        <p class="cta-eyebrow">YOU ARE THE AVERAGE OF YOUR 5 FRIENDS.</p>
+        <h2 class="cta-title">
+          stop collecting connections.<br />upgrade your inner circle now.
+        </h2>
+        <p class="cta-sub">
+          join the exclusive waitlist for 3 months of free access to Soonest+.
+        </p>
+
+        <form id="form-cta" class="form-row form-row-dark">
+          <input
+            type="email"
+            class="form-input form-input-dark"
+            placeholder="your@email.com"
+            required
+            autocomplete="email"
+          />
+          <button type="submit" class="form-btn form-btn-white"
+            >join waitlist</button
           >
-            🎉 you're on the list! we'll reach out before launch.
-          </div>
+        </form>
+        <div
+          id="success-cta"
+          class="success-msg success-msg-dark"
+          role="alert"
+          aria-live="polite"
+        >
+          🎉 you're on the list! we'll reach out before launch.
+        </div>
 
-          <div class="cta-perks">
-            <span class="cta-perk">✅ 3 months free Soonest+</span>
-            <span class="cta-perk">✅ early access</span>
-            <span class="cta-perk">✅ shape the app</span>
-          </div>
+        <div class="cta-perks">
+          <span class="cta-perk">✅ 3 months free Soonest+</span>
+          <span class="cta-perk">✅ early access</span>
+          <span class="cta-perk">✅ shape the app</span>
         </div>
       </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ── Footer ── -->
-  <footer class="footer">
-    <div class="footer-inner">
-      <div class="footer-logo-lockup">
-        <Image
-          src={logo}
-          alt="Soonest"
-          class="footer-logo-img"
-          width={64}
-          height={64}
-          loading="lazy"
-        />
-        <span class="footer-logo-name">soonest</span>
-      </div>
-      <p class="footer-tag">made with ❤️ in singapore</p>
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-logo-lockup">
+      <Image
+        src={logo}
+        alt="Soonest"
+        class="footer-logo-img"
+        width={64}
+        height={64}
+        loading="lazy"
+      />
+      <span class="footer-logo-name">soonest</span>
     </div>
-  </footer>
-</Layout>
+    <p class="footer-tag">made with ❤️ in singapore</p>
+    <div class="footer-socials">
+      <a
+        href="https://www.instagram.com/soonest.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-social-link"
+        aria-label="Instagram"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+          <circle cx="12" cy="12" r="4"></circle>
+          <circle cx="17.5" cy="6.5" r="0.8" fill="currentColor" stroke="none"
+          ></circle>
+        </svg>
+        <span>instagram</span>
+      </a>
+      <a
+        href="https://www.tiktok.com/@soonestapp"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="footer-social-link"
+        aria-label="TikTok"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path
+            d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.67a8.16 8.16 0 0 0 4.77 1.52V6.73a4.85 4.85 0 0 1-1-.04Z"
+          ></path>
+        </svg>
+        <span>tiktok</span>
+      </a>
+    </div>
+  </div>
+</footer>
 
 <style is:inline>
   @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;800&family=Lora:ital,wght@0,400;1,600&family=Syne:wght@700;800&family=Plus+Jakarta+Sans:wght@800&family=DM+Mono:wght@400;500&display=swap");
@@ -1503,7 +1547,7 @@ const profiles = [
     overflow: hidden;
     background: #080e1c;
     box-shadow:
-      0 40px 100px rgba(0, 0, 0, 0.6),
+      0 0px 100px rgba(0, 0, 0, 0.6),
       0 0 0 1px rgba(255, 255, 255, 0.05),
       inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
@@ -2236,6 +2280,17 @@ const profiles = [
   }
 
   /* Device */
+  @keyframes phone-rise {
+    from {
+      opacity: 0;
+      transform: translateY(60px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   .phone {
     position: relative;
     width: 100%;
@@ -2252,7 +2307,20 @@ const profiles = [
     transition:
       transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 0.5s ease;
-    will-change: transform;
+    /* start hidden; JS adds .phone-visible when in view */
+    opacity: 0;
+  }
+  .phone.phone-visible {
+    animation: phone-rise 0.75s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;
+  }
+  .pc-1.phone-visible {
+    animation-delay: 0s;
+  }
+  .pc-2.phone-visible {
+    animation-delay: 0.12s;
+  }
+  .pc-3.phone-visible {
+    animation-delay: 0.24s;
   }
   @media (min-width: 900px) {
     .pc-2 {
@@ -2990,9 +3058,44 @@ const profiles = [
     letter-spacing: -0.5px;
     opacity: 0.8;
   }
+  .footer-socials {
+    display: flex;
+    gap: 12px;
+  }
+  .footer-social-link {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(124, 58, 237, 0.1);
+    box-shadow:
+      0 2px 10px rgba(160, 150, 180, 0.12),
+      -3px -3px 8px rgba(255, 255, 255, 0.8);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    transition:
+      color 0.2s,
+      border-color 0.2s,
+      transform 0.2s,
+      box-shadow 0.2s;
+  }
+  .footer-social-link:hover {
+    color: var(--accent);
+    border-color: rgba(124, 58, 237, 0.25);
+    transform: translateY(-2px);
+    box-shadow:
+      0 6px 18px rgba(124, 58, 237, 0.12),
+      -3px -3px 8px rgba(255, 255, 255, 0.9);
+  }
   .footer-tag {
     font-size: 0.88rem;
     color: var(--text-secondary);
+    margin-bottom: 15px;
   }
 </style>
 
@@ -3159,6 +3262,23 @@ const profiles = [
 
     setInterval(doFlip, 2800);
   }
+
+  /* Phone-screen CSS animation triggered by IntersectionObserver */
+  const phones = document.querySelectorAll<HTMLElement>(".phone");
+  if (phones.length) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add("phone-visible");
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.15 },
+    );
+    phones.forEach((p) => io.observe(p));
+  }
 </script>
 
 <!-- GSAP animations — classic inline script guarantees load order -->
@@ -3248,7 +3368,11 @@ const profiles = [
         scale: 1.08,
         duration: 1.1,
         ease: "power2.out",
-        scrollTrigger: { trigger: "#map-stage", start: "top 80%", once: true },
+        scrollTrigger: {
+          trigger: "#map-stage",
+          start: "top 80%",
+          once: true,
+        },
       });
       gsap.from("#map-stage .mm-blk", {
         opacity: 0,
@@ -3257,7 +3381,11 @@ const profiles = [
         stagger: { each: 0.035, from: "random" },
         duration: 0.5,
         ease: "power2.out",
-        scrollTrigger: { trigger: "#map-stage", start: "top 80%", once: true },
+        scrollTrigger: {
+          trigger: "#map-stage",
+          start: "top 80%",
+          once: true,
+        },
       });
 
       /* Map chrome — topbar, you-marker, compass, scale */
@@ -3307,7 +3435,11 @@ const profiles = [
         stagger: 0.18,
         duration: 0.7,
         ease: "power2.out",
-        scrollTrigger: { trigger: ".hiw-steps", start: "top 82%", once: true },
+        scrollTrigger: {
+          trigger: ".hiw-steps",
+          start: "top 82%",
+          once: true,
+        },
       });
 
       /* Universal section-head reveal */
@@ -3322,49 +3454,7 @@ const profiles = [
         });
       });
 
-      /* Profiles — phone screens rise + fan, inner detail stagger */
-      gsap.utils.toArray(".phone").forEach(function (ph, i) {
-        var tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: ".profiles-wrap",
-            start: "top 78%",
-            once: true,
-          },
-        });
-        tl.from(
-          ph,
-          {
-            opacity: 0,
-            y: 90,
-            rotateX: 16,
-            scale: 0.9,
-            duration: 0.9,
-            ease: "power3.out",
-            delay: i * 0.14,
-            clearProps: "transform",
-          },
-          0,
-        );
-        var fill = ph.querySelector(".ps-ledger-fill");
-        if (fill) {
-          tl.from(
-            fill,
-            { width: 0, duration: 0.9, ease: "power2.out" },
-            0.45 + i * 0.14,
-          );
-        }
-        tl.from(
-          ph.querySelectorAll(".ps-stat, .ps-feed-row"),
-          {
-            opacity: 0,
-            y: 14,
-            stagger: 0.06,
-            duration: 0.5,
-            ease: "power2.out",
-          },
-          0.5 + i * 0.14,
-        );
-      });
+      /* Profiles — handled by CSS + IntersectionObserver (see inline script) */
 
       /* Founder */
       gsap.from(".founder-profile, .founder-headline, .founder-body p", {

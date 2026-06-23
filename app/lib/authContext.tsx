@@ -20,6 +20,8 @@ interface UserProfile {
   personality_type?: string | null;
   social_preference?: string | null;
   interests?: string[] | string | null;
+  // The one interest surfaced on the map pin / shown first before opening profile.
+  main_interest?: string | null;
   school?: string | null;
   year_of_study?: string | null;
   personality_answers?: Record<string, string> | null;

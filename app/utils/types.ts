@@ -65,6 +65,8 @@ export interface UserProfile {
   instagram_handle?: string | null;
   tiktok_handle?: string | null;
   interests?: string[] | string | null;
+  // The one interest surfaced on the map pin / shown first before opening profile.
+  main_interest?: string | null;
   school?: string | null;
   year_of_study?: string | null;
   personality_type?: string | null;

@@ -16,6 +16,7 @@ import interestsRouter from "./src/routes/interests.ts";
 import invitationsRouter from "./src/routes/invitations.ts";
 import eventTestimonialsRouter from "./src/routes/event-testimonials.ts";
 import waitlistRouter from "./src/routes/waitlist.ts"
+import webappRouter from "./src/routes/webapp.ts";
 
 import cors from "cors";
 
@@ -28,7 +29,7 @@ const PORT = process.env.PORT || 4000;
 
 app.use(
   cors({
-    origin: ["http://localhost:8081", "http://172.20.10.2", "http://46.62.157.49", "http://localhost:4321", "https://www.hangoutstudios.com", "http://192.168.0.107"], // allowed origins
+    origin: ["http://localhost:8081", "http://172.20.10.2", "http://46.62.157.49", "http://localhost:4321", "https://www.hangoutstudios.com", "http://192.168.0.107", "https://soonest.app", "http://localhost:3000", "https://web.soonest.app"], // allowed origins (incl. webapp dev :3000 + prod)
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -60,6 +61,7 @@ app.use("/api/interests", interestsRouter);
 app.use("/api/invitations", invitationsRouter);
 app.use("/api/event-testimonials", eventTestimonialsRouter);
 app.use("/api/waitlist", waitlistRouter);
+app.use("/api/webapp", webappRouter);
 
 app.get("/", (req, res) => res.json({ ok: true }));
 

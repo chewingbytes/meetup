@@ -47,7 +47,8 @@ import {
   View,
 } from "react-native";
 // Note: Modal is kept for the internal time-picker only. The wizard root is NOT a Modal.
-import MapView, { Marker } from "react-native-maps";
+// import MapView, { Marker } from "react-native-maps"; // PROD
+import MapView, { Marker } from "@/components/maps-stub"; // DEV (Expo Go)
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
 const SHEET_H = SCREEN_H * 0.74;

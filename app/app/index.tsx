@@ -40,11 +40,13 @@ import {
   Bell,
   Calendar,
   Clock,
+  BadgeCheck,
   GraduationCap,
   Layers,
   LocateFixed,
   MapPin,
   Plus,
+  SlidersHorizontal,
   Star,
   Trash2,
   Users,
@@ -67,6 +69,7 @@ import {
   Easing,
   Image,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -74,7 +77,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
+// TEMP(expo-go): real map stubbed so the app runs in Expo Go. Restore before building.
+// import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps"; // PROD
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from "@/components/maps-stub"; // DEV (Expo Go)
+// import MapView, { Marker, PROVIDER_GOOGLE, Region } from "@/components/maps-stub";
 import Supercluster from "supercluster";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -164,18 +170,6 @@ const MBTI_NAMES: Record<string, string> = {
   ESTP: "The Entrepreneur",
   ESFP: "The Entertainer",
 };
-// Analyst=violet, Diplomat=green, Sentinel=blue, Explorer=amber
-function mbtiGradient(type: string): readonly [string, string] {
-  const t = type.toUpperCase();
-  if (["INTJ", "INTP", "ENTJ", "ENTP"].includes(t))
-    return ["#8B5CF6", "#6D28D9"];
-  if (["INFJ", "INFP", "ENFJ", "ENFP"].includes(t))
-    return ["#10B981", "#059669"];
-  if (["ISTJ", "ISFJ", "ESTJ", "ESFJ"].includes(t))
-    return ["#3B82F6", "#1D4ED8"];
-  return ["#F59E0B", "#D97706"]; // Explorers
-}
-
 const SINGAPORE = {
   latitude: 1.3521,
   longitude: 103.8198,
@@ -252,29 +246,311 @@ function resolveAvatar(url: string | null | undefined) {
   }
 }
 
-// ── Sample "people nearby" data ──
-// Placeholder presence data until real-time location presence is wired up.
-const SAMPLE_NEARBY_PEOPLE: {
+// ── People nearby ──
+// Real profiles pulled from the `profiles` table. Ranking / true distance /
+// premium-tier filtering will be layered on later; for now we render everyone.
+type NearbyPerson = {
   id: string;
-  name: string;
-  role: string;
-  avatar: string;
-  grad: readonly [string, string];
-}[] = [
-  { id: "n1", name: "Bryan",  role: "Founder · deep in a codebase",     avatar: "https://i.pravatar.cc/150?img=12", grad: C.Gradients.primary },
-  { id: "n2", name: "Aisha",  role: "Product Designer · free after 6",  avatar: "https://i.pravatar.cc/150?img=45", grad: C.Gradients.pink },
-  { id: "n3", name: "Marcus", role: "Software Engineer · dinner ideas", avatar: "https://i.pravatar.cc/150?img=33", grad: C.Gradients.green },
-  { id: "n4", name: "Kai",    role: "Athlete · chasing a 2.4km PB",     avatar: "https://i.pravatar.cc/150?img=51", grad: C.Gradients.blue },
-  { id: "n5", name: "Maya",   role: "Marketer · specialty coffee",      avatar: "https://i.pravatar.cc/150?img=47", grad: C.Gradients.amber },
-  { id: "n6", name: "Devin",  role: "Climber · weekend sends",          avatar: "https://i.pravatar.cc/150?img=15", grad: C.Gradients.coral },
+  full_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+  main_interest: string | null;
+  interests: string[];
+  verified: string | null;
+  occupation: string | null;
+  personality_type: string | null;
+  location: string | null;
+};
+
+// Filter ranges. Distance + age are UI scaffolding for now: profiles have no
+// stored coordinates yet, and age (from date_of_birth) isn't wired until sign-in
+// providers return it — so neither is applied to the result list. The chips /
+// toggles (verified, interests, occupation, personality, country) do filter.
+const DIST_MIN = 1;
+const DIST_MAX = 50; // top of the range = "Any"
+const AGE_MIN = 18;
+const AGE_MAX = 60; // top of the range = "60+"
+
+const COUNTRIES = [
+  "Singapore",
+  "Malaysia",
+  "Indonesia",
+  "Thailand",
+  "Philippines",
+  "Vietnam",
+  "India",
+  "China",
+  "Japan",
+  "South Korea",
+  "Australia",
+  "United Kingdom",
+  "United States",
+  "Canada",
 ];
 
+const toggleInList = (list: string[], item: string) =>
+  list.includes(item) ? list.filter((i) => i !== item) : [...list, item];
+
+// Maps a free-text interest to a single emoji so it can be shown as a compact,
+// never-overflowing badge over an avatar (full text stays as a caption). Keyword
+// match with a friendly ✨ fallback.
+// Exact matches first (checked case-insensitively), then keyword fallbacks.
+const INTEREST_EMOJI: [string, string][] = [
+  // Sports & Fitness
+  ["running", "🏃"], ["gym", "🏋️"], ["swimming", "🏊"], ["cycling", "🚴"],
+  ["yoga", "🧘"], ["hiking", "🥾"], ["rock climbing", "🧗"], ["martial arts", "🥋"],
+  ["tennis", "🎾"], ["basketball", "🏀"], ["football", "⚽"], ["volleyball", "🏐"],
+  ["badminton", "🏸"], ["soccer", "⚽"], ["boxing", "🥊"], ["skiing", "⛷️"],
+  ["surfing", "🏄"], ["dancing", "💃"],
+  // Arts & Creativity
+  ["drawing", "✏️"], ["painting", "🖌️"], ["photography", "📸"],
+  ["filmmaking", "🎬"], ["writing", "✍️"], ["music production", "🎛️"],
+  ["graphic design", "🎨"], ["fashion", "👗"], ["diy & crafts", "🔨"],
+  ["sculpting", "🗿"], ["pottery", "🏺"], ["architecture", "🏛️"],
+  // Music
+  ["live music", "🎶"], ["guitar", "🎸"], ["piano", "🎹"], ["singing", "🎤"],
+  ["djing", "🎧"], ["hip-hop", "🎤"], ["electronic", "🎛️"], ["classical", "🎻"],
+  ["jazz", "🎷"], ["k-pop", "🌟"], ["indie", "🎵"], ["r&b", "🎵"],
+  ["rap", "🎤"], ["pop", "🎵"],
+  // Food & Drink
+  ["cooking", "🍳"], ["baking", "🧁"], ["coffee", "☕"], ["tea", "🍵"],
+  ["street food", "🍜"], ["restaurant hopping", "🍽️"], ["wine", "🍷"],
+  ["brunch", "🥞"], ["cocktails", "🍹"], ["vegan food", "🥗"], ["boba", "🧋"],
+  // Tech & Gaming
+  ["gaming", "🎮"], ["coding", "💻"], ["ai", "🤖"], ["cybersecurity", "🔐"],
+  ["mobile apps", "📱"], ["esports", "🏆"], ["board games", "🎲"],
+  ["vr/ar", "🥽"], ["robotics", "🤖"], ["3d printing", "🖨️"], ["crypto", "₿"],
+  // Outdoors & Travel
+  ["camping", "🏕️"], ["backpacking", "🎒"], ["road trips", "🚗"],
+  ["beach", "🏖️"], ["nature", "🌿"], ["sightseeing", "🗺️"],
+  ["skydiving", "🪂"], ["scuba diving", "🤿"], ["fishing", "🎣"],
+  ["bouldering", "🧗"],
+  // Culture & Learning
+  ["movies", "🍿"], ["anime", "🎌"], ["k-drama", "📺"], ["reading", "📚"],
+  ["podcasts", "🎙️"], ["history", "🏛️"], ["philosophy", "🤔"],
+  ["psychology", "🧠"], ["languages", "🗣️"], ["science", "🔬"],
+  ["astronomy", "🔭"], ["true crime", "🔍"],
+  // Lifestyle
+  ["meditation", "🧘"], ["journaling", "📓"], ["thrifting", "🛍️"],
+  ["astrology", "🔮"], ["pets", "🐾"], ["skincare", "✨"],
+  ["interior design", "🛋️"], ["gardening", "🌱"], ["minimalism", "⬜"],
+  ["sustainability", "♻️"],
+  // Community
+  ["volunteering", "🤝"], ["entrepreneurship", "🚀"], ["networking", "🤝"],
+  ["social justice", "✊"], ["politics", "🗳️"], ["public speaking", "🎤"],
+  ["mentoring", "🌟"],
+];
+function interestEmoji(interest?: string | null): string {
+  if (!interest) return "✨";
+  const s = interest.toLowerCase();
+  for (const [k, e] of INTEREST_EMOJI) if (s.includes(k)) return e;
+  return "✨";
+}
+
+// ── Reusable range slider ──
+// Pure-JS (PanResponder) so it works in Expo Go with no native dependency.
+// Pass one value for a single-thumb slider, two for a min/max range.
+const SLIDER_THUMB = 28;
+function RangeSlider({
+  min,
+  max,
+  step = 1,
+  values,
+  onChange,
+  format,
+}: {
+  min: number;
+  max: number;
+  step?: number;
+  values: number[];
+  onChange: (v: number[]) => void;
+  format?: (v: number) => string;
+}) {
+  const dual = values.length === 2;
+  const [trackW, setTrackW] = useState(0);
+  const trackWRef = useRef(0);
+  trackWRef.current = trackW;
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const startX = useRef([0, 0]);
+
+  const usable = () => Math.max(trackWRef.current - SLIDER_THUMB, 1);
+  const valToX = (v: number) => ((v - min) / (max - min)) * usable();
+  const xToVal = (x: number) => {
+    const r = Math.min(Math.max(x / usable(), 0), 1);
+    const raw = min + r * (max - min);
+    return Math.min(Math.max(Math.round(raw / step) * step, min), max);
+  };
+
+  const responders = useRef(
+    [0, 1].map((index) =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          startX.current[index] = valToX(valuesRef.current[index] ?? min);
+        },
+        onPanResponderMove: (_e, g) => {
+          let nv = xToVal(startX.current[index] + g.dx);
+          const cur = [...valuesRef.current];
+          if (cur.length === 2) {
+            if (index === 0) nv = Math.min(nv, cur[1]);
+            else nv = Math.max(nv, cur[0]);
+          }
+          cur[index] = nv;
+          onChangeRef.current(cur);
+        },
+      }),
+    ),
+  ).current;
+
+  const lowX = dual ? valToX(values[0]) : 0;
+  const highX = valToX(values[dual ? 1 : 0]);
+
+  return (
+    <View>
+      <View
+        style={sliderStyles.track}
+        onLayout={(e) => setTrackW(e.nativeEvent.layout.width)}
+      >
+        <View style={sliderStyles.bar} />
+        <View
+          style={[
+            sliderStyles.fill,
+            {
+              left: dual ? lowX + SLIDER_THUMB / 2 : 0,
+              width: dual
+                ? Math.max(highX - lowX, 0)
+                : highX + SLIDER_THUMB / 2,
+            },
+          ]}
+        />
+        {dual && (
+          <View
+            style={[sliderStyles.thumb, { left: lowX }]}
+            {...responders[0].panHandlers}
+          />
+        )}
+        <View
+          style={[sliderStyles.thumb, { left: highX }]}
+          {...responders[dual ? 1 : 0].panHandlers}
+        />
+      </View>
+      <View style={sliderStyles.labelRow}>
+        <Text style={sliderStyles.labelText}>
+          {format ? format(values[0]) : values[0]}
+        </Text>
+        {dual && (
+          <Text style={sliderStyles.labelText}>
+            {format ? format(values[1]) : values[1]}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const sliderStyles = StyleSheet.create({
+  track: { height: 36, justifyContent: "center" },
+  bar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E5E0F0",
+  },
+  fill: {
+    position: "absolute",
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: C.accent,
+  },
+  thumb: {
+    position: "absolute",
+    top: 4,
+    width: SLIDER_THUMB,
+    height: SLIDER_THUMB,
+    borderRadius: SLIDER_THUMB / 2,
+    backgroundColor: "#fff",
+    borderWidth: 2.5,
+    borderColor: C.accent,
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  labelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  labelText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: C.accent,
+  },
+});
+
+// ── Reusable multi-select chip group (interests / occupation / etc.) ──
+function FilterChips({
+  options,
+  selected,
+  onToggle,
+  empty,
+}: {
+  options: string[];
+  selected: string[];
+  onToggle: (item: string) => void;
+  empty: string;
+}) {
+  return (
+    <View style={peopleStyles.chipsRow}>
+      {options.map((it) => {
+        const on = selected.includes(it);
+        return (
+          <TouchableOpacity
+            key={it}
+            activeOpacity={0.8}
+            onPress={() => onToggle(it)}
+            style={[peopleStyles.filterChip, on && peopleStyles.filterChipActive]}
+          >
+            <Text
+              style={[
+                peopleStyles.filterChipText,
+                on && peopleStyles.filterChipTextActive,
+              ]}
+            >
+              {it}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+      {options.length === 0 && (
+        <Text style={peopleStyles.emptyText}>{empty}</Text>
+      )}
+    </View>
+  );
+}
+
 const STRIP_W = 64;
-const STRIP_W_EXPANDED = 170; // width while dragging — reveals category labels
+const STRIP_W_EXPANDED = 170; // fallback expanded width until labels are measured
 const STRIP_RIGHT = 10;
 const ADD_BTN_H = 44;
 const POPUP_W = 128;
 const POPUP_OPT_H = 46;
+
+// Expanded-strip sizing. Rather than a fixed width (which truncates long labels
+// on some devices / font scales), the strip measures the widest label at runtime
+// and sizes itself to fit it plus a gap — see FilterStrip's measurer.
+const LABEL_GAP = 20; // breathing room to the left of the longest label
+const MIN_EXPANDED = 150; // never look cramped, even with short labels
+const MEASURE_LABELS = Array.from(
+  new Set([...FILTER_ITEMS.map((i) => i.label), "New"]),
+);
 
 // Scroll-wheel filter constants
 const SLOT_H = 40;
@@ -324,6 +600,22 @@ const FilterStrip = React.memo(function FilterStrip({
   const menuOpacity = useRef(new Animated.Value(0)).current;
   // 0 = collapsed (icons only), 1 = expanded (labels revealed while dragging)
   const expandAnim = useRef(new Animated.Value(0)).current;
+
+  // Expanded width is measured, not fixed: find the widest label (measured in the
+  // bold/centered font — the widest case) and size the strip to fit it + a gap,
+  // clamped so it can't run off-screen. Adapts to any device width and font scale.
+  const [expandedW, setExpandedW] = useState(STRIP_W_EXPANDED);
+  const maxLabelWRef = useRef(0);
+  const handleLabelMeasure = useCallback((w: number) => {
+    if (w <= maxLabelWRef.current) return;
+    maxLabelWRef.current = w;
+    setExpandedW(
+      Math.min(
+        Math.max(STRIP_W + Math.ceil(w) + LABEL_GAP, MIN_EXPANDED),
+        SCREEN_WIDTH - 40,
+      ),
+    );
+  }, []);
 
   const expand = useCallback(
     (open: boolean) => {
@@ -487,6 +779,20 @@ const FilterStrip = React.memo(function FilterStrip({
         ))}
       </Animated.View>
 
+      {/* Invisible measurer: sizes the expanded strip to the widest label so it
+          fits with a gap on any device / font scale (no fixed width truncation). */}
+      <View style={fStyles.measure} pointerEvents="none">
+        {MEASURE_LABELS.map((lbl) => (
+          <Text
+            key={lbl}
+            style={fStyles.measureText}
+            onLayout={(e) => handleLabelMeasure(e.nativeEvent.layout.width)}
+          >
+            {lbl}
+          </Text>
+        ))}
+      </View>
+
       {/* Strip */}
       <Animated.View
         style={[
@@ -495,7 +801,7 @@ const FilterStrip = React.memo(function FilterStrip({
             top: stripTop,
             width: expandAnim.interpolate({
               inputRange: [0, 1],
-              outputRange: [STRIP_W, STRIP_W_EXPANDED],
+              outputRange: [STRIP_W, expandedW],
             }),
           },
         ]}
@@ -747,6 +1053,14 @@ const fStyles = StyleSheet.create({
   wheelLabel: {
     flex: 1,
     textAlign: "right",
+    fontSize: C.FontSizes.sm,
+  },
+  // Off-screen label measurer (opacity 0, absolute so it never affects layout).
+  // Uses the bold font + sm size — the widest the labels ever render.
+  measure: { position: "absolute", left: 0, top: 0, opacity: 0 },
+  measureText: {
+    position: "absolute",
+    fontFamily: C.Fonts.bodyBold,
     fontSize: C.FontSizes.sm,
   },
   tooltip: {
@@ -1048,7 +1362,7 @@ const tickerStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: 38,
-    maxWidth: 300,
+    maxWidth: 500,
     gap: 7,
     borderRadius: C.Radii.full,
     paddingLeft: 5,
@@ -1170,6 +1484,7 @@ const peopleStyles = StyleSheet.create({
     alignItems: "flex-start",
   },
   pinCount: {
+    paddingTop: 1,
     fontFamily: C.Fonts.heading,
     fontSize: C.FontSizes.md,
     color: C.textPrimary,
@@ -1195,7 +1510,9 @@ const peopleStyles = StyleSheet.create({
     maxWidth: 420,
     backgroundColor: C.surface,
     borderRadius: C.Radii.xxl,
-    padding: C.Space.xl,
+    paddingTop: C.Space.xl,
+    paddingHorizontal: C.Space.xl,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -1249,19 +1566,23 @@ const peopleStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: C.Radii.lg,
+    marginBottom: 8,
   },
+  rowAvatarWrap: { width: 48, height: 48 },
   rowAvatarRing: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },
   rowAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 999,
     backgroundColor: "#ddd",
     borderWidth: 2,
     borderColor: C.surface,
@@ -1271,6 +1592,32 @@ const peopleStyles = StyleSheet.create({
     fontSize: C.FontSizes.base,
     color: C.textPrimary,
   },
+  rowLoves: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    marginTop: 1,
+  },
+  rowInterest: { fontFamily: C.Fonts.bodyBold, fontSize: C.FontSizes.sm },
+  interestBadge: {
+    position: "absolute",
+    bottom: -3,
+    right: -3,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: C.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  interestBadgeText: { fontSize: 11 },
   rowRole: {
     fontFamily: C.Fonts.body,
     fontSize: C.FontSizes.xs,
@@ -1282,6 +1629,181 @@ const peopleStyles = StyleSheet.create({
     height: 9,
     borderRadius: 5,
     backgroundColor: C.accentGreen,
+  },
+  // ── Avatar fallbacks (no photo) ──
+  pinAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.accentLight,
+  },
+  pinAvatarInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 12,
+    color: "#fff",
+  },
+  rowAvatarFallback: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: C.accentLight,
+  },
+  rowAvatarInitial: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 18,
+    color: "#fff",
+  },
+  emptyText: {
+    fontFamily: C.Fonts.body,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+    paddingVertical: 18,
+    textAlign: "center",
+  },
+  // ── Popup header actions ──
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  filterBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: C.accentMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: C.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: C.surface,
+  },
+  filterBadgeText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 9,
+    color: "#fff",
+  },
+  // ── Filter drawer ──
+  drawerRoot: { ...(StyleSheet.absoluteFillObject as any), zIndex: 200 },
+  drawerBackdrop: {
+    ...(StyleSheet.absoluteFillObject as any),
+    backgroundColor: "rgba(20,10,40,0.45)",
+  },
+  drawer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    right: 0,
+    width: Math.min(330, SCREEN_WIDTH * 0.84),
+    backgroundColor: C.surface,
+    paddingHorizontal: C.Space.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: -8, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 24,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: C.Space.lg,
+  },
+  drawerTitle: {
+    fontFamily: C.Fonts.heading,
+    fontSize: C.FontSizes.xl,
+    color: C.textPrimary,
+  },
+  drawerSectionLabel: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.sm,
+    color: C.textPrimary,
+    marginTop: C.Space.lg,
+    marginBottom: C.Space.sm,
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: C.canvas,
+    borderRadius: C.Radii.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  toggleRowLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  toggleRowText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.base,
+    color: C.textPrimary,
+  },
+  switch: {
+    width: 44,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#D8D2E4",
+    padding: 3,
+    justifyContent: "center",
+  },
+  switchOn: { backgroundColor: C.accent },
+  knob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  knobOn: { alignSelf: "flex-end" },
+  chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  filterChip: {
+    backgroundColor: C.canvas,
+    borderRadius: C.Radii.full,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  filterChipActive: { backgroundColor: C.accent, borderColor: C.accent },
+  filterChipText: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: C.FontSizes.sm,
+    color: C.textSecondary,
+  },
+  filterChipTextActive: { color: "#fff", fontFamily: C.Fonts.bodyBold },
+  drawerFooter: {
+    flexDirection: "row",
+    gap: 10,
+    paddingTop: C.Space.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(124,58,237,0.08)",
+  },
+  clearBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: C.Radii.lg,
+    backgroundColor: C.accentMuted,
+  },
+  clearBtnText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: C.accent,
+  },
+  applyBtn: {
+    flex: 1.4,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: C.Radii.lg,
+    backgroundColor: C.accent,
+  },
+  applyBtnText: {
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: C.FontSizes.base,
+    color: "#fff",
   },
 });
 
@@ -1336,7 +1858,6 @@ const pinStyles = StyleSheet.create({
 // A cheap count bubble (no SVG, no image) shown when several events overlap at
 // the current zoom. tracksViewChanges only briefly (until the static content
 // snapshots once) so it never re-renders during panning.
-const CLUSTER_GRAD = C.Gradients.primary;
 const ClusterMarker = React.memo(
   ({
     count,
@@ -1356,22 +1877,43 @@ const ClusterMarker = React.memo(
       const t = setTimeout(() => setTrack(false), 180);
       return () => clearTimeout(t);
     }, []);
-    const size = count < 10 ? 42 : count < 30 ? 52 : count < 60 ? 62 : 72;
+    const size = count < 10 ? 44 : count < 30 ? 54 : count < 60 ? 64 : 74;
+    const inner = size - 6; // 3px white ring all around
+    const fontSize = size <= 44 ? 15 : size <= 54 ? 17 : 20;
     return (
       <Marker
         coordinate={{ latitude, longitude }}
         onPress={() => onPress(clusterId, latitude, longitude)}
         tracksViewChanges={track}
+        anchor={{ x: 0.5, y: 0.5 }}
       >
         <View style={clusterStyles.wrap} collapsable={false}>
-          <View style={[clusterStyles.halo, { width: size + 12, height: size + 12, borderRadius: (size + 12) / 2 }]} />
+          {/* soft violet glow */}
           <View
             style={[
-              clusterStyles.bubble,
-              { width: size, height: size, borderRadius: size / 2, backgroundColor: CLUSTER_GRAD[1] },
+              clusterStyles.halo,
+              { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2 },
+            ]}
+          />
+          {/* white ring + drop shadow */}
+          <View
+            style={[
+              clusterStyles.ring,
+              { width: size, height: size, borderRadius: size / 2 },
             ]}
           >
-            <Text style={clusterStyles.count}>{count}</Text>
+            {/* gradient face */}
+            <LinearGradient
+              colors={C.Gradients.primary}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                clusterStyles.bubble,
+                { width: inner, height: inner, borderRadius: inner / 2 },
+              ]}
+            >
+              <Text style={[clusterStyles.count, { fontSize }]}>{count}</Text>
+            </LinearGradient>
           </View>
         </View>
       </Marker>
@@ -1380,26 +1922,34 @@ const ClusterMarker = React.memo(
 );
 
 const clusterStyles = StyleSheet.create({
-  wrap: { alignItems: "center", justifyContent: "center" },
+  // Padding gives the rasterized marker enough canvas to include the shadow +
+  // halo spread; without it they get clipped to the square snapshot bounds and
+  // the round shadow looks squared off.
+  wrap: { alignItems: "center", justifyContent: "center", padding: 16 },
   halo: {
     position: "absolute",
-    backgroundColor: "rgba(124,58,237,0.22)",
+    backgroundColor: "rgba(124,58,237,0.16)",
+  },
+  ring: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#7C3AED",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
   },
   bubble: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2.5,
-    borderColor: "#fff",
-    shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 6,
   },
   count: {
     fontFamily: C.Fonts.heading,
-    fontSize: 17,
-    color: "#fff",
+    color: "#FFFFFF",
+    letterSpacing: 0.2,
+    includeFontPadding: false,
+    textAlignVertical: "center",
   },
 });
 
@@ -1711,6 +2261,178 @@ export default function HomeScreen() {
       }),
     ]).start(() => setPeopleVisible(false));
   }, [peopleScale, peopleOpacity]);
+
+  // ── People nearby: real profiles + filtering ──
+  const [nearbyPeople, setNearbyPeople] = useState<NearbyPerson[]>([]);
+  const [filterInterests, setFilterInterests] = useState<string[]>([]);
+  const [filterOccupations, setFilterOccupations] = useState<string[]>([]);
+  const [filterPersonalities, setFilterPersonalities] = useState<string[]>([]);
+  const [filterCountries, setFilterCountries] = useState<string[]>([]);
+  const [filterVerified, setFilterVerified] = useState(false);
+  const [filterDistance, setFilterDistance] = useState(DIST_MAX); // DIST_MAX = Any
+  const [ageRange, setAgeRange] = useState<number[]>([AGE_MIN, AGE_MAX]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const drawerX = useRef(new Animated.Value(SCREEN_WIDTH)).current;
+  const drawerOpacity = useRef(new Animated.Value(0)).current;
+
+  // Pull profiles from the `profiles` table. (Ranking + real distance + premium
+  // filtering will be layered on later; for now we just render everyone else.)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        let q = supabase
+          .from("profiles")
+          .select(
+            "id, full_name, username, avatar_url, main_interest, interests, verified, occupation, personality_type, location",
+          )
+          .limit(60);
+        if (user?.id) q = q.neq("id", user.id);
+        const { data, error } = await q;
+        if (error || cancelled || !data) return;
+        setNearbyPeople(
+          data.map((p: any) => ({
+            id: p.id,
+            full_name: p.full_name ?? null,
+            username: p.username ?? null,
+            avatar_url: p.avatar_url ?? null,
+            main_interest: p.main_interest ?? null,
+            interests: Array.isArray(p.interests) ? p.interests.filter(Boolean) : [],
+            verified: p.verified ?? null,
+            occupation: p.occupation ?? null,
+            personality_type: p.personality_type ?? null,
+            location: p.location ?? null,
+          })),
+        );
+      } catch {
+        /* ignore — keep empty list */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  // Filter options derived from the loaded profiles (so chips reflect real data).
+  const availableInterests = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of nearbyPeople) {
+      if (p.main_interest) set.add(p.main_interest);
+      for (const i of p.interests) set.add(i);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [nearbyPeople]);
+
+  const availableOccupations = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of nearbyPeople) if (p.occupation) set.add(p.occupation);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [nearbyPeople]);
+
+  const availablePersonalities = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of nearbyPeople)
+      if (p.personality_type) set.add(p.personality_type.toUpperCase());
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [nearbyPeople]);
+
+  const filteredPeople = useMemo(() => {
+    return nearbyPeople.filter((p) => {
+      if (filterVerified && p.verified !== "true") return false;
+      if (
+        filterInterests.length > 0 &&
+        !filterInterests.some(
+          (f) => p.main_interest === f || p.interests.includes(f),
+        )
+      )
+        return false;
+      if (
+        filterOccupations.length > 0 &&
+        !(p.occupation && filterOccupations.includes(p.occupation))
+      )
+        return false;
+      if (
+        filterPersonalities.length > 0 &&
+        !(
+          p.personality_type &&
+          filterPersonalities.includes(p.personality_type.toUpperCase())
+        )
+      )
+        return false;
+      if (
+        filterCountries.length > 0 &&
+        !(
+          p.location &&
+          filterCountries.some((c) =>
+            p.location!.toLowerCase().includes(c.toLowerCase()),
+          )
+        )
+      )
+        return false;
+      // Distance + age are UI-only for now (no coordinates / no age yet).
+      return true;
+    });
+  }, [
+    nearbyPeople,
+    filterVerified,
+    filterInterests,
+    filterOccupations,
+    filterPersonalities,
+    filterCountries,
+  ]);
+
+  const ageActive = ageRange[0] > AGE_MIN || ageRange[1] < AGE_MAX;
+  const activeFilterCount =
+    filterInterests.length +
+    filterOccupations.length +
+    filterPersonalities.length +
+    filterCountries.length +
+    (filterVerified ? 1 : 0) +
+    (filterDistance < DIST_MAX ? 1 : 0) +
+    (ageActive ? 1 : 0);
+
+  const clearFilters = useCallback(() => {
+    setFilterInterests([]);
+    setFilterOccupations([]);
+    setFilterPersonalities([]);
+    setFilterCountries([]);
+    setFilterVerified(false);
+    setFilterDistance(DIST_MAX);
+    setAgeRange([AGE_MIN, AGE_MAX]);
+  }, []);
+
+  const openFilters = useCallback(() => {
+    setFiltersOpen(true);
+    Animated.parallel([
+      Animated.timing(drawerOpacity, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.spring(drawerX, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 24,
+        stiffness: 240,
+        mass: 0.8,
+      }),
+    ]).start();
+  }, [drawerX, drawerOpacity]);
+
+  const closeFilters = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(drawerOpacity, {
+        toValue: 0,
+        duration: 160,
+        useNativeDriver: true,
+      }),
+      Animated.timing(drawerX, {
+        toValue: SCREEN_WIDTH,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setFiltersOpen(false));
+  }, [drawerX, drawerOpacity]);
 
   const mappableEvents = useMemo(
     () =>
@@ -2184,6 +2906,7 @@ export default function HomeScreen() {
         showsUserLocation
         showsCompass={false}
         showsScale={false}
+        onPanDrag={() => {}}
         onRegionChangeComplete={handleRegionChangeComplete}
       >
         {clusters.map((feature) => {
@@ -2293,19 +3016,34 @@ export default function HomeScreen() {
         onPress={openPeople}
       >
         <View style={peopleStyles.pinAvatars}>
-          {SAMPLE_NEARBY_PEOPLE.slice(0, 3).map((p, i) => (
-            <Image
-              key={p.id}
-              source={{ uri: p.avatar }}
-              style={[
-                peopleStyles.pinAvatar,
-                { marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i },
-              ]}
-            />
-          ))}
+          {nearbyPeople.slice(0, 3).map((p, i) =>
+            p.avatar_url ? (
+              <Image
+                key={p.id}
+                source={{ uri: p.avatar_url }}
+                style={[
+                  peopleStyles.pinAvatar,
+                  { marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i },
+                ]}
+              />
+            ) : (
+              <View
+                key={p.id}
+                style={[
+                  peopleStyles.pinAvatar,
+                  peopleStyles.pinAvatarFallback,
+                  { marginLeft: i === 0 ? 0 : -10, zIndex: 3 - i },
+                ]}
+              >
+                <Text style={peopleStyles.pinAvatarInitial}>
+                  {(p.username ?? "?").charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            ),
+          )}
         </View>
         <View style={peopleStyles.pinTextWrap}>
-          <Text style={peopleStyles.pinCount}>{SAMPLE_NEARBY_PEOPLE.length}</Text>
+          <Text style={peopleStyles.pinCount}>{nearbyPeople.length}</Text>
           <Text style={peopleStyles.pinLabel}>here</Text>
         </View>
       </TouchableOpacity>
@@ -2623,7 +3361,7 @@ export default function HomeScreen() {
                       contentContainerStyle={styles.sheetPeopleList}
                     >
                       {sheetParticipants.map((p, i) => {
-                        const mbti = p.personality_type?.toUpperCase() ?? null;
+                        const mainInterest = p.main_interest ?? null;
                         const isNew = (p.id ?? p.user_id) === newParticipantId;
                         const tileStyle = isNew
                           ? {
@@ -2646,11 +3384,14 @@ export default function HomeScreen() {
                           : undefined;
                         const Tile = isNew ? Animated.View : View;
                         return (
-                          <Tile
+                          <TouchableOpacity
                             key={p.id ?? i}
+                            activeOpacity={0.75}
+                            onPress={() => router.push(`/profile/${p.id ?? p.user_id}` as any)}
+                          >
+                          <Tile
                             style={[styles.sheetPersonItem, tileStyle]}
                           >
-                            {/* Avatar with MBTI sticker overlaid */}
                             <View style={styles.sheetPersonAvatarWrap}>
                               <LinearGradient
                                 colors={PIN_GRADIENTS[i % PIN_GRADIENTS.length]}
@@ -2668,17 +3409,12 @@ export default function HomeScreen() {
                                   </Text>
                                 )}
                               </LinearGradient>
-                              {mbti && (
-                                <LinearGradient
-                                  colors={mbtiGradient(mbti)}
-                                  start={{ x: 0, y: 0 }}
-                                  end={{ x: 1, y: 0 }}
-                                  style={styles.mbtiSticker}
-                                >
-                                  <Text style={styles.mbtiStickerText}>
-                                    {mbti}
+                              {mainInterest && (
+                                <View style={styles.sheetInterestBadge}>
+                                  <Text style={styles.sheetInterestBadgeText}>
+                                    {interestEmoji(mainInterest)}
                                   </Text>
-                                </LinearGradient>
+                                </View>
                               )}
                             </View>
                             <Text
@@ -2687,7 +3423,16 @@ export default function HomeScreen() {
                             >
                               {p.username ?? "User"}
                             </Text>
+                            {mainInterest ? (
+                              <Text
+                                style={styles.sheetPersonInterest}
+                                numberOfLines={1}
+                              >
+                                {mainInterest}
+                              </Text>
+                            ) : null}
                           </Tile>
+                          </TouchableOpacity>
                         );
                       })}
                     </ScrollView>
@@ -2913,48 +3658,256 @@ export default function HomeScreen() {
                   <Text style={peopleStyles.liveText}>LIVE NEARBY</Text>
                 </View>
                 <Text style={peopleStyles.cardTitle}>
-                  {SAMPLE_NEARBY_PEOPLE.length} people around you
+                  {filteredPeople.length} around you
                 </Text>
                 <Text style={peopleStyles.cardSub}>
-                  driven folks within walking distance
+                  showing {filteredPeople.length} of {filteredPeople.length}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={peopleStyles.cardClose}
-                onPress={closePeople}
-              >
-                <X size={16} color={C.textSecondary} strokeWidth={2.5} />
-              </TouchableOpacity>
+              <View style={peopleStyles.headerActions}>
+                <TouchableOpacity
+                  style={peopleStyles.filterBtn}
+                  onPress={openFilters}
+                >
+                  <SlidersHorizontal size={16} color={C.accent} strokeWidth={2.5} />
+                  {activeFilterCount > 0 && (
+                    <View style={peopleStyles.filterBadge}>
+                      <Text style={peopleStyles.filterBadgeText}>
+                        {activeFilterCount}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={peopleStyles.cardClose}
+                  onPress={closePeople}
+                >
+                  <X size={16} color={C.textSecondary} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
             </View>
             <ScrollView
               style={{ maxHeight: 400 }}
               showsVerticalScrollIndicator={false}
             >
-              {SAMPLE_NEARBY_PEOPLE.map((p) => (
-                <View key={p.id} style={peopleStyles.row}>
-                  <LinearGradient
-                    colors={p.grad}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={peopleStyles.rowAvatarRing}
+              {filteredPeople.map((p, i) => {
+                const grad = PIN_GRADIENTS[i % PIN_GRADIENTS.length];
+                const accent = grad[1];
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    activeOpacity={0.75}
+                    onPress={() => router.push(`/profile/${p.id}` as any)}
+                    style={[peopleStyles.row, { backgroundColor: accent + "12" }]}
                   >
-                    <Image
-                      source={{ uri: p.avatar }}
-                      style={peopleStyles.rowAvatar}
-                    />
-                  </LinearGradient>
-                  <View style={{ flex: 1 }}>
-                    <Text style={peopleStyles.rowName}>{p.name}</Text>
-                    <Text style={peopleStyles.rowRole} numberOfLines={1}>
-                      {p.role}
-                    </Text>
-                  </View>
-                  <View style={peopleStyles.rowPip} />
-                </View>
-              ))}
+                    <View style={peopleStyles.rowAvatarWrap}>
+                      <LinearGradient
+                        colors={grad}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={peopleStyles.rowAvatarRing}
+                      >
+                        {p.avatar_url ? (
+                          <Image
+                            source={{ uri: p.avatar_url }}
+                            style={peopleStyles.rowAvatar}
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              peopleStyles.rowAvatar,
+                              peopleStyles.rowAvatarFallback,
+                            ]}
+                          >
+                            <Text style={peopleStyles.rowAvatarInitial}>
+                              {(p.username ?? "?")
+                                .charAt(0)
+                                .toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                      </LinearGradient>
+                      <View style={peopleStyles.interestBadge}>
+                        <Text style={peopleStyles.interestBadgeText}>
+                          {interestEmoji(p.main_interest)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={peopleStyles.rowName} numberOfLines={1}>
+                        {p.username ?? "?"}
+                      </Text>
+                      {p.main_interest ? (
+                        <Text style={peopleStyles.rowLoves} numberOfLines={1}>
+                          loves{" "}
+                          <Text style={[peopleStyles.rowInterest, { color: accent }]}>
+                            {p.main_interest}
+                          </Text>
+                        </Text>
+                      ) : (
+                        <Text style={peopleStyles.rowLoves} numberOfLines={1}>
+                          meeting new people ✨
+                        </Text>
+                      )}
+                    </View>
+                    <View style={[peopleStyles.rowPip, { backgroundColor: accent }]} />
+                  </TouchableOpacity>
+                );
+              })}
+              {filteredPeople.length === 0 && (
+                <Text style={peopleStyles.emptyText}>
+                  {nearbyPeople.length === 0
+                    ? "No one around yet — check back soon."
+                    : "No one matches these filters."}
+                </Text>
+              )}
             </ScrollView>
           </Animated.View>
         </Animated.View>
+      )}
+
+      {/* ── Filter drawer (slides in from the right) ── */}
+      {filtersOpen && (
+        <View style={peopleStyles.drawerRoot}>
+          <Animated.View
+            style={[peopleStyles.drawerBackdrop, { opacity: drawerOpacity }]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFillObject}
+              onPress={closeFilters}
+            />
+          </Animated.View>
+          <Animated.View
+            style={[
+              peopleStyles.drawer,
+              {
+                paddingTop: insets.top + 18,
+                paddingBottom: insets.bottom + 12,
+                transform: [{ translateX: drawerX }],
+              },
+            ]}
+          >
+            <View style={peopleStyles.drawerHeader}>
+              <Text style={peopleStyles.drawerTitle}>Filters</Text>
+              <TouchableOpacity
+                style={peopleStyles.cardClose}
+                onPress={closeFilters}
+              >
+                <X size={16} color={C.textSecondary} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+            >
+              {/* Verified */}
+              <Text style={peopleStyles.drawerSectionLabel}>Verification</Text>
+              <TouchableOpacity
+                style={peopleStyles.toggleRow}
+                activeOpacity={0.8}
+                onPress={() => setFilterVerified((v) => !v)}
+              >
+                <View style={peopleStyles.toggleRowLeft}>
+                  <BadgeCheck size={18} color={C.accent} strokeWidth={2.5} />
+                  <Text style={peopleStyles.toggleRowText}>Verified only</Text>
+                </View>
+                <View
+                  style={[
+                    peopleStyles.switch,
+                    filterVerified && peopleStyles.switchOn,
+                  ]}
+                >
+                  <View
+                    style={[
+                      peopleStyles.knob,
+                      filterVerified && peopleStyles.knobOn,
+                    ]}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Distance (single-thumb slider — UI-only until presence ships) */}
+              <Text style={peopleStyles.drawerSectionLabel}>Distance</Text>
+              <RangeSlider
+                min={DIST_MIN}
+                max={DIST_MAX}
+                step={1}
+                values={[filterDistance]}
+                onChange={(v) => setFilterDistance(v[0])}
+                format={(v) => (v >= DIST_MAX ? "Any" : `${v} km`)}
+              />
+
+              {/* Age range (dual-thumb slider — hardcoded until age is available) */}
+              <Text style={peopleStyles.drawerSectionLabel}>Age range</Text>
+              <RangeSlider
+                min={AGE_MIN}
+                max={AGE_MAX}
+                step={1}
+                values={ageRange}
+                onChange={setAgeRange}
+                format={(v) => (v >= AGE_MAX ? "60+" : `${v}`)}
+              />
+
+              {/* Occupation */}
+              <Text style={peopleStyles.drawerSectionLabel}>Occupation</Text>
+              <FilterChips
+                options={availableOccupations}
+                selected={filterOccupations}
+                onToggle={(it) => setFilterOccupations((p) => toggleInList(p, it))}
+                empty="No occupations to filter yet."
+              />
+
+              {/* Personality type */}
+              <Text style={peopleStyles.drawerSectionLabel}>Personality</Text>
+              <FilterChips
+                options={availablePersonalities}
+                selected={filterPersonalities}
+                onToggle={(it) =>
+                  setFilterPersonalities((p) => toggleInList(p, it))
+                }
+                empty="No personality types to filter yet."
+              />
+
+              {/* Home country */}
+              <Text style={peopleStyles.drawerSectionLabel}>Home country</Text>
+              <FilterChips
+                options={COUNTRIES}
+                selected={filterCountries}
+                onToggle={(it) => setFilterCountries((p) => toggleInList(p, it))}
+                empty="No countries available."
+              />
+
+              {/* Interests */}
+              <Text style={peopleStyles.drawerSectionLabel}>Interests</Text>
+              <FilterChips
+                options={availableInterests}
+                selected={filterInterests}
+                onToggle={(it) => setFilterInterests((p) => toggleInList(p, it))}
+                empty="No interests to filter yet."
+              />
+            </ScrollView>
+
+            <View style={peopleStyles.drawerFooter}>
+              <TouchableOpacity
+                style={peopleStyles.clearBtn}
+                onPress={clearFilters}
+                activeOpacity={0.8}
+              >
+                <Text style={peopleStyles.clearBtnText}>Clear all</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={peopleStyles.applyBtn}
+                onPress={closeFilters}
+                activeOpacity={0.9}
+              >
+                <Text style={peopleStyles.applyBtnText}>
+                  Show {filteredPeople.length}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
       )}
 
       <MobileNav active="home" />
@@ -3320,13 +4273,16 @@ const styles = StyleSheet.create({
     height: 44,
     // overflow visible so the sticker can peek outside the circle
   },
-  mbtiSticker: {
+  sheetInterestBadge: {
     position: "absolute",
-    bottom: -5,
-    right: -8,
-    borderRadius: C.Radii.md,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+    bottom: -4,
+    right: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
     borderColor: C.surface,
     shadowColor: "#000",
@@ -3335,11 +4291,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
-  mbtiStickerText: {
-    fontFamily: C.Fonts.heading,
-    fontSize: 8,
-    color: "#fff",
-    letterSpacing: 0.6,
+  sheetInterestBadgeText: {
+    fontSize: 11,
   },
   sheetTitle: {
     fontFamily: C.Fonts.heading,
@@ -3375,8 +4328,8 @@ const styles = StyleSheet.create({
   },
   sheetPersonItem: {
     alignItems: "center",
-    gap: 4,
-    width: 54,
+    gap: 3,
+    width: 64,
   },
   sheetPersonAvatar: {
     width: 44,
@@ -3394,11 +4347,18 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   sheetPersonName: {
-    fontFamily: C.Fonts.body,
-    fontSize: 10,
-    color: C.textSecondary,
+    fontFamily: C.Fonts.bodyBold,
+    fontSize: 11,
+    color: C.textPrimary,
     textAlign: "center",
-    width: 54,
+    width: 64,
+  },
+  sheetPersonInterest: {
+    fontFamily: C.Fonts.bodyMedium,
+    fontSize: 9.5,
+    color: C.accent,
+    textAlign: "center",
+    width: 64,
   },
   ctaRow: {
     flexDirection: "row",

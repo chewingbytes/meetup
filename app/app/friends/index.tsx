@@ -12,6 +12,7 @@ import { getAvatarPublicUrl } from "@/lib/supabaseStorage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
+  ChevronDown,
   ChevronLeft,
   MessageCircle,
   Search,
@@ -238,6 +239,7 @@ export default function FriendsScreen() {
           isDM: "true",
           friendName: friend.username,
           friendAvatar: friend.avatar_url ?? "",
+          friendId: friend.id,
         },
       } as any);
     } catch (err: any) {

@@ -2,13 +2,14 @@
   "expo": {
     "name": "meetup2",
     "slug": "meetup2",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/images/transparentbackgroundlogo.png",
+    "icon": "./assets/images/logofaviconapp.png",
     "scheme": "meetup2",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "ios": {
-      "icon": "./assets/images/transparentbackgroundlogo.png",
+      "icon": "./assets/images/logofaviconapp.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.chewingbytes.meetup2",
       "infoPlist": {
@@ -19,9 +20,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/logofaviconapp.png",
+        "backgroundImage": "./assets/images/logofaviconapp.png",
+        "monochromeImage": "./assets/images/logofaviconapp.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.chewingbytes.meetup2",
@@ -29,7 +30,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/logoo.png",
+      "favicon": "./assets/images/logofaviconapp.png",
       "bundler": "metro"
     },
     "plugins": [
@@ -37,7 +38,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/transparentbackgroundlogo.png",
+          "image": "./assets/images/logofaviconapp.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"

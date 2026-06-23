@@ -39,7 +39,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+// import MapView, { Marker, type Region } from "react-native-maps"; // PROD
+import MapView, { Marker, type Region } from "@/components/maps-stub"; // DEV (Expo Go)
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
@@ -361,7 +362,7 @@ export default function CreateFavouriteWizard({ onClose, onSuccess }: Props) {
                   ref={mapViewRef}
                   style={styles.miniMap}
                   initialRegion={SINGAPORE}
-                  onRegionChange={(r) => { mapRegionRef.current = r; }}
+                  onRegionChange={(r: Region) => { mapRegionRef.current = r; }}
                   showsUserLocation
                   showsCompass={false}
                 >

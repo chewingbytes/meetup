@@ -6,13 +6,59 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    console.log("FETHCING EVENTS");
-    const { data: events, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("start_at", { ascending: true });
+    const { minLat, maxLat, minLng, maxLng } = req.query as Record<string, string | undefined>;
+
+    console.log(`[EVENTS] GET / | bounds: lat=[${minLat ?? "none"}, ${maxLat ?? "none"}] lng=[${minLng ?? "none"}, ${maxLng ?? "none"}]`);
+
+    let query = supabase.from("events").select("*");
+
+    if (minLat && maxLat && minLng && maxLng) {
+      query = query
+        .gte("location_lat", parseFloat(minLat))
+        .lte("location_lat", parseFloat(maxLat))
+        .gte("location_lng", parseFloat(minLng))
+        .lte("location_lng", parseFloat(maxLng));
+    }
+
+    const { data: events, error } = await query
+      .order("startDate", { ascending: true })
+      .limit(50);
     if (error) throw error;
-    res.json(events);
+
+    console.log(`[EVENTS] query returned ${events?.length ?? 0} rows`);
+
+    // Enrich with organizer avatar_url + username
+    const organizerIds = [...new Set(
+      (events || []).map((e: any) => e.organizer_id).filter(Boolean)
+    )] as string[];
+
+    let organizerMap: Record<string, { avatar_url: string | null; username: string | null; photo_urls: string[] | null }> = {};
+    if (organizerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, avatar_url, username, photo_urls")
+        .in("id", organizerIds);
+      for (const p of profiles || []) {
+        organizerMap[p.id] = {
+          avatar_url: p.avatar_url ?? null,
+          username: p.username ?? null,
+          photo_urls: p.photo_urls ?? null,
+        };
+      }
+    }
+
+    const enriched = (events || []).map((e: any) => {
+      const org = organizerMap[e.organizer_id];
+      return {
+        ...e,
+        organizer_avatar_url: org?.avatar_url ?? null,
+        organizer_username: org?.username ?? null,
+        // First photo from photo_urls is the organizer's main profile photo
+        organizer_photo_url: org?.photo_urls?.[0] ?? org?.avatar_url ?? null,
+      };
+    });
+
+    res.json(enriched);
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ message: err.message || "Failed to fetch events" });
@@ -46,7 +92,7 @@ router.get("/my-events", async (req, res) => {
     let query = supabase
       .from("events")
       .select("*")
-      .order("start_at", { ascending: true });
+      .order("startDate", { ascending: true });
 
     if (eventIds.length > 0) {
       query = query.or(
@@ -139,12 +185,14 @@ router.get("/:id", async (req, res) => {
       id: string;
       username: string | null;
       avatar_url: string | null;
+      personality_type: string | null;
+      main_interest: string | null;
     }> = [];
 
     if (userIds.length > 0) {
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id, username, avatar_url")
+        .select("id, username, avatar_url, personality_type, main_interest")
         .in("id", userIds);
 
       if (profilesError) throw profilesError;
@@ -153,6 +201,8 @@ router.get("/:id", async (req, res) => {
         id: profile.id,
         username: profile.username || null,
         avatar_url: profile.avatar_url || null,
+        personality_type: profile.personality_type || null,
+        main_interest: profile.main_interest || null,
       }));
     }
 
@@ -177,17 +227,21 @@ router.post("/", upload.single("cover"), async (req, res) => {
 
     const {
       name,
-      start_at,
-      end_at,
+      startDate = null,
+      startTime = null,
+      startAnytime = true,
+      end_at = null,
       location_text,
+      location_lat = null,
+      location_lng = null,
       location_instructions,
       description,
-      description_md,
       require_approval = false,
       is_paid = false,
       price = 0,
       visibility = "public",
       capacity = null,
+      category,
       organizerId,
       communityId,
     } = payload;
@@ -221,11 +275,16 @@ router.post("/", upload.single("cover"), async (req, res) => {
         organizer_id: organizerId || null,
         cover_image: cover_image_url,
         name,
-        description: description || description_md || null,
-        start_at,
-        end_at,
+        description: description || null,
+        startDate: startDate || null,
+        startTime: startTime || null,
+        startAnytime: startAnytime ?? true,
+        end_at: end_at || null,
         location_text,
+        location_lat: location_lat ? Number(location_lat) : null,
+        location_lng: location_lng ? Number(location_lng) : null,
         location_instructions,
+        category: category || null,
         require_approval,
         is_paid,
         price: is_paid ? price : 0,
@@ -236,6 +295,28 @@ router.post("/", upload.single("cover"), async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    console.log("INSERTED EVENT location_lat:", created?.location_lat, "location_lng:", created?.location_lng);
+
+    // Auto-create a chat channel for this event (community_id optional)
+    if (created?.id) {
+      console.log("🔵 Creating channel for event:", created.id);
+      const { data: newChannel, error: chanErr } = await supabase
+        .from("channels")
+        .insert({
+          name: name,
+          description: `Chat for ${name}`,
+          community_id: communityId || null,
+          event_id: created.id,
+        })
+        .select()
+        .single();
+      if (chanErr) {
+        console.error("❌ Channel creation failed:", chanErr.message, chanErr.details);
+      } else {
+        console.log("✅ Channel created:", newChannel?.id, "for event:", created.id);
+      }
+    }
 
     // Add organizer to user_events table
     const effectiveOrganizerId = organizerId || created?.organizer_id;
@@ -351,6 +432,66 @@ router.post("/leave", async (req, res) => {
   } catch (err: any) {
     console.error("❌ Error leaving event:", err);
     res.status(500).json({ message: err.message || "Failed to leave event" });
+  }
+});
+
+// Delete event — organizer only
+// Cascades: channel → user_events → event
+// user_id accepted from query param OR body for maximum compatibility
+router.delete("/:id", async (req, res) => {
+  try {
+    const event_id = req.params.id;
+    const user_id = (req.query.user_id as string) || req.body?.user_id;
+
+    if (!user_id) {
+      return res.status(400).json({ message: "user_id is required" });
+    }
+
+    // Verify the requester is the organizer
+    const { data: ev, error: evErr } = await supabase
+      .from("events")
+      .select("organizer_id")
+      .eq("id", event_id)
+      .single();
+
+    if (evErr || !ev) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (ev.organizer_id !== user_id) {
+      return res.status(403).json({ message: "Only the organizer can delete this event" });
+    }
+
+    console.log("🔵 Deleting event:", event_id);
+
+    // 1. Delete the channel(s) for this event
+    const { error: chanErr } = await supabase
+      .from("channels")
+      .delete()
+      .eq("event_id", event_id);
+    if (chanErr) console.warn("⚠️ Channel delete error:", chanErr.message);
+    else console.log("✅ Channels deleted for event:", event_id);
+
+    // 2. Remove all attendees from user_events
+    const { error: ueErr } = await supabase
+      .from("user_events")
+      .delete()
+      .eq("event_id", event_id);
+    if (ueErr) console.warn("⚠️ user_events delete error:", ueErr.message);
+    else console.log("✅ user_events cleared for event:", event_id);
+
+    // 3. Delete the event itself
+    const { error: delErr } = await supabase
+      .from("events")
+      .delete()
+      .eq("id", event_id);
+    if (delErr) throw delErr;
+
+    console.log("✅ Event deleted:", event_id);
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("❌ Error deleting event:", err);
+    res.status(500).json({ message: err.message || "Failed to delete event" });
   }
 });
 

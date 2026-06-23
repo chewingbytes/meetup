@@ -4,7 +4,7 @@ interface Props {
   description?: string;
 }
 const {
-  title = "soonest — the action-first social network",
+  title = "soonest — the irl social network",
   description = "Stop performative flexing. Find like-minded people who get the grind. Drop a pin, filter the vibe, link up for real.",
 } = Astro.props;
 ---
@@ -32,6 +32,12 @@ const {
         href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap"
       />
     </noscript>
+    <!-- Detect IG/TikTok webview early to disable GPU-crash blur effects -->
+    <script is:inline>
+      if (/Instagram|FBAN|FBAV|TikTok|BytedanceWebview/i.test(navigator.userAgent)) {
+        document.documentElement.classList.add('no-blur');
+      }
+    </script>
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />

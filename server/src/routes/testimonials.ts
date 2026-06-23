@@ -1,3 +1,4 @@
+//@ts-nocheck
 import express from "express";
 import { supabase } from "../../db/supabaseClient.js";
 

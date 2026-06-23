@@ -58,7 +58,7 @@ function fmtTime(iso: string) {
 }
 
 export default function ChatScreen() {
-  const { channelId, channelName, eventId, category, isDM, friendName, friendAvatar } =
+  const { channelId, channelName, eventId, category, isDM, friendName, friendAvatar, friendId } =
     useLocalSearchParams<{
       channelId: string;
       channelName: string;
@@ -67,6 +67,7 @@ export default function ChatScreen() {
       isDM?: string;
       friendName?: string;
       friendAvatar?: string;
+      friendId?: string;
     }>();
   const isDirectMessage = isDM === "true";
   const catConfig = getCategoryConfig(category);
@@ -158,12 +159,14 @@ export default function ChatScreen() {
 
         <TouchableOpacity
           style={styles.headerInfo}
-          onPress={() =>
-            !isDirectMessage && eventId
-              ? router.push({ pathname: "/events/[id]", params: { id: eventId } })
-              : undefined
-          }
-          activeOpacity={!isDirectMessage && eventId ? 0.7 : 1}
+          onPress={() => {
+            if (isDirectMessage && friendId) {
+              router.push({ pathname: "/profile/[id]", params: { id: friendId } } as any);
+            } else if (!isDirectMessage && eventId) {
+              router.push({ pathname: "/events/[id]", params: { id: eventId } });
+            }
+          }}
+          activeOpacity={isDirectMessage && friendId || (!isDirectMessage && !!eventId) ? 0.7 : 1}
         >
           {isDirectMessage ? (
             friendAvatar ? (

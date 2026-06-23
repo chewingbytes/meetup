@@ -1,7 +1,8 @@
 import { getCategoryConfig } from "@/utils/categories";
 import React, { memo } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
-import { Marker } from "react-native-maps";
+// import { Marker } from "react-native-maps"; // PROD
+import { Marker } from "@/components/maps-stub"; // DEV (Expo Go)
 import type { FavouritePlace } from "@/lib/useFavouritePlaces";
 
 interface Props {
