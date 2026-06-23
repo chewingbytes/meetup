@@ -164,3 +164,12 @@ export const sendWebappMessage = (body: {
   text: string;
 }): Promise<ChatMessage> =>
   request("/webapp/messages", { method: "POST", body: JSON.stringify(body) });
+
+/** Resolve avatars (+ IG handle) for a set of user ids — used to render avatars
+ *  next to chat messages, which only carry user_id + username. */
+export const getWebappAvatars = (
+  ids: string[],
+): Promise<Record<string, { instagram: string | null; avatar_url: string | null }>> =>
+  ids.length === 0
+    ? Promise.resolve({})
+    : request("/webapp/avatars", { method: "POST", body: JSON.stringify({ ids }) });

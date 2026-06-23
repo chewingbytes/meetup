@@ -7,6 +7,7 @@ import { useChat } from "@/lib/useChat";
 import { getCategoryConfig } from "@/lib/categories";
 import { grad, authorGradient } from "@/lib/theme";
 import { fmtTime } from "@/lib/format";
+import { getWebappAvatars } from "@/lib/api";
 
 const igUrl = (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`;
 
@@ -36,6 +37,31 @@ export function ChatPanel({ channelId, eventName, category, mode, onClose }: Cha
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  // Resolve sender avatars by user_id (messages only carry id + username).
+  // undefined = not fetched yet, null = fetched but no avatar → show initial.
+  const [avatars, setAvatars] = useState<Record<string, string | null>>({});
+  useEffect(() => {
+    const ids = [
+      ...new Set(messages.map((m) => m.user_id).filter((id) => id && id !== user?.id)),
+    ];
+    const missing = ids.filter((id) => !(id in avatars));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    getWebappAvatars(missing)
+      .then((map) => {
+        if (cancelled) return;
+        setAvatars((prev) => {
+          const next = { ...prev };
+          for (const id of missing) next[id] = map[id]?.avatar_url ?? null;
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, avatars, user?.id]);
 
   const cat = getCategoryConfig(category);
   const CatIcon = cat.Icon;
@@ -109,12 +135,22 @@ export function ChatPanel({ channelId, eventName, category, mode, onClose }: Cha
                 >
                   {!isMe && (
                     <div
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                      className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ${
                         showAuthor ? "" : "opacity-0"
                       }`}
                       style={{ background: grad(g) }}
                     >
-                      {(m.username ?? "?").charAt(0).toUpperCase()}
+                      {avatars[m.user_id] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={avatars[m.user_id]!}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        (m.username ?? "?").charAt(0).toUpperCase()
+                      )}
                     </div>
                   )}
                   <div className={`flex max-w-[78%] flex-col ${isMe ? "items-end" : "items-start"}`}>
