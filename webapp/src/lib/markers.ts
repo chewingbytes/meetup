@@ -32,27 +32,26 @@ export function eventPinIcon(event: EventProps, joined: boolean): L.DivIcon {
       </defs>
       <path d="M23 1.5C11.7 1.5 2.5 10.7 2.5 22C2.5 35.5 23 52.5 23 52.5C23 52.5 43.5 35.5 43.5 22C43.5 10.7 34.3 1.5 23 1.5Z"
             fill="url(#${gid})" stroke="${joined ? "#10B981" : "rgba(255,255,255,0.7)"}" stroke-width="${joined ? 3 : 2}"/>
-      <circle cx="23" cy="21" r="7" fill="#fff" opacity="0.95"/>
     </svg>`;
 
   const avatarInner = photo
     ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;"/>`
-    : `<span style="font-family:var(--font-dmsans);font-weight:800;font-size:11px;color:${g1};">${esc(initial)}</span>`;
+    : `<span style="font-family:var(--font-dmsans);font-weight:800;font-size:13px;color:${g1};">${esc(initial)}</span>`;
 
-  // Organizer avatar badge — bottom-right of the pin head.
+  // Organizer avatar — sits in the head (top) of the pin.
   const html = `
-    <div style="position:relative;width:52px;height:56px;cursor:pointer;will-change:transform;">
+    <div style="position:relative;width:46px;height:54px;cursor:pointer;will-change:transform;">
       ${teardrop}
-      <div style="position:absolute;left:28px;top:24px;width:22px;height:22px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);">
+      <div style="position:absolute;left:9px;top:7px;width:28px;height:28px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);">
         ${avatarInner}
       </div>
-      ${joined ? `<div style="position:absolute;top:-2px;left:-2px;width:18px;height:18px;border-radius:99px;background:#10B981;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.25);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : ""}
+      ${joined ? `<div style="position:absolute;top:0px;right:-1px;width:17px;height:17px;border-radius:99px;background:#10B981;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.25);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : ""}
     </div>`;
 
   return L.divIcon({
     html,
     className: "soonest-marker",
-    iconSize: [52, 56],
+    iconSize: [46, 54],
     iconAnchor: [23, 53],
   });
 }

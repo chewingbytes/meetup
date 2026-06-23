@@ -33,6 +33,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 
 export default function Home() {
   const mapRef = useRef<LeafletMap | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const { events, reload, addEvent } = useEvents();
   const { user, ready, session, saveInstagram, signOut } = useIdentity();
   const [authError, setAuthError] = useState<string | null>(null);
@@ -89,6 +90,23 @@ export default function Home() {
 
   // Map shows only activities whose day hasn't ended.
   const visibleEvents = useMemo(() => events.filter((e) => !isEventExpired(e)), [events]);
+
+  // On first load, frame the map to the events so they're never off-screen
+  // (e.g. a lone event east of the default center). Runs once.
+  const didFitRef = useRef(false);
+  useEffect(() => {
+    if (didFitRef.current || !mapReady || !mapRef.current) return;
+    const pts = visibleEvents
+      .map((e) => [Number(e.location_lat), Number(e.location_lng)] as [number, number])
+      .filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b));
+    if (pts.length === 0) return;
+    didFitRef.current = true;
+    if (pts.length === 1) {
+      mapRef.current.setView(pts[0], 14);
+    } else {
+      mapRef.current.fitBounds(pts, { padding: [60, 60], maxZoom: 14 });
+    }
+  }, [mapReady, visibleEvents]);
 
   // ── Sheets / modals ──
   const [selectedEvent, setSelectedEvent] = useState<EventProps | null>(null);
@@ -256,7 +274,10 @@ export default function Home() {
           events={visibleEvents}
           joinedIds={joinedIds}
           onSelectEvent={openEvent}
-          onMapReady={(m) => (mapRef.current = m)}
+          onMapReady={(m) => {
+            mapRef.current = m;
+            setMapReady(true);
+          }}
         />
       </div>
 
