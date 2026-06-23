@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-vh: 100dvh;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #f4f1fa;
+  color: #332f3a;
+  font-family: var(--font-dmsans), system-ui, sans-serif;
+  /* Stop in-app browsers (Reddit/Instagram) from rubber-banding / pull-to-refresh
+     over the map, and kill horizontal scroll. */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  overflow: hidden; /* the map owns the viewport; sheets scroll internally */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.font-heading {
+  font-family: var(--font-nunito), system-ui, sans-serif;
+}
+
+/* ── Leaflet container ──────────────────────────────────────────────────────*/
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #f4f1fa;
+  font-family: var(--font-dmsans), system-ui, sans-serif;
+  outline: none;
+}
+
+/* Our markers are custom HTML — strip Leaflet's default divIcon chrome. */
+.soonest-marker {
+  background: transparent;
+  border: none;
+}
+.leaflet-marker-icon:focus,
+.leaflet-container a:focus {
+  outline: none;
+}
+
+/* Tuck the attribution into a subtle corner pill. */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(6px);
+  font-size: 9px !important;
+  color: #9b96a3 !important;
+  border-radius: 8px 0 0 0;
+  padding: 1px 6px !important;
+}
+.leaflet-control-attribution a {
+  color: #9b96a3 !important;
+}
+
+/* Zoom control — clay-styled, hidden on small screens (touch pinch instead). */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.16) !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+.leaflet-control-zoom a {
+  background: #ffffff !important;
+  color: #7c3aed !important;
+  border: none !important;
+  font-weight: 700;
+}
+@media (max-width: 768px) {
+  .leaflet-control-zoom {
+    display: none;
+  }
+}
+
+/* Hide scrollbars on internal scrollers but keep scrollability. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+}
