@@ -20,7 +20,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Soonest — fill your day with people",
   description:
-    "Drop a pin, join what's happening near you. Spontaneous hangouts on a live map — no account needed to join.",
+    "Drop a pin, join what's happening near you. Spontaneous hangouts on a live map.",
   openGraph: {
     title: "Soonest — fill your day with people",
     description: "Spontaneous hangouts on a live map. Join in one tap.",
@@ -37,9 +37,33 @@ export const viewport: Viewport = {
   themeColor: "#7C3AED",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={`${nunito.variable} ${dmSans.variable}`}>
+      <head>
+        <link
+          rel="apple-touch-icon"
+          sizes="180x180"
+          href="/apple-touch-icon.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="32x32"
+          href="/favicon-32x32.png"
+        />
+        <link
+          rel="icon"
+          type="image/png"
+          sizes="16x16"
+          href="/favicon-16x16.png"
+        />
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
       <body>
         <IdentityProvider>{children}</IdentityProvider>
       </body>

@@ -284,10 +284,9 @@ export default function Home() {
       {/* Top bar */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/90 px-3.5 py-2 shadow-clayCardSm backdrop-blur">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/transparentlogo.png" alt="Soonest" className="h-6 w-6 shrink-0" />
           <span className="font-heading text-lg font-extrabold tracking-tight text-accent">soonest</span>
-          <span className="rounded-full bg-accentMuted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
-            beta
-          </span>
         </div>
 
         <div className="pointer-events-auto flex items-center gap-2">
