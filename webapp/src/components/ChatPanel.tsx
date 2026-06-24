@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, X, Send, MessageSquare, Users, Instagram } from "lucide-react";
+import { ChevronLeft, X, Send, MessageSquare, Users, Instagram, Star } from "lucide-react";
 import { useIdentity } from "@/lib/webappUser";
 import { useChat } from "@/lib/useChat";
 import { getCategoryConfig } from "@/lib/categories";
@@ -45,6 +45,8 @@ export function ChatPanel({ channelId, eventName, category, eventId, mode, onClo
   // Resolve sender avatars by user_id (messages only carry id + username).
   // undefined = not fetched yet, null = fetched but no avatar → show initial.
   const [avatars, setAvatars] = useState<Record<string, string | null>>({});
+  // Soonest+ early-member flag per sender id (waitlist members).
+  const [premium, setPremium] = useState<Record<string, boolean>>({});
   useEffect(() => {
     const ids = [
       ...new Set(messages.map((m) => m.user_id).filter((id) => id && id !== user?.id)),
@@ -58,6 +60,11 @@ export function ChatPanel({ channelId, eventName, category, eventId, mode, onClo
         setAvatars((prev) => {
           const next = { ...prev };
           for (const id of missing) next[id] = map[id]?.avatar_url ?? null;
+          return next;
+        });
+        setPremium((prev) => {
+          const next = { ...prev };
+          for (const id of missing) next[id] = !!map[id]?.premium;
           return next;
         });
       })
@@ -148,22 +155,32 @@ export function ChatPanel({ channelId, eventName, category, eventId, mode, onClo
                   className={`flex items-end gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
                 >
                   {!isMe && (
-                    <div
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white ${
-                        showAuthor ? "" : "opacity-0"
-                      }`}
-                      style={{ background: grad(g) }}
-                    >
-                      {avatars[m.user_id] ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={avatars[m.user_id]!}
-                          alt=""
-                          referrerPolicy="no-referrer"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        (m.username ?? "?").charAt(0).toUpperCase()
+                    <div className={`relative h-7 w-7 shrink-0 ${showAuthor ? "" : "opacity-0"}`}>
+                      <div
+                        className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-xs font-bold text-white"
+                        style={{ background: grad(g) }}
+                      >
+                        {avatars[m.user_id] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={avatars[m.user_id]!}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          (m.username ?? "?").charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      {premium[m.user_id] && (
+                        <span
+                          className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-canvas"
+                          style={{ background: grad(["#FBBF24", "#F59E0B"]) }}
+                          aria-label="Soonest+ early member"
+                          title="Soonest+ early member"
+                        >
+                          <Star size={8} strokeWidth={3} className="text-white" />
+                        </span>
                       )}
                     </div>
                   )}

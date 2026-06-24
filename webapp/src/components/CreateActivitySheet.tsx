@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, MapPin, Loader2, Search, AlertTriangle, ChevronLeft, Instagram } from "lucide-react";
+import {
+  X,
+  MapPin,
+  Loader2,
+  Search,
+  AlertTriangle,
+  ChevronLeft,
+  Instagram,
+  ArrowRight,
+} from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { grad } from "@/lib/theme";
@@ -30,6 +39,9 @@ interface CreateActivitySheetProps {
 
 const toDateStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+// One question per slide — mirrors the onboarding flow so creating feels light.
+const TOTAL_STEPS = 4;
 
 export function CreateActivitySheet({
   open,
@@ -64,13 +76,18 @@ export function CreateActivitySheet({
   const [error, setError] = useState<string | null>(null);
   const [authForm, setAuthForm] = useState<Record<string, any> | null>(null);
 
+  // Carousel position. `dir` drives the slide-in direction (1 = forward).
+  const [step, setStep] = useState(0);
+  const [dir, setDir] = useState<1 | -1>(1);
+
   // Address search
   const [addrQuery, setAddrQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const addrTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore draft (survives reloads / OAuth round-trip).
+  // Restore draft (survives reloads, the pick-on-map round-trip, and the OAuth
+  // redirect — including which step the user was on).
   useEffect(() => {
     const d = readCreateDraft();
     if (!d) return;
@@ -81,12 +98,13 @@ export function CreateActivitySheet({
     setRequireApproval(d.requireApproval ?? false);
     // Only restore the date if it's still inside the valid window.
     if (d.dateStr && dayStrs.includes(d.dateStr)) setDateStr(d.dateStr);
+    if (typeof d.step === "number" && d.step >= 0 && d.step < TOTAL_STEPS) setStep(d.step);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    saveCreateDraft({ name, description, dateStr, anytime, time, requireApproval });
-  }, [name, description, dateStr, anytime, time, requireApproval]);
+    saveCreateDraft({ name, description, dateStr, anytime, time, requireApproval, step });
+  }, [name, description, dateStr, anytime, time, requireApproval, step]);
 
   const handleAddrChange = (text: string) => {
     setAddrQuery(text);
@@ -121,6 +139,8 @@ export function CreateActivitySheet({
     setAuthForm(null);
     setAddrQuery("");
     setSuggestions([]);
+    setStep(0);
+    setDir(1);
     onClearLocation();
     clearCreateDraft();
   };
@@ -128,6 +148,30 @@ export function CreateActivitySheet({
   const resetAndClose = () => {
     setAuthForm(null);
     onClose();
+  };
+
+  // Per-step gate so people can't advance past a missing required answer.
+  const stepError = (s: number): string | null => {
+    if (s === 0 && name.trim().length < 3) return "Give your activity a name (3+ characters).";
+    if (s === 1 && !picked) return "Set a location for your activity.";
+    if (s === 2 && !anytime && !time) return "Pick a time, or choose “Any time during the day”.";
+    return null;
+  };
+
+  const goNext = () => {
+    const err = stepError(step);
+    if (err) return setError(err);
+    setError(null);
+    setSuggestions([]);
+    setDir(1);
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
+  };
+
+  const goBack = () => {
+    setError(null);
+    setSuggestions([]);
+    setDir(-1);
+    setStep((s) => Math.max(s - 1, 0));
   };
 
   const buildPayload = async (): Promise<Record<string, any> | null> => {
@@ -175,8 +219,8 @@ export function CreateActivitySheet({
     };
   };
 
-  const handleContinue = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Final step → moderate, then create (or gate behind sign-in first).
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
       const payload = await buildPayload();
@@ -200,9 +244,201 @@ export function CreateActivitySheet({
     ? picked.address ?? `${picked.lat.toFixed(5)}, ${picked.lng.toFixed(5)}`
     : null;
 
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
+          <div>
+            <h3 className="font-heading text-xl font-extrabold text-textPrimary">
+              What do you want to do?
+            </h3>
+            <p className="mb-4 mt-1 text-sm text-textSecondary">
+              Give your activity a clear, inviting name.
+            </p>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && goNext()}
+              placeholder="e.g. Sunset run at the bay"
+              maxLength={80}
+              className="w-full rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
+            />
+          </div>
+        );
+      case 1:
+        return (
+          <div>
+            <h3 className="font-heading text-xl font-extrabold text-textPrimary">Where is it?</h3>
+            <p className="mb-4 mt-1 text-sm text-textSecondary">
+              Search an address or drop a pin on the map.
+            </p>
+            {picked ? (
+              <div className="flex items-center justify-between gap-2 rounded-2xl bg-greenMuted px-4 py-3">
+                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-accentGreen">
+                  <MapPin size={16} strokeWidth={2.5} className="shrink-0" />
+                  <span className="truncate">{locationLabel}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={onClearLocation}
+                  className="shrink-0 text-sm font-bold text-accent underline-offset-2 hover:underline"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative">
+                  <div className="flex items-center rounded-2xl border border-black/5 bg-canvas px-4 transition focus-within:border-accentLight focus-within:bg-white">
+                    <Search size={16} className="shrink-0 text-textTertiary" strokeWidth={2.5} />
+                    <input
+                      value={addrQuery}
+                      onChange={(e) => handleAddrChange(e.target.value)}
+                      placeholder="Type a place or address…"
+                      className="w-full bg-transparent py-3 pl-2 text-textPrimary outline-none"
+                    />
+                    {searching && <Loader2 size={16} className="spin shrink-0 text-textTertiary" />}
+                  </div>
+                  {suggestions.length > 0 && (
+                    <ul className="mt-1 w-full overflow-hidden rounded-2xl border border-black/5 bg-white shadow-clayCard">
+                      {suggestions.map((s, i) => (
+                        <li key={i}>
+                          <button
+                            type="button"
+                            onClick={() => selectSuggestion(s)}
+                            className="flex w-full items-start gap-2 px-4 py-2.5 text-left transition hover:bg-canvas"
+                          >
+                            <MapPin
+                              size={15}
+                              className="mt-0.5 shrink-0 text-accent"
+                              strokeWidth={2.5}
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-semibold text-textPrimary">
+                                {s.shortName}
+                              </span>
+                              <span className="block truncate text-xs text-textTertiary">
+                                {s.displayName}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={onPickOnMap}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-black/5 bg-canvas py-3 text-sm font-bold text-textSecondary transition hover:border-accentLight"
+                >
+                  <MapPin size={16} strokeWidth={2.5} /> Or pick on the map
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      case 2:
+        return (
+          <div>
+            <h3 className="font-heading text-xl font-extrabold text-textPrimary">When is it?</h3>
+            <p className="mb-4 mt-1 text-sm text-textSecondary">Pick a day in the next week.</p>
+            <div className="no-scrollbar mb-3 flex gap-2 overflow-x-auto pb-1">
+              {days.map((d, i) => {
+                const ds = dayStrs[i];
+                const active = ds === dateStr;
+                const label =
+                  i === 0 ? "Today" : i === 1 ? "Tom" : d.toLocaleDateString(undefined, { weekday: "short" });
+                return (
+                  <button
+                    type="button"
+                    key={ds}
+                    onClick={() => setDateStr(ds)}
+                    className={`flex w-14 shrink-0 flex-col items-center rounded-2xl border-2 py-2 transition ${
+                      active ? "border-2 text-white shadow-sm" : "border-black/5 bg-canvas text-textSecondary"
+                    }`}
+                    style={active ? { background: grad(["#A78BFA", "#7C3AED"]) } : undefined}
+                  >
+                    <span className="text-[11px] font-bold uppercase">{label}</span>
+                    <span className="text-lg font-extrabold leading-none">{d.getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              {!anytime && (
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="w-32 rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
+                />
+              )}
+              <label className="flex items-center gap-2 text-sm text-textSecondary">
+                <input
+                  type="checkbox"
+                  checked={anytime}
+                  onChange={(e) => setAnytime(e.target.checked)}
+                  className="h-4 w-4 accent-accent"
+                />
+                Any time during the day
+              </label>
+            </div>
+          </div>
+        );
+      default:
+        return (
+          <div>
+            <h3 className="font-heading text-xl font-extrabold text-textPrimary">Last details</h3>
+            <p className="mb-4 mt-1 text-sm text-textSecondary">
+              Add anything useful, then choose how people join.
+            </p>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-textTertiary">
+                Details <span className="font-normal normal-case text-textTertiary">(optional)</span>
+              </span>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Anything people should know…"
+                rows={3}
+                maxLength={500}
+                className="w-full resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => setRequireApproval((v) => !v)}
+              className="mt-4 flex w-full items-center justify-between rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-left"
+            >
+              <span>
+                <span className="block text-sm font-bold text-textPrimary">
+                  Require host approval to join
+                </span>
+                <span className="block text-xs text-textTertiary">
+                  You approve each person before they&apos;re in.
+                </span>
+              </span>
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                  requireApproval ? "bg-accent" : "bg-black/15"
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                    requireApproval ? "left-[22px]" : "left-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
+        );
+    }
+  };
+
   return (
     <Sheet open={open} onClose={resetAndClose} variant="responsive">
-      <div className="relative max-h-[88vh] overflow-y-auto no-scrollbar rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-clayHero md:max-h-[calc(100vh-2rem)] md:rounded-[28px]">
+      <div className="relative max-h-[88vh] overflow-y-auto overflow-x-hidden no-scrollbar rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-clayHero md:max-h-[calc(100vh-2rem)] md:rounded-[28px]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 md:hidden" />
         <button
           onClick={resetAndClose}
@@ -221,7 +457,7 @@ export function CreateActivitySheet({
               <ChevronLeft size={16} strokeWidth={2.5} /> Back to edit
             </button>
             <h2 className="font-heading text-2xl font-extrabold text-textPrimary">Almost live</h2>
-            <p className="mt-1 mb-5 text-sm text-textSecondary">
+            <p className="mb-5 mt-1 text-sm text-textSecondary">
               Verify to post <span className="font-semibold text-accent">{name.trim()}</span> — keeps
               the map spam-free.
             </p>
@@ -229,214 +465,78 @@ export function CreateActivitySheet({
           </>
         ) : (
           <>
-            <h2 className="font-heading text-2xl font-extrabold text-textPrimary">Drop an activity</h2>
-            <p className="mt-1 text-sm text-textSecondary">
-              {user ? (
-                <>
-                  As{" "}
-                  <span className="inline-flex items-center gap-0.5 align-middle font-semibold text-accent">
-                    <Instagram size={18} strokeWidth={2.5} className="shrink-0" />@{user.instagram}
-                  </span>
-                </>
-              ) : (
-                "Fill in details"
-              )}
-            </p>
-
-            <form onSubmit={handleContinue} className="mt-5 space-y-5">
-              {/* Name */}
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-textTertiary">
-                  What do you want to do?
+            <div className="flex items-center justify-between gap-3 pr-8">
+              <h2 className="font-heading text-2xl font-extrabold text-textPrimary">Drop an activity</h2>
+              <span className="shrink-0 text-xs font-bold text-textTertiary">
+                Step {step + 1} of {TOTAL_STEPS}
+              </span>
+            </div>
+            {user && (
+              <p className="mt-1 text-sm text-textSecondary">
+                As{" "}
+                <span className="inline-flex items-center gap-0.5 align-middle font-semibold text-accent">
+                  <Instagram size={16} strokeWidth={2.5} className="shrink-0" />@{user.instagram}
                 </span>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Sunset run at the bay"
-                  maxLength={80}
-                  className="w-full rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-accentLight focus:border-2 focus:bg-white"
-                />
-              </label>
+              </p>
+            )}
 
-              {/* Location */}
-              <div>
-                <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-textTertiary">
-                  Where
-                </span>
-                {picked ? (
-                  <div className="flex items-center justify-between gap-2 rounded-2xl bg-greenMuted px-4 py-3">
-                    <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-accentGreen">
-                      <MapPin size={16} strokeWidth={2.5} className="shrink-0" />
-                      <span className="truncate">{locationLabel}</span>
-                    </span>
-                    <button
-                      type="button"
-                      onClick={onClearLocation}
-                      className="shrink-0 text-sm font-bold text-accent underline-offset-2 hover:underline"
-                    >
-                      Change
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <div className="flex items-center rounded-2xl border border-black/5 bg-canvas px-4 transition focus:border-2 focus-within:border-accentLight focus-within:bg-white">
-                        <Search size={16} className="shrink-0 text-textTertiary" strokeWidth={2.5} />
-                        <input
-                          value={addrQuery}
-                          onChange={(e) => handleAddrChange(e.target.value)}
-                          placeholder="Type a place or address…"
-                          className="w-full bg-transparent py-3 pl-2 text-textPrimary outline-none"
-                        />
-                        {searching && <Loader2 size={16} className="spin shrink-0 text-textTertiary" />}
-                      </div>
-                      {suggestions.length > 0 && (
-                        <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-2xl border border-black/5 bg-white shadow-clayCard">
-                          {suggestions.map((s, i) => (
-                            <li key={i}>
-                              <button
-                                type="button"
-                                onClick={() => selectSuggestion(s)}
-                                className="flex w-full items-start gap-2 px-4 py-2.5 text-left transition hover:bg-canvas"
-                              >
-                                <MapPin
-                                  size={15}
-                                  className="mt-0.5 shrink-0 text-accent"
-                                  strokeWidth={2.5}
-                                />
-                                <span className="min-w-0">
-                                  <span className="block truncate text-sm font-semibold text-textPrimary">
-                                    {s.shortName}
-                                  </span>
-                                  <span className="block truncate text-xs text-textTertiary">
-                                    {s.displayName}
-                                  </span>
-                                </span>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onPickOnMap}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-black/5 bg-canvas py-3 text-sm font-bold text-textSecondary transition hover:border-accentLight focus:border-2"
-                    >
-                      <MapPin size={16} strokeWidth={2.5} /> Or pick on the map
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* When — today through +7 days */}
-              <div>
-                <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-textTertiary">
-                  When
-                </span>
-                <div className="no-scrollbar -mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1">
-                  {days.map((d, i) => {
-                    const ds = dayStrs[i];
-                    const active = ds === dateStr;
-                    const label = i === 0 ? "Today" : i === 1 ? "Tom" : d.toLocaleDateString(undefined, { weekday: "short" });
-                    return (
-                      <button
-                        type="button"
-                        key={ds}
-                        onClick={() => setDateStr(ds)}
-                        className={`flex w-14 shrink-0 flex-col items-center rounded-2xl border-2 py-2 transition ${
-                          active
-                            ? "text-white shadow-sm border-2"
-                            : "border-black/5 bg-canvas text-textSecondary"
-                        }`}
-                        style={active ? { background: grad(["#A78BFA", "#7C3AED"]) } : undefined}
-                      >
-                        <span className="text-[11px] font-bold uppercase">{label}</span>
-                        <span className="text-lg font-extrabold leading-none">{d.getDate()}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center gap-2">
-                  {!anytime && (
-                    <input
-                      type="time"
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="w-32 rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
-                    />
-                  )}
-                  <label className="flex items-center gap-2 text-sm text-textSecondary">
-                    <input
-                      type="checkbox"
-                      checked={anytime}
-                      onChange={(e) => setAnytime(e.target.checked)}
-                      className="h-4 w-4 accent-accent"
-                    />
-                    Any time during the day
-                  </label>
-                </div>
-              </div>
-
-              {/* Description */}
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-textTertiary">
-                  Details <span className="font-normal normal-case text-textTertiary">(optional)</span>
-                </span>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Anything people should know…"
-                  rows={3}
-                  maxLength={500}
-                  className="w-full resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
-                />
-              </label>
-
-              {/* Approval toggle */}
-              <button
-                type="button"
-                onClick={() => setRequireApproval((v) => !v)}
-                className="flex w-full items-center justify-between rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-left"
-              >
-                <span>
-                  <span className="block text-sm font-bold text-textPrimary">
-                    Require host approval to join
-                  </span>
-                  <span className="block text-xs text-textTertiary">
-                    You approve each person before they&apos;re in.
-                  </span>
-                </span>
+            {/* Progress */}
+            <div className="mb-5 mt-3 flex items-center gap-1.5">
+              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
                 <span
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-                    requireApproval ? "bg-accent" : "bg-black/15"
+                  key={i}
+                  className={`h-1.5 flex-1 rounded-full transition ${
+                    i <= step ? "bg-accent" : "bg-black/10"
                   }`}
+                />
+              ))}
+            </div>
+
+            {/* Active slide */}
+            <div key={step} className={dir === 1 ? "step-in-right" : "step-in-left"}>
+              {renderStep()}
+            </div>
+
+            {error && (
+              <div className="mt-4 flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-sm font-medium text-error">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0" strokeWidth={2.5} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="mt-6 flex items-center gap-3">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="flex h-[52px] items-center justify-center gap-1 rounded-2xl border-2 border-black/5 bg-canvas px-5 text-sm font-bold text-textSecondary transition hover:border-accentLight"
                 >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                      requireApproval ? "left-[22px]" : "left-0.5"
-                    }`}
-                  />
-                </span>
-              </button>
-
-              {error && (
-                <div className="flex items-start gap-2 rounded-2xl bg-red-50 p-3 text-sm font-medium text-error">
-                  <AlertTriangle size={16} className="mt-0.5 shrink-0" strokeWidth={2.5} />
-                  <span>{error}</span>
-                </div>
+                  <ChevronLeft size={18} strokeWidth={2.5} /> Back
+                </button>
               )}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-bold text-white shadow-clayButton transition active:scale-[0.98] disabled:opacity-70"
-                style={{ background: grad(["#A78BFA", "#7C3AED"]) }}
-              >
-                {submitting ? <Loader2 size={18} className="spin" /> : null}
-                {submitting ? "Checking…" : user ? "Post activity" : "Continue"}
-              </button>
-            </form>
+              {step < TOTAL_STEPS - 1 ? (
+                <button
+                  type="button"
+                  onClick={goNext}
+                  className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl font-bold text-white shadow-clayButton transition active:scale-[0.98]"
+                  style={{ background: grad(["#A78BFA", "#7C3AED"]) }}
+                >
+                  Next <ArrowRight size={18} strokeWidth={2.5} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="flex h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl font-bold text-white shadow-clayButton transition active:scale-[0.98] disabled:opacity-70"
+                  style={{ background: grad(["#A78BFA", "#7C3AED"]) }}
+                >
+                  {submitting ? <Loader2 size={18} className="spin" /> : null}
+                  {submitting ? "Checking…" : user ? "Post activity" : "Continue"}
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>

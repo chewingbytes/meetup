@@ -102,3 +102,31 @@ body {
 .spin {
   animation: spin 0.8s linear infinite;
 }
+
+/* ── Wizard step carousel (create-activity) — direction-aware slide-in ───────*/
+@keyframes stepInRight {
+  from {
+    opacity: 0;
+    transform: translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes stepInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.step-in-right {
+  animation: stepInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.step-in-left {
+  animation: stepInLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}

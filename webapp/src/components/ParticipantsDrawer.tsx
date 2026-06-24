@@ -12,6 +12,7 @@ import {
   Check,
   Instagram,
   ShieldAlert,
+  Star,
 } from "lucide-react";
 import type { EventDetail, Participant, WebappUser } from "@/lib/types";
 import { grad, authorGradient } from "@/lib/theme";
@@ -245,10 +246,14 @@ export function ParticipantsDrawer({
                   const menuOpen = openMenuId === p.id;
 
                   const canReport = !!me && !isSelf;
-                  const canVote =
-                    isPublic && viewerIsMember && !isSelf && !isThemOrganizer && p.source === "webapp";
+                  // The organizer can remove anyone directly — in public AND
+                  // private/approval-gated activities.
                   const canRemove =
-                    !isPublic && isOrganizer && !isSelf && !isThemOrganizer && p.source === "webapp";
+                    isOrganizer && !isSelf && !isThemOrganizer && p.source === "webapp";
+                  // Vote-to-kick stays a public-activity tool for non-organizer
+                  // members (the organizer removes directly instead of voting).
+                  const canVote =
+                    isPublic && !isOrganizer && viewerIsMember && !isSelf && !isThemOrganizer && p.source === "webapp";
                   const hasMenu = canReport || canVote || canRemove;
                   const busy = votingId === p.id || removingId === p.id;
 
@@ -258,21 +263,33 @@ export function ParticipantsDrawer({
                       className="rounded-2xl bg-white px-3 py-2.5 shadow-clayCardSm"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full"
-                          style={{ background: grad(g) }}
-                        >
-                          {p.avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={p.avatar_url}
-                              alt=""
-                              referrerPolicy="no-referrer"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="font-heading text-sm font-extrabold text-white">
-                              {(handle ?? "?").charAt(0).toUpperCase()}
+                        <div className="relative h-10 w-10 shrink-0">
+                          <div
+                            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full"
+                            style={{ background: grad(g) }}
+                          >
+                            {p.avatar_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={p.avatar_url}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <span className="font-heading text-sm font-extrabold text-white">
+                                {(handle ?? "?").charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          {p.premium && (
+                            <span
+                              className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full ring-2 ring-white"
+                              style={{ background: grad(["#FBBF24", "#F59E0B"]) }}
+                              aria-label="Soonest+ early member"
+                              title="Soonest+ early member"
+                            >
+                              <Star size={10} strokeWidth={3} className="text-white" />
                             </span>
                           )}
                         </div>
