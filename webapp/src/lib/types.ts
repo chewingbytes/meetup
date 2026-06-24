@@ -29,7 +29,7 @@ export interface EventProps {
   [key: string]: any;
 }
 
-export type MemberStatus = "approved" | "pending" | "rejected";
+export type MemberStatus = "approved" | "pending" | "rejected" | "kicked";
 
 export interface Participant {
   id: string;
@@ -45,6 +45,13 @@ export interface EventDetail extends EventProps {
   participants: Participant[];
   /** The requesting webapp user's membership status for this event. */
   my_status?: MemberStatus | null;
+  /** True when anyone can join freely (not private, no approval) — enables
+   *  vote-to-kick. Private/approval-gated events are organizer-moderated. */
+  is_public?: boolean;
+  /** Distinct vote-to-kick counts per member id (public activities only). */
+  kick_votes?: Record<string, number>;
+  /** Member ids the requesting user has already voted to kick. */
+  my_kick_votes?: string[];
 }
 
 /** A pending join request, surfaced in the organizer dashboard. */

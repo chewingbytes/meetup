@@ -40,6 +40,7 @@ export function ChatPopup({ event, open, onClose }: ChatPopupProps) {
         channelId={channelId}
         eventName={event.name}
         category={event.category ?? undefined}
+        eventId={event.id}
         mode="popup"
         onClose={onClose}
       />

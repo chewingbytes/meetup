@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Map as LeafletMap } from "leaflet";
-import { Plus, Crosshair, User, Check, X, MapPin, Loader2 } from "lucide-react";
+import { Plus, Crosshair, User, Check, X, MapPin, Loader2, MessageSquare } from "lucide-react";
 import { useEvents, isEventExpired } from "@/lib/useEvents";
 import { useRailChats } from "@/lib/useRailChats";
 import { useIdentity } from "@/lib/webappUser";
@@ -23,6 +23,7 @@ import { EventSheet } from "@/components/EventSheet";
 import { ProfileDrawer } from "@/components/ProfileDrawer";
 import { CreateActivitySheet } from "@/components/CreateActivitySheet";
 import { JoinedRail } from "@/components/JoinedRail";
+import { ChatsDrawer } from "@/components/ChatsDrawer";
 import { ChatPopup } from "@/components/ChatPopup";
 import { JoinModal } from "@/components/JoinModal";
 
@@ -115,6 +116,7 @@ export default function Home() {
   const [createOpen, setCreateOpen] = useState(false);
   const [chatEvent, setChatEvent] = useState<EventProps | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatsDrawerOpen, setChatsDrawerOpen] = useState(false);
   const [joinModalEvent, setJoinModalEvent] = useState<EventProps | null>(null);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
 
@@ -128,6 +130,10 @@ export default function Home() {
     user?.id ?? null,
     openChannelId,
   );
+  const totalUnread = useMemo(
+    () => Object.values(unreadByEvent).reduce((a, b) => a + b, 0),
+    [unreadByEvent],
+  );
 
   const openEvent = useCallback((e: EventProps) => {
     setSelectedEvent(e);
@@ -137,6 +143,7 @@ export default function Home() {
 
   const openChat = useCallback((e: EventProps) => {
     setEventOpen(false);
+    setChatsDrawerOpen(false);
     setChatEvent(e);
     setChatOpen(true);
   }, []);
@@ -299,6 +306,24 @@ export default function Home() {
             <span className="hidden text-xs font-medium text-textTertiary sm:inline">online</span>
           </div>
 
+          {/* Chats (mobile) — desktop uses the floating rail instead */}
+          {railEvents.length > 0 && (
+            <button
+              onClick={() => setChatsDrawerOpen(true)}
+              aria-label="Chats"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-accent shadow-clayCardSm backdrop-blur transition active:scale-95 md:hidden"
+            >
+              <MessageSquare size={20} strokeWidth={2.2} />
+              {totalUnread > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1">
+                  <span className="font-heading text-[10px] font-extrabold leading-none text-white">
+                    {totalUnread > 9 ? "9+" : totalUnread}
+                  </span>
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => setProfileOpen(true)}
             aria-label="Your profile"
@@ -338,9 +363,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* My-activities rail (organized + joined) */}
+      {/* My-activities rail (organized + joined) — desktop only; mobile uses the
+          top-bar chats icon + drawer instead */}
       {!placing && railEvents.length > 0 && (
-        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+76px)] z-[500] flex justify-end">
+        <div className="absolute right-4 top-[calc(env(safe-area-inset-top)+76px)] z-[500] hidden justify-end md:flex">
           <JoinedRail
             events={railEvents}
             activeId={chatOpen ? chatEvent?.id : null}
@@ -418,6 +444,16 @@ export default function Home() {
         event={joinModalEvent}
         open={joinModalOpen}
         onClose={() => setJoinModalOpen(false)}
+      />
+
+      {/* Chats drawer (mobile) */}
+      <ChatsDrawer
+        events={railEvents}
+        unread={unreadByEvent}
+        activeId={chatOpen ? chatEvent?.id : null}
+        open={chatsDrawerOpen}
+        onClose={() => setChatsDrawerOpen(false)}
+        onOpen={openChat}
       />
 
       {/* Chat popup */}
