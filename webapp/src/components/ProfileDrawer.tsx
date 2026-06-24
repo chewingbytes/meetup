@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, LogOut, Instagram, Sparkles, Loader2 } from "lucide-react";
+import { X, LogOut, Instagram, Sparkles, Loader2, Plus, Star } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { useIdentity } from "@/lib/webappUser";
@@ -16,7 +16,7 @@ interface ProfileDrawerProps {
 const igUrl = (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`;
 
 export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps) {
-  const { user, isAuthed, hasProfile, saveInstagram, signOut } = useIdentity();
+  const { user, isAuthed, hasProfile, isPremium, saveInstagram, signOut } = useIdentity();
   const g = authorGradient(user?.instagram ?? user?.id ?? "guest");
 
   return (
@@ -79,6 +79,28 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
                   activities you join so you can connect after.
                 </p>
               </div>
+
+              {/* Soonest+ early-member perk — only for waitlist members */}
+              {isPremium && (
+                <div className="mb-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span
+                      className="flex h-6 w-6 items-center justify-center rounded-full shadow-clayCardSm ring-2 ring-white"
+                      style={{ background: grad(["#FBBF24", "#F59E0B"]) }}
+                    >
+                      <Star size={13} strokeWidth={3.5} className="text-white" />
+                    </span>
+                    <span className="font-heading text-sm font-extrabold text-amber-700">
+                      Early member · Soonest+
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed text-amber-900/80">
+                    Thank you for being part of soonest this early. You have early access before
+                    everyone, and you&apos;re entitled to <strong>3 months of Soonest+ premium</strong>{" "}
+                    free after the app launches. 🎉
+                  </p>
+                </div>
+              )}
 
               <button
                 onClick={() => {

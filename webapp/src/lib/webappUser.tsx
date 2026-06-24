@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
-import { getWebappUser, upsertWebappUser } from "./api";
+import { getWebappUser, upsertWebappUser, getWaitlistStatus } from "./api";
 import type { WebappUser } from "./types";
 
 /**
@@ -30,6 +30,7 @@ interface IdentityContextValue {
   ready: boolean;
   isAuthed: boolean;
   hasProfile: boolean;
+  isPremium: boolean; // on the launch waitlist → Soonest+ early-member perk
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   saveInstagram: (handle: string) => Promise<WebappUser>;
@@ -55,6 +56,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<WebappUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [profileChecked, setProfileChecked] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   const lastFetchedFor = useRef<string | null>(null);
 
   // Track the Supabase (Google) session.
@@ -110,6 +112,23 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
+  // Premium = the verified Google email is on the launch waitlist. Checked once
+  // per signed-in email; cleared on sign-out. Fail-open to non-premium.
+  useEffect(() => {
+    const email = session?.user?.email ?? null;
+    if (!email) {
+      setIsPremium(false);
+      return;
+    }
+    let cancelled = false;
+    getWaitlistStatus(email)
+      .then((r) => !cancelled && setIsPremium(!!r?.premium))
+      .catch(() => !cancelled && setIsPremium(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.email]);
+
   const signInWithGoogle = useCallback(async () => {
     const redirectTo = typeof window !== "undefined" ? window.location.origin : undefined;
     const { error } = await supabase.auth.signInWithOAuth({
@@ -154,12 +173,13 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       ready: authChecked && profileChecked,
       isAuthed: !!session?.user,
       hasProfile: !!user?.instagram,
+      isPremium,
       signInWithGoogle,
       signOut,
       saveInstagram,
       refreshProfile,
     }),
-    [session, user, authChecked, profileChecked, signInWithGoogle, signOut, saveInstagram, refreshProfile],
+    [session, user, authChecked, profileChecked, isPremium, signInWithGoogle, signOut, saveInstagram, refreshProfile],
   );
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
