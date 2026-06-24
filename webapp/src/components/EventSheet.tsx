@@ -218,10 +218,10 @@ export function EventSheet({
         {/* Headline */}
         <p className="flex items-center gap-1 truncate text-sm font-medium text-textTertiary">
           {event.organizer_username && (
-            <Instagram size={12} strokeWidth={2.5} className="shrink-0" />
+            <Instagram size={12} strokeWidth={2.5} className="shrink-0 text-accent" />
           )}
           <span className="truncate">
-            {event.organizer_username ? `@${organizer}` : organizer} wants to
+            <span className="text-accent">{event.organizer_username ? `@${organizer}` : organizer}</span> wants to
           </span>
         </p>
         <h2 className="font-heading text-2xl font-extrabold leading-tight text-textPrimary">
