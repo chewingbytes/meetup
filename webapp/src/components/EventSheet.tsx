@@ -364,6 +364,10 @@ export function EventSheet({
                 {joining ? <Loader2 size={18} className="spin" /> : <LogOut size={18} strokeWidth={2.5} />}
               </button>
             </div>
+          ) : myStatus === "kicked" ? (
+            <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-canvas py-3.5 font-bold text-textTertiary">
+              <X size={18} strokeWidth={2.5} /> You were removed from this activity
+            </div>
           ) : myStatus === "pending" ? (
             <div className="flex gap-3">
               <div className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-amberMuted py-3.5 font-bold text-accentAmber">

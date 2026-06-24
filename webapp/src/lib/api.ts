@@ -173,3 +173,36 @@ export const getWebappAvatars = (
   ids.length === 0
     ? Promise.resolve({})
     : request("/webapp/avatars", { method: "POST", body: JSON.stringify({ ids }) });
+
+// ── Moderation: report / vote-to-kick / organizer remove ─────────────────────
+
+/** File a report against a user (multiple reports per user are allowed). */
+export const reportUser = (
+  eventId: string,
+  body: { reporter_id: string; reportee_id: string; reason: string },
+): Promise<{ success: true }> =>
+  request(`/webapp/events/${encodeURIComponent(eventId)}/report`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+/** Cast a vote to kick a member out of a public activity. Returns the running
+ *  tally and whether that vote crossed the >50% threshold (target removed). */
+export const voteKick = (
+  eventId: string,
+  body: { voter_id: string; target_id: string },
+): Promise<{ votes: number; participants: number; kicked: boolean }> =>
+  request(`/webapp/events/${encodeURIComponent(eventId)}/kick-vote`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+/** Organizer removes a participant (private / approval-gated activities). */
+export const removeParticipant = (
+  eventId: string,
+  body: { host_id: string; webapp_user_id: string },
+): Promise<{ success: true }> =>
+  request(`/webapp/events/${encodeURIComponent(eventId)}/remove`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });

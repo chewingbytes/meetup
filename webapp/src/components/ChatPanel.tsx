@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, X, Send, MessageSquare } from "lucide-react";
+import { ChevronLeft, X, Send, MessageSquare, Users } from "lucide-react";
 import { useIdentity } from "@/lib/webappUser";
 import { useChat } from "@/lib/useChat";
 import { getCategoryConfig } from "@/lib/categories";
 import { grad, authorGradient } from "@/lib/theme";
 import { fmtTime } from "@/lib/format";
 import { getWebappAvatars } from "@/lib/api";
+import { ParticipantsDrawer } from "./ParticipantsDrawer";
 
 const igUrl = (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`;
 
@@ -15,6 +16,8 @@ interface ChatPanelProps {
   channelId: string | null;
   eventName: string;
   category?: string;
+  /** Event id — enables the "participants" drawer (report / vote-to-kick). */
+  eventId?: string | null;
   /** "page" = full-screen route (back arrow); "popup" = right-side panel (X). */
   mode: "page" | "popup";
   onClose: () => void;
@@ -24,8 +27,9 @@ interface ChatPanelProps {
  * Reusable chat surface — header + messages + composer. Shared by the
  * /chat/[channelId] route and the in-map right-side popup so they stay identical.
  */
-export function ChatPanel({ channelId, eventName, category, mode, onClose }: ChatPanelProps) {
+export function ChatPanel({ channelId, eventName, category, eventId, mode, onClose }: ChatPanelProps) {
   const { user } = useIdentity();
+  const [participantsOpen, setParticipantsOpen] = useState(false);
   const identity = useMemo(
     () => (user ? { id: user.id, username: user.instagram } : null),
     [user],
@@ -79,6 +83,7 @@ export function ChatPanel({ channelId, eventName, category, mode, onClose }: Cha
       : "flex h-[85vh] w-full flex-col overflow-hidden rounded-t-[28px] bg-canvas shadow-clayHero md:h-[calc(100vh-2rem)] md:w-[388px] md:rounded-[28px]";
 
   return (
+    <>
     <div className={rootClass}>
       {/* Header */}
       <header className="flex items-center gap-3 border-b border-black/5 bg-white px-4 py-3 shadow-clayCardSm">
@@ -107,6 +112,15 @@ export function ChatPanel({ channelId, eventName, category, mode, onClose }: Cha
             {onlineCount > 0 ? `${onlineCount} online` : "Group chat"}
           </p>
         </div>
+        {eventId && (
+          <button
+            onClick={() => setParticipantsOpen(true)}
+            aria-label="Show participants"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-canvas text-textSecondary transition hover:bg-accentMuted"
+          >
+            <Users size={18} strokeWidth={2.4} />
+          </button>
+        )}
       </header>
 
       {/* Messages */}
@@ -218,5 +232,14 @@ export function ChatPanel({ channelId, eventName, category, mode, onClose }: Cha
         </button>
       </div>
     </div>
+
+    <ParticipantsDrawer
+      eventId={eventId ?? null}
+      eventName={eventName}
+      open={participantsOpen}
+      onClose={() => setParticipantsOpen(false)}
+      user={user}
+    />
+    </>
   );
 }

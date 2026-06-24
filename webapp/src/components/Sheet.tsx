@@ -13,6 +13,9 @@ interface SheetProps {
   widthClass?: string;
   /** Hide the dimmed backdrop (e.g. keep the map fully visible behind a side panel). */
   noBackdrop?: boolean;
+  /** Stacking layer. Override (e.g. "z-[1100]") when nesting a sheet above
+   *  another open sheet so it doesn't get painted underneath. */
+  zClass?: string;
 }
 
 // Per-variant container positioning + hidden/visible transforms. "responsive"
@@ -47,6 +50,7 @@ export function Sheet({
   children,
   widthClass,
   noBackdrop,
+  zClass = "z-[1000]",
 }: SheetProps) {
   const [render, setRender] = useState(open);
   const [visible, setVisible] = useState(false);
@@ -75,7 +79,7 @@ export function Sheet({
 
   return (
     <div
-      className={`fixed inset-0 z-[1000] ${noBackdrop ? "pointer-events-none" : ""}`}
+      className={`fixed inset-0 ${zClass} ${noBackdrop ? "pointer-events-none" : ""}`}
       role="dialog"
       aria-modal="true"
     >
