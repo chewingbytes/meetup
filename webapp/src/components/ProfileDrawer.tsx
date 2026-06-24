@@ -72,17 +72,17 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
                 </div>
               </div>
 
-              <div className="mb-5 flex items-start gap-2 rounded-2xl bg-accentMuted/60 p-3">
+              <div className="mb-5 flex items-start gap-2 rounded-2xl bg-accentMuted/60 p-3 shadow-md">
                 <Sparkles size={16} className="mt-0.5 shrink-0 text-accent" strokeWidth={2.5} />
                 <p className="text-xs leading-relaxed text-textSecondary">
                   You&apos;re verified with Google. Your Instagram handle is shown to people in
-                  activities you join so you can connect after.
+                  activities you join.
                 </p>
               </div>
 
               {/* Soonest+ early-member perk — only for waitlist members */}
               {isPremium && (
-                <div className="mb-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4">
+                <div className="mb-5 rounded-2xl shadow-md bg-gradient-to-br from-amber-50 to-orange-50 p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <span
                       className="flex h-6 w-6 items-center justify-center rounded-full shadow-clayCardSm ring-2 ring-white"
@@ -95,8 +95,8 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed text-amber-900/80">
-                    Thank you for being part of soonest this early. You have early access before
-                    everyone, and you&apos;re entitled to <strong>3 months of Soonest+ premium</strong>{" "}
+                    Thank you for being part of Soonest this early. <br />
+                    You&apos;re entitled to <strong>3 months of Soonest+ premium</strong>{" "}
                     free after the app launches. 🎉
                   </p>
                 </div>
@@ -119,8 +119,7 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
           ) : (
             <>
               <p className="mb-4 text-sm leading-relaxed text-textSecondary">
-                Set up your profile to join and host activities. Just your Instagram handle and a
-                quick Google verification — that&apos;s it.
+                Set up your profile to join and host activities.
               </p>
               <AuthSteps action={{ type: "profile" }} />
             </>

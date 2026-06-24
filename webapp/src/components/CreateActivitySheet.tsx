@@ -233,13 +233,13 @@ export function CreateActivitySheet({
             <p className="mt-1 text-sm text-textSecondary">
               {user ? (
                 <>
-                  Hosting as{" "}
-                  <span className="inline-flex items-center gap-1 align-middle font-semibold text-accent">
-                    <Instagram size={13} strokeWidth={2.5} className="shrink-0" />@{user.instagram}
+                  As{" "}
+                  <span className="inline-flex items-center gap-0.5 align-middle font-semibold text-accent">
+                    <Instagram size={18} strokeWidth={2.5} className="shrink-0" />@{user.instagram}
                   </span>
                 </>
               ) : (
-                "Fill it in now — verify at the end to post."
+                "Fill in details"
               )}
             </p>
 
@@ -254,7 +254,7 @@ export function CreateActivitySheet({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Sunset run at the bay"
                   maxLength={80}
-                  className="w-full rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-accentLight focus:bg-white"
+                  className="w-full rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-accentLight focus:border-2 focus:bg-white"
                 />
               </label>
 
@@ -280,7 +280,7 @@ export function CreateActivitySheet({
                 ) : (
                   <div className="space-y-2">
                     <div className="relative">
-                      <div className="flex items-center rounded-2xl border border-black/5 bg-canvas px-4 transition focus-within:border-accentLight focus-within:bg-white">
+                      <div className="flex items-center rounded-2xl border border-black/5 bg-canvas px-4 transition focus:border-2 focus-within:border-accentLight focus-within:bg-white">
                         <Search size={16} className="shrink-0 text-textTertiary" strokeWidth={2.5} />
                         <input
                           value={addrQuery}
@@ -321,7 +321,7 @@ export function CreateActivitySheet({
                     <button
                       type="button"
                       onClick={onPickOnMap}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-black/5 bg-canvas py-3 text-sm font-bold text-textSecondary transition hover:border-accentLight"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-black/5 bg-canvas py-3 text-sm font-bold text-textSecondary transition hover:border-accentLight focus:border-2"
                     >
                       <MapPin size={16} strokeWidth={2.5} /> Or pick on the map
                     </button>
@@ -346,7 +346,7 @@ export function CreateActivitySheet({
                         onClick={() => setDateStr(ds)}
                         className={`flex w-14 shrink-0 flex-col items-center rounded-2xl border-2 py-2 transition ${
                           active
-                            ? "border-transparent text-white shadow-clayButton"
+                            ? "text-white shadow-sm border-2"
                             : "border-black/5 bg-canvas text-textSecondary"
                         }`}
                         style={active ? { background: grad(["#A78BFA", "#7C3AED"]) } : undefined}
@@ -363,7 +363,7 @@ export function CreateActivitySheet({
                       type="time"
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="w-32 rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-accentLight focus:bg-white"
+                      className="w-32 rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
                     />
                   )}
                   <label className="flex items-center gap-2 text-sm text-textSecondary">
@@ -389,7 +389,7 @@ export function CreateActivitySheet({
                   placeholder="Anything people should know…"
                   rows={3}
                   maxLength={500}
-                  className="w-full resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-accentLight focus:bg-white"
+                  className="w-full resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-textPrimary outline-none transition focus:border-2 focus:border-accentLight focus:bg-white"
                 />
               </label>
 
