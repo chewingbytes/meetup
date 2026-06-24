@@ -194,7 +194,14 @@ export function EventSheet({
         </div>
 
         {/* Headline */}
-        <p className="truncate text-sm font-medium text-textTertiary">{organizer} wants to</p>
+        <p className="flex items-center gap-1 truncate text-sm font-medium text-textTertiary">
+          {event.organizer_username && (
+            <Instagram size={12} strokeWidth={2.5} className="shrink-0" />
+          )}
+          <span className="truncate">
+            {event.organizer_username ? `@${organizer}` : organizer} wants to
+          </span>
+        </p>
         <h2 className="font-heading text-2xl font-extrabold leading-tight text-textPrimary">
           {event.name}
         </h2>
@@ -254,8 +261,15 @@ export function EventSheet({
                         </span>
                       )}
                     </div>
-                    <span className="mt-1 w-full truncate text-center text-xs font-semibold text-accent">
-                      {handle ? `@${handle}` : "guest"}
+                    <span className="mt-1 flex w-full items-center justify-center gap-0.5 text-center text-xs font-semibold text-accent">
+                      {handle ? (
+                        <>
+                          <Instagram size={10} strokeWidth={2.5} className="shrink-0" />
+                          <span className="truncate">@{handle}</span>
+                        </>
+                      ) : (
+                        "guest"
+                      )}
                     </span>
                   </Tile>
                 );

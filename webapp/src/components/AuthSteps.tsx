@@ -102,8 +102,10 @@ export function AuthSteps({ action, intro }: AuthStepsProps) {
             <p className="text-xs leading-relaxed text-textSecondary">
               One quick verification keeps the map free of spam and bots. We only use it to
               confirm you&apos;re a real person — your handle{" "}
-              <span className="font-bold text-accent">@{cleanHandle(handle)}</span> is what others
-              see.
+              <span className="inline-flex items-center gap-0.5 align-middle font-bold text-accent">
+                <Instagram size={12} strokeWidth={2.5} className="shrink-0" />@{cleanHandle(handle)}
+              </span>{" "}
+              is what others see.
             </p>
           </div>
           {error && <p className="text-sm font-medium text-error">{error}</p>}

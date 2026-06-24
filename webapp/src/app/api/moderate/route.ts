@@ -27,12 +27,35 @@ export async function POST(req: Request) {
 
     const data = await res.json();
     const result = data?.results?.[0];
-    const flagged = !!result?.flagged;
-    const categories = result?.categories
+
+    // OpenAI's own `flagged` boolean is tuned to be conservative (few false
+    // positives). We ALSO flag when a serious category crosses a lower
+    // threshold, so borderline harassment / hate / derogatory text is caught.
+    // Tune THRESHOLD up (fewer blocks) or down (more aggressive) as needed.
+    const THRESHOLD = 0.5;
+    const WATCH = [
+      "harassment",
+      "harassment/threatening",
+      "hate",
+      "hate/threatening",
+      "sexual",
+      "sexual/minors",
+      "violence",
+      "violence/graphic",
+      "self-harm",
+      "self-harm/intent",
+      "self-harm/instructions",
+    ];
+    const scores = (result?.category_scores ?? {}) as Record<string, number>;
+    const overThreshold = WATCH.filter((c) => (scores[c] ?? 0) >= THRESHOLD);
+
+    const flagged = !!result?.flagged || overThreshold.length > 0;
+    const trueCategories = result?.categories
       ? Object.entries(result.categories)
           .filter(([, v]) => v)
           .map(([k]) => k)
       : [];
+    const categories = Array.from(new Set([...trueCategories, ...overThreshold]));
 
     return NextResponse.json({ flagged, categories });
   } catch {
