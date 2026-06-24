@@ -284,9 +284,10 @@ export function ParticipantsDrawer({
                                 href={igUrl(handle)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="truncate text-sm font-bold text-accent hover:underline"
+                                className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-accent hover:underline"
                               >
-                                @{handle}
+                                <Instagram size={13} strokeWidth={2.5} className="shrink-0" />
+                                <span className="truncate">@{handle}</span>
                               </a>
                             ) : (
                               <span className="truncate text-sm font-bold text-textSecondary">guest</span>

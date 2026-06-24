@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, MapPin, Loader2, Search, AlertTriangle, ChevronLeft } from "lucide-react";
+import { X, MapPin, Loader2, Search, AlertTriangle, ChevronLeft, Instagram } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { grad } from "@/lib/theme";
@@ -233,7 +233,10 @@ export function CreateActivitySheet({
             <p className="mt-1 text-sm text-textSecondary">
               {user ? (
                 <>
-                  Hosting as <span className="font-semibold text-accent">@{user.instagram}</span>
+                  Hosting as{" "}
+                  <span className="inline-flex items-center gap-1 align-middle font-semibold text-accent">
+                    <Instagram size={13} strokeWidth={2.5} className="shrink-0" />@{user.instagram}
+                  </span>
                 </>
               ) : (
                 "Fill it in now — verify at the end to post."

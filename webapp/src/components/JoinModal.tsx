@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Instagram } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { getCategoryConfig } from "@/lib/categories";
@@ -49,8 +49,13 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
               <CatIcon size={24} color="#fff" strokeWidth={2.2} />
             </div>
             <div>
-              <p className="text-sm font-medium text-white/80">
-                {event.organizer_username || "Someone"} wants to
+              <p className="flex items-center gap-1 text-sm font-medium text-white/80">
+                {event.organizer_username && (
+                  <Instagram size={12} strokeWidth={2.5} className="shrink-0" />
+                )}
+                <span className="truncate">
+                  {event.organizer_username ? `@${event.organizer_username}` : "Someone"} wants to
+                </span>
               </p>
               <h2 className="font-heading text-2xl font-extrabold leading-tight">{event.name}</h2>
             </div>

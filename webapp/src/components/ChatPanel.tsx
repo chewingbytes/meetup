@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, X, Send, MessageSquare, Users } from "lucide-react";
+import { ChevronLeft, X, Send, MessageSquare, Users, Instagram } from "lucide-react";
 import { useIdentity } from "@/lib/webappUser";
 import { useChat } from "@/lib/useChat";
 import { getCategoryConfig } from "@/lib/categories";
@@ -173,10 +173,10 @@ export function ChatPanel({ channelId, eventName, category, eventId, mode, onClo
                         href={igUrl(m.username)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mb-0.5 ml-1 text-[11px] font-bold hover:underline"
+                        className="mb-0.5 ml-1 inline-flex items-center gap-1 text-[11px] font-bold hover:underline"
                         style={{ color: g[1] }}
                       >
-                        @{m.username}
+                        <Instagram size={11} strokeWidth={2.5} className="shrink-0" />@{m.username}
                       </a>
                     )}
                     <div
