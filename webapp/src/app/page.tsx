@@ -26,6 +26,7 @@ import { JoinedRail } from "@/components/JoinedRail";
 import { ChatsDrawer } from "@/components/ChatsDrawer";
 import { ChatPopup } from "@/components/ChatPopup";
 import { JoinModal } from "@/components/JoinModal";
+import { WhatIsSoonest } from "@/components/WhatIsSoonest";
 
 const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
@@ -36,8 +37,31 @@ export default function Home() {
   const mapRef = useRef<LeafletMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const { events, reload, addEvent, removeEvent } = useEvents();
-  const { user, ready, session, saveInstagram, signOut, isPremium } = useIdentity();
+  const { user, ready, session, isAuthed, saveInstagram, signOut, isPremium } = useIdentity();
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // ── "What is Soonest?" intro — auto-shown once to signed-out visitors, and
+  // re-openable any time from the logo pill. Dismissal is remembered per-browser
+  // so returning guests aren't nagged (the pill always brings it back).
+  const [introOpen, setIntroOpen] = useState(false);
+  useEffect(() => {
+    if (!ready || isAuthed) return;
+    let seen = false;
+    try {
+      seen = !!localStorage.getItem("soonest_intro_seen");
+    } catch {
+      /* storage blocked (private mode) — just show it */
+    }
+    if (!seen) setIntroOpen(true);
+  }, [ready, isAuthed]);
+  const closeIntro = useCallback(() => {
+    setIntroOpen(false);
+    try {
+      localStorage.setItem("soonest_intro_seen", "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // ── Presence ("people online now") — counts everyone, incl. guests ──
   const [guestId, setGuestId] = useState<string | null>(null);
@@ -305,11 +329,15 @@ export default function Home() {
 
       {/* Top bar */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[500] flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/90 px-3.5 py-2 shadow-clayCardSm backdrop-blur">
+        <button
+          onClick={() => setIntroOpen(true)}
+          aria-label="What is Soonest?"
+          className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-white/90 px-3.5 py-2 shadow-clayCardSm backdrop-blur transition hover:bg-white active:scale-95"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/transparentlogo.png" alt="Soonest" className="h-6 w-6 shrink-0" />
           <span className="font-heading text-lg font-extrabold tracking-tight text-accent">soonest</span>
-        </div>
+        </button>
 
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-2xl bg-white/90 px-3 py-2 shadow-clayCardSm backdrop-blur">
@@ -490,6 +518,9 @@ export default function Home() {
 
       {/* Profile drawer */}
       <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} onlineCount={onlineCount} />
+
+      {/* "What is Soonest?" intro — auto-shown to signed-out visitors, re-openable from the logo pill */}
+      <WhatIsSoonest open={introOpen} onClose={closeIntro} />
 
       {/* Create activity (anyone can fill; verify at the end to post) */}
       <CreateActivitySheet

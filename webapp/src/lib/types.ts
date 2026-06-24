@@ -39,6 +39,8 @@ export interface Participant {
   main_interest?: string | null;
   source?: "app" | "webapp";
   status?: MemberStatus;
+  /** On the launch waitlist → shows the Soonest+ early-member badge. */
+  premium?: boolean;
 }
 
 export interface EventDetail extends EventProps {

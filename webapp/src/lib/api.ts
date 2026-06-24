@@ -3,6 +3,7 @@
  * app's lib/api.ts request() helper, plus webapp-specific endpoints
  * (/webapp/*) backed by the separate webapp_users + webapp_event_members tables.
  */
+import { supabase } from "./supabase";
 import type {
   EventProps,
   EventDetail,
@@ -24,6 +25,17 @@ async function request<T = any>(path: string, options: RequestInit = {}): Promis
   const opts: RequestInit = { signal: controller.signal, ...options };
   if (opts.body && !(opts.body instanceof FormData)) {
     opts.headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  }
+
+  // Attach the Supabase (Google) access token so the backend can verify who's
+  // calling instead of trusting ids in the body. Anonymous visitors have no
+  // session — public endpoints still work; protected ones return 401.
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) opts.headers = { ...(opts.headers || {}), Authorization: `Bearer ${token}` };
+  } catch {
+    /* no session available — proceed unauthenticated */
   }
 
   try {
@@ -65,7 +77,7 @@ export const getMyActivities = (webappUserId: string): Promise<EventProps[]> =>
   request(`/webapp/my-activities?webapp_user_id=${encodeURIComponent(webappUserId)}`);
 
 export const createEvent = (body: any): Promise<EventProps> =>
-  request("/events", { method: "POST", body: JSON.stringify(body) });
+  request("/webapp/events", { method: "POST", body: JSON.stringify(body) });
 
 /** Organizer deletes their own activity (removes the map pin + its chat). */
 export const deleteWebappEvent = (
@@ -184,7 +196,7 @@ export const sendWebappMessage = (body: {
  *  next to chat messages, which only carry user_id + username. */
 export const getWebappAvatars = (
   ids: string[],
-): Promise<Record<string, { instagram: string | null; avatar_url: string | null }>> =>
+): Promise<Record<string, { instagram: string | null; avatar_url: string | null; premium?: boolean }>> =>
   ids.length === 0
     ? Promise.resolve({})
     : request("/webapp/avatars", { method: "POST", body: JSON.stringify({ ids }) });
