@@ -35,7 +35,7 @@ const MapView = dynamic(() => import("@/components/MapView"), {
 export default function Home() {
   const mapRef = useRef<LeafletMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const { events, reload, addEvent } = useEvents();
+  const { events, reload, addEvent, removeEvent } = useEvents();
   const { user, ready, session, saveInstagram, signOut } = useIdentity();
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -272,6 +272,21 @@ export default function Home() {
     [reload, addEvent, openEvent, user, loadMyActivities],
   );
 
+  const handleDeleted = useCallback(
+    (eventId: string) => {
+      setEventOpen(false);
+      removeEvent(eventId); // drop the pin immediately
+      setJoinedIds((prev) => {
+        if (!prev.has(eventId)) return prev;
+        const next = new Set(prev);
+        next.delete(eventId);
+        return next;
+      });
+      if (user) loadMyActivities(user.id); // refresh the rail (chat is gone)
+    },
+    [removeEvent, user, loadMyActivities],
+  );
+
   const avatarGrad = authorGradient(user?.instagram ?? "guest");
 
   return (
@@ -437,6 +452,7 @@ export default function Home() {
         onRequireAuthJoin={requireAuthJoin}
         onJoinedChange={handleJoinedChange}
         onOpenChat={openChat}
+        onDeleted={handleDeleted}
       />
 
       {/* Unauthenticated join — side-by-side modal */}

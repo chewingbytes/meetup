@@ -10,6 +10,7 @@ import {
   Clock,
   Instagram,
   Inbox,
+  Trash2,
 } from "lucide-react";
 import type {
   EventProps,
@@ -28,6 +29,7 @@ import {
   leaveWebappEvent,
   getEventRequests,
   respondToRequest,
+  deleteWebappEvent,
 } from "@/lib/api";
 import { Sheet } from "./Sheet";
 
@@ -41,6 +43,8 @@ interface EventSheetProps {
   onRequireAuthJoin: (event: EventProps) => void;
   onJoinedChange: (eventId: string, joined: boolean) => void;
   onOpenChat: (event: EventProps) => void;
+  /** Organizer deleted the activity — parent drops the pin + closes the sheet. */
+  onDeleted: (eventId: string) => void;
 }
 
 function igUrl(handle: string) {
@@ -56,6 +60,7 @@ export function EventSheet({
   onRequireAuthJoin,
   onJoinedChange,
   onOpenChat,
+  onDeleted,
 }: EventSheetProps) {
   const [detail, setDetail] = useState<EventDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,6 +68,8 @@ export function EventSheet({
   const [newParticipantId, setNewParticipantId] = useState<string | null>(null);
   const [requests, setRequests] = useState<PendingRequest[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isOrganizer = !!user && event?.organizer_id === user.id;
 
@@ -90,6 +97,8 @@ export function EventSheet({
     setDetail(null);
     setRequests([]);
     setNewParticipantId(null);
+    setConfirmingDelete(false);
+    setDeleting(false);
     setLoading(true);
     getWebappEvent(event.id, user?.id)
       .then((d) => !cancelled && setDetail(d))
@@ -137,6 +146,19 @@ export function EventSheet({
       setJoining(false);
     }
   }, [event, user, onJoinedChange, refetchDetail]);
+
+  const handleDelete = useCallback(async () => {
+    if (!event || !user) return;
+    setDeleting(true);
+    try {
+      await deleteWebappEvent(event.id, user.id);
+      onDeleted(event.id); // parent drops the pin + closes the sheet
+    } catch (e: any) {
+      alert(e?.message || "Could not delete activity. Please try again.");
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }, [event, user, onDeleted]);
 
   const respond = useCallback(
     async (webapp_user_id: string, action: "accept" | "reject") => {
@@ -353,13 +375,54 @@ export function EventSheet({
         {/* CTA */}
         <div className="mt-6">
           {isOrganizer ? (
-            <button
-              onClick={() => onOpenChat(event)}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-white shadow-clayButton transition active:scale-[0.98]"
-              style={{ background: grad(["#34D399", "#10B981"]) }}
-            >
-              <MessageCircle size={18} strokeWidth={2.5} /> Open Chat
-            </button>
+            confirmingDelete ? (
+              <div className="rounded-2xl border border-error/30 bg-red-50 p-4">
+                <p className="text-sm font-bold text-error">Delete this activity?</p>
+                <p className="mt-1 text-xs leading-relaxed text-textSecondary">
+                  This permanently removes the activity, its map pin, and chat for
+                  everyone. This can&apos;t be undone.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deleting}
+                    className="flex-1 rounded-xl bg-white py-2.5 text-sm font-bold text-textSecondary shadow-clayCardSm transition hover:bg-canvas disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold text-white transition active:scale-[0.98] disabled:opacity-60"
+                    style={{ background: grad(["#F87171", "#EF4444"]) }}
+                  >
+                    {deleting ? (
+                      <Loader2 size={16} className="spin" />
+                    ) : (
+                      <Trash2 size={16} strokeWidth={2.5} />
+                    )}
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-3">
+                <button
+                  onClick={() => onOpenChat(event)}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-white shadow-clayButton transition active:scale-[0.98]"
+                  style={{ background: grad(["#34D399", "#10B981"]) }}
+                >
+                  <MessageCircle size={18} strokeWidth={2.5} /> Open Chat
+                </button>
+                <button
+                  onClick={() => setConfirmingDelete(true)}
+                  aria-label="Delete activity"
+                  className="flex w-14 items-center justify-center rounded-2xl bg-canvas text-textSecondary transition hover:bg-red-50 hover:text-error"
+                >
+                  <Trash2 size={18} strokeWidth={2.5} />
+                </button>
+              </div>
+            )
           ) : myStatus === "approved" ? (
             <div className="flex gap-3">
               <button

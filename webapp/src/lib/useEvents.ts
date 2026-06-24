@@ -74,5 +74,10 @@ export function useEvents() {
     );
   }, []);
 
-  return { events, isLoading, error, reload: load, addEvent, setEvents };
+  /** Optimistically drop a deleted event so its pin disappears immediately. */
+  const removeEvent = useCallback((id: string) => {
+    setEvents((prev) => prev.filter((x) => x.id !== id));
+  }, []);
+
+  return { events, isLoading, error, reload: load, addEvent, removeEvent, setEvents };
 }
