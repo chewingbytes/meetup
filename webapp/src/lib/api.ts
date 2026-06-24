@@ -98,6 +98,11 @@ export const upsertWebappUser = (user: {
 }): Promise<WebappUser> =>
   request("/webapp/users", { method: "POST", body: JSON.stringify(user) });
 
+/** Whether this Google account's email is on the launch waitlist — unlocks the
+ *  Soonest+ early-member badge + 3-months-free perk. Matched by email. */
+export const getWaitlistStatus = (email: string): Promise<{ premium: boolean }> =>
+  request(`/webapp/waitlist-status?email=${encodeURIComponent(email)}`);
+
 /** Fetch a webapp profile by auth uid (null if none yet). */
 export const getWebappUser = async (id: string): Promise<WebappUser | null> => {
   try {

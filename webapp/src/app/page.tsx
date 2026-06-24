@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import type { Map as LeafletMap } from "leaflet";
-import { Plus, Crosshair, User, Check, X, MapPin, Loader2, MessageSquare } from "lucide-react";
+import { Plus, Crosshair, User, Check, X, MapPin, Loader2, MessageSquare, Star } from "lucide-react";
 import { useEvents, isEventExpired } from "@/lib/useEvents";
 import { useRailChats } from "@/lib/useRailChats";
 import { useIdentity } from "@/lib/webappUser";
@@ -36,7 +36,7 @@ export default function Home() {
   const mapRef = useRef<LeafletMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const { events, reload, addEvent, removeEvent } = useEvents();
-  const { user, ready, session, saveInstagram, signOut } = useIdentity();
+  const { user, ready, session, saveInstagram, signOut, isPremium } = useIdentity();
   const [authError, setAuthError] = useState<string | null>(null);
 
   // ── Presence ("people online now") — counts everyone, incl. guests ──
@@ -339,23 +339,36 @@ export default function Home() {
             </button>
           )}
 
-          <button
-            onClick={() => setProfileOpen(true)}
-            aria-label="Your profile"
-            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-clayCardSm transition active:scale-95"
-            style={{ background: user ? grad(avatarGrad) : "#fff" }}
-          >
-            {user?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatar_url} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
-            ) : user ? (
-              <span className="font-heading text-base font-extrabold text-white">
-                {user.instagram.charAt(0).toUpperCase()}
+          <div className="relative">
+            <button
+              onClick={() => setProfileOpen(true)}
+              aria-label="Your profile"
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full shadow-clayCardSm transition active:scale-95"
+              style={{ background: user ? grad(avatarGrad) : "#fff" }}
+            >
+              {user?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.avatar_url} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+              ) : user ? (
+                <span className="font-heading text-base font-extrabold text-white">
+                  {user.instagram.charAt(0).toUpperCase()}
+                </span>
+              ) : (
+                <User size={20} className="text-accent" strokeWidth={2.2} />
+              )}
+            </button>
+            {/* Soonest+ early-member badge — waitlist members only */}
+            {isPremium && (
+              <span
+                className="pointer-events-none absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full shadow-clayCardSm ring-2 ring-white"
+                style={{ background: grad(["#FBBF24", "#F59E0B"]) }}
+                aria-label="Soonest+ early member"
+                title="Soonest+ early member"
+              >
+                <Star size={11} strokeWidth={3.5} className="text-white" />
               </span>
-            ) : (
-              <User size={20} className="text-accent" strokeWidth={2.2} />
             )}
-          </button>
+          </div>
         </div>
       </div>
 
