@@ -101,7 +101,7 @@ export function AuthSteps({ action, intro }: AuthStepsProps) {
             <ShieldCheck size={16} className="mt-0.5 shrink-0 text-accent" strokeWidth={2.5} />
             <p className="text-xs leading-relaxed text-textSecondary">
               One quick verification keeps the map free of spam and bots. We only use it to
-              confirm you&apos;re a real person — your handle{" "}
+              confirm you&apos;re a real person. Your handle{" "}
               <span className="inline-flex items-center gap-0.5 align-middle font-bold text-accent">
                 <Instagram size={12} strokeWidth={2.5} className="shrink-0" />@{cleanHandle(handle)}
               </span>{" "}

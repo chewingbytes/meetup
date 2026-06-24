@@ -312,13 +312,13 @@ export default function Home() {
         </div>
 
         <div className="pointer-events-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-2xl bg-white/90 px-3 py-2 shadow-clayCardSm backdrop-blur">
+          <div className="flex items-center gap-1 rounded-2xl bg-white/90 px-3 py-2 shadow-clayCardSm backdrop-blur">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-pulse-ring rounded-full bg-accentGreen" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-accentGreen" />
             </span>
             <span className="text-xs font-bold text-textPrimary">{onlineCount}</span>
-            <span className="hidden text-xs font-medium text-textTertiary sm:inline">online</span>
+            <span className="hidden text-xs font-medium text-textTertiary sm:inline">online now</span>
           </div>
 
           {/* Chats (mobile) — desktop uses the floating rail instead */}
