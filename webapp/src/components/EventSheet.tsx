@@ -102,7 +102,11 @@ export function EventSheet({
     setLoading(true);
     getWebappEvent(event.id, user?.id)
       .then((d) => !cancelled && setDetail(d))
-      .catch(() => !cancelled && setDetail({ ...event, participants: [], my_status: null }))
+      .catch(
+        () =>
+          !cancelled &&
+          setDetail({ ...event, participants: [], my_status: null }),
+      )
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
@@ -165,7 +169,11 @@ export function EventSheet({
       if (!event || !user) return;
       setRespondingId(webapp_user_id);
       try {
-        await respondToRequest(event.id, { host_id: user.id, webapp_user_id, action });
+        await respondToRequest(event.id, {
+          host_id: user.id,
+          webapp_user_id,
+          action,
+        });
         await Promise.all([refetchRequests(), refetchDetail()]);
       } catch (e: any) {
         alert(e?.message || "Could not update request.");
@@ -185,7 +193,8 @@ export function EventSheet({
   );
   const organizer = event.organizer_username || "Someone";
   const participants: Participant[] = detail?.participants ?? [];
-  const myStatus: MemberStatus | null = detail?.my_status ?? (joined ? "approved" : null);
+  const myStatus: MemberStatus | null =
+    detail?.my_status ?? (joined ? "approved" : null);
   const canChat = isOrganizer || myStatus === "approved";
 
   return (
@@ -218,10 +227,22 @@ export function EventSheet({
         {/* Headline */}
         <p className="flex items-center gap-1 truncate text-sm font-medium text-textTertiary">
           {event.organizer_username && (
-            <Instagram size={12} strokeWidth={2.5} className="shrink-0 text-accent" />
+            <Instagram
+              size={12}
+              strokeWidth={2.5}
+              className="shrink-0 text-accent"
+            />
           )}
           <span className="truncate">
-            <span className="text-accent">{event.organizer_username ? `@${organizer}` : organizer}</span> wants to
+            <a
+              href={igUrl(event.organizer_username ? `@${organizer}` : organizer)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-accent"
+            >
+              {event.organizer_username ? `@${organizer}` : organizer}
+            </a>{" "}
+            wants to
           </span>
         </p>
         <h2 className="font-heading text-2xl font-extrabold leading-tight text-textPrimary">
@@ -234,10 +255,14 @@ export function EventSheet({
           </p>
         )}
         {event.location_text && (
-          <p className="mt-1 truncate text-sm text-textSecondary">📍 {event.location_text}</p>
+          <p className="mt-1 truncate text-sm text-textSecondary">
+            📍 {event.location_text}
+          </p>
         )}
         {event.description && (
-          <p className="mt-2 text-sm leading-relaxed text-textSecondary">{event.description}</p>
+          <p className="mt-2 text-sm leading-relaxed text-textSecondary">
+            {event.description}
+          </p>
         )}
 
         {/* Roster */}
@@ -259,7 +284,11 @@ export function EventSheet({
                   <Tile
                     key={p.id ?? i}
                     {...(handle
-                      ? { href: igUrl(handle), target: "_blank", rel: "noopener noreferrer" }
+                      ? {
+                          href: igUrl(handle),
+                          target: "_blank",
+                          rel: "noopener noreferrer",
+                        }
                       : {})}
                     className={`flex w-16 shrink-0 flex-col items-center ${isNew ? "animate-pop-in" : ""}`}
                   >
@@ -270,7 +299,12 @@ export function EventSheet({
                       >
                         {p.avatar_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={p.avatar_url} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                          <img
+                            src={p.avatar_url}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <span className="font-heading text-lg font-extrabold text-white">
                             {(handle ?? "?").charAt(0).toUpperCase()}
@@ -286,7 +320,11 @@ export function EventSheet({
                     <span className="mt-1 flex w-full items-center justify-center gap-0.5 text-center text-xs font-semibold text-accent">
                       {handle ? (
                         <>
-                          <Instagram size={10} strokeWidth={2.5} className="shrink-0" />
+                          <Instagram
+                            size={10}
+                            strokeWidth={2.5}
+                            className="shrink-0"
+                          />
                           <span className="truncate">@{handle}</span>
                         </>
                       ) : (
@@ -321,11 +359,20 @@ export function EventSheet({
                     <div className="flex min-w-0 items-center gap-2">
                       <div
                         className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full"
-                        style={{ background: grad(authorGradient(r.instagram ?? r.webapp_user_id)) }}
+                        style={{
+                          background: grad(
+                            authorGradient(r.instagram ?? r.webapp_user_id),
+                          ),
+                        }}
                       >
                         {r.avatar_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.avatar_url} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
+                          <img
+                            src={r.avatar_url}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <span className="text-[10px] font-bold text-white">
                             {(r.instagram ?? "?").charAt(0).toUpperCase()}
@@ -339,7 +386,8 @@ export function EventSheet({
                           rel="noopener noreferrer"
                           className="flex items-center gap-1.5 truncate text-sm font-bold text-accent hover:underline"
                         >
-                          <Instagram size={14} strokeWidth={2.5} /> @{r.instagram}
+                          <Instagram size={14} strokeWidth={2.5} /> @
+                          {r.instagram}
                         </a>
                       ) : (
                         <span className="text-sm text-textTertiary">guest</span>
@@ -377,10 +425,12 @@ export function EventSheet({
           {isOrganizer ? (
             confirmingDelete ? (
               <div className="rounded-2xl border border-error/30 bg-red-50 p-4">
-                <p className="text-sm font-bold text-error">Delete this activity?</p>
+                <p className="text-sm font-bold text-error">
+                  Delete this activity?
+                </p>
                 <p className="mt-1 text-xs leading-relaxed text-textSecondary">
-                  This permanently removes the activity, its map pin, and chat for
-                  everyone. This can&apos;t be undone.
+                  This permanently removes the activity, its map pin, and chat
+                  for everyone. This can&apos;t be undone.
                 </p>
                 <div className="mt-3 flex gap-2">
                   <button
@@ -438,12 +488,17 @@ export function EventSheet({
                 aria-label="Leave activity"
                 className="flex w-14 items-center justify-center rounded-2xl bg-canvas text-textSecondary transition hover:bg-red-50 hover:text-error disabled:opacity-60"
               >
-                {joining ? <Loader2 size={18} className="spin" /> : <LogOut size={18} strokeWidth={2.5} />}
+                {joining ? (
+                  <Loader2 size={18} className="spin" />
+                ) : (
+                  <LogOut size={18} strokeWidth={2.5} />
+                )}
               </button>
             </div>
           ) : myStatus === "kicked" ? (
             <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-canvas py-3.5 font-bold text-textTertiary">
-              <X size={18} strokeWidth={2.5} /> You were removed from this activity
+              <X size={18} strokeWidth={2.5} /> You were removed from this
+              activity
             </div>
           ) : myStatus === "pending" ? (
             <div className="flex gap-3">
@@ -456,7 +511,11 @@ export function EventSheet({
                 aria-label="Cancel request"
                 className="flex w-14 items-center justify-center rounded-2xl bg-canvas text-textSecondary transition hover:bg-red-50 hover:text-error disabled:opacity-60"
               >
-                {joining ? <Loader2 size={18} className="spin" /> : <X size={18} strokeWidth={2.5} />}
+                {joining ? (
+                  <Loader2 size={18} className="spin" />
+                ) : (
+                  <X size={18} strokeWidth={2.5} />
+                )}
               </button>
             </div>
           ) : (
