@@ -67,6 +67,16 @@ export const getMyActivities = (webappUserId: string): Promise<EventProps[]> =>
 export const createEvent = (body: any): Promise<EventProps> =>
   request("/events", { method: "POST", body: JSON.stringify(body) });
 
+/** Organizer deletes their own activity (removes the map pin + its chat). */
+export const deleteWebappEvent = (
+  eventId: string,
+  hostId: string,
+): Promise<{ success: true }> =>
+  request(
+    `/webapp/events/${encodeURIComponent(eventId)}?host_id=${encodeURIComponent(hostId)}`,
+    { method: "DELETE" },
+  );
+
 /** Unread message counts (+ latest message time) per channel, since the caller's
  *  last-read marks. Powers the rail's badges and recent-activity ordering. */
 export const getRailUnread = (
