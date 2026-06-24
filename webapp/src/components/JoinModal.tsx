@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Instagram } from "lucide-react";
+import { X, Instagram, MapPin} from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { getCategoryConfig } from "@/lib/categories";
@@ -42,39 +42,39 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
         <div className="grid md:grid-cols-2">
           {/* Event summary */}
           <div
-            className="flex flex-col gap-3 p-7 text-white"
+            className="flex flex-col gap-4 p-7 text-white"
             style={{ background: grad(cat.gradient) }}
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
-              <CatIcon size={24} color="#fff" strokeWidth={2.2} />
+              <MapPin size={24} color="#fff" strokeWidth={2.2} />
             </div>
             <div>
-              <p className="flex items-center gap-1 text-sm font-medium text-white/80">
+              <p className="flex items-center gap-1 text-sm font-medium text-white">
                 {event.organizer_username && (
-                  <Instagram size={12} strokeWidth={2.5} className="shrink-0" />
+                  <Instagram size={12} strokeWidth={2.5} className="shrink-0 text-accent" />
                 )}
-                <span className="truncate">
-                  {event.organizer_username ? `@${event.organizer_username}` : "Someone"} wants to
+                <span className="truncate text-black">
+                  <span className="text-accent">{event.organizer_username ? `@${event.organizer_username}` : "Someone"} </span>wants to
                 </span>
               </p>
-              <h2 className="font-heading text-2xl font-extrabold leading-tight">{event.name}</h2>
+              <h2 className="text-black font-heading text-3xl font-extrabold leading-tight">{event.name}</h2>
             </div>
             {(day || countdown) && (
-              <p className="text-sm font-semibold text-white/90">
+              <p className="text-sm font-semibold text-accent">
                 {day}
                 {countdown ? ` · ${countdown}` : ""}
               </p>
             )}
             {event.location_text && (
-              <p className="text-sm text-white/80">📍 {event.location_text}</p>
+              <p className="text-sm text-black/80">📍 {event.location_text}</p>
             )}
             {event.require_approval && (
-              <span className="mt-1 w-fit rounded-full bg-white/20 px-3 py-1 text-xs font-bold">
+              <span className="mt-1 w-fit rounded-full bg-black/20 px-3 py-1 text-xs font-bold">
                 Host approval required
               </span>
             )}
             {event.description && (
-              <p className="mt-1 text-sm leading-relaxed text-white/85 line-clamp-4">
+              <p className="mt-1 text-sm leading-relaxed text-black/80 line-clamp-4">
                 {event.description}
               </p>
             )}

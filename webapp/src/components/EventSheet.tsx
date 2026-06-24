@@ -11,6 +11,7 @@ import {
   Instagram,
   Inbox,
   Trash2,
+  MapPin,
 } from "lucide-react";
 import type {
   EventProps,
@@ -215,7 +216,7 @@ export function EventSheet({
             className="flex h-11 w-11 items-center justify-center rounded-2xl"
             style={{ background: grad(cat.gradient) }}
           >
-            <CatIcon size={20} color="#fff" strokeWidth={2} />
+            <MapPin size={20} color="#fff" strokeWidth={2} />
           </div>
           {event.require_approval && (
             <span className="rounded-full bg-amberMuted px-3 py-1 text-xs font-bold text-accentAmber">
