@@ -1,5 +1,6 @@
 import express from "express";
 import { supabase } from "../../db/supabaseClient.js";
+import { requireUser, requireAdmin } from "../middleware/auth.ts";
 
 /**
  * Webapp routes — Google-anchored, IG-handle identities for the beta web app.
@@ -47,6 +48,97 @@ async function ensureAvatarBucket(): Promise<boolean> {
 
 function isGoogleAvatar(url: unknown): url is string {
   return typeof url === "string" && /googleusercontent\.com/.test(url);
+}
+
+/** A "public" activity (per the vote-to-kick rules): anyone can join freely —
+ *  not marked private AND the organizer doesn't approve joiners. Private OR
+ *  approval-gated events are organizer-moderated instead. */
+function isPublicEvent(ev: { visibility?: string | null; require_approval?: boolean | null } | null): boolean {
+  return !!ev && (ev.visibility ?? "public") !== "private" && !ev.require_approval;
+}
+
+/** Whether a user may read/post in a channel: they must be the organizer of the
+ *  channel's event or an approved member of it. Gates the chat endpoints so a
+ *  signed-in user can't read or post into activities they haven't joined. */
+async function canAccessChannel(userId: string, channelId: string): Promise<boolean> {
+  if (!userId || !channelId) return false;
+  const { data: chan } = await supabase
+    .from("channels")
+    .select("event_id")
+    .eq("id", channelId)
+    .maybeSingle();
+  const eventId = chan?.event_id;
+  if (!eventId) return false;
+  const { data: ev } = await supabase
+    .from("events")
+    .select("organizer_id")
+    .eq("id", eventId)
+    .maybeSingle();
+  if (ev?.organizer_id === userId) return true;
+  const { data: mem } = await supabase
+    .from("webapp_event_members")
+    .select("status")
+    .eq("event_id", eventId)
+    .eq("webapp_user_id", userId)
+    .maybeSingle();
+  return mem?.status === "approved";
+}
+
+// ── Premium (launch-waitlist) lookup ─────────────────────────────────────────
+// "Premium" = an account's verified email is on soonest_waitlist (early access +
+// 3-months-free perk). The waitlist is small and rarely changes, so we cache the
+// lowercased email set in memory briefly instead of re-reading it on every batch.
+let waitlistCache: { emails: Set<string>; at: number } | null = null;
+const WAITLIST_TTL_MS = 5 * 60 * 1000;
+
+async function loadWaitlistEmails(): Promise<Set<string>> {
+  if (waitlistCache && Date.now() - waitlistCache.at < WAITLIST_TTL_MS) {
+    return waitlistCache.emails;
+  }
+  const { data, error } = await supabase.from("soonest_waitlist").select("email");
+  if (error) throw error;
+  const emails = new Set(
+    (data || [])
+      .map((r: any) => String(r.email ?? "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  waitlistCache = { emails, at: Date.now() };
+  return emails;
+}
+
+/** Whether a single email is on the launch waitlist (case-insensitive). */
+async function isWaitlisted(email: string | null | undefined): Promise<boolean> {
+  const e = String(email ?? "").trim().toLowerCase();
+  if (!e) return false;
+  const waitlist = await loadWaitlistEmails();
+  return waitlist.has(e);
+}
+
+/** Given webapp_users ids (= Supabase auth uids), return the subset that are
+ *  premium. Resolves each account's email via the Auth admin API, then matches
+ *  the waitlist. Fail-open: any lookup error just leaves that id non-premium. */
+async function premiumIdsFor(ids: string[]): Promise<Set<string>> {
+  const premium = new Set<string>();
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return premium;
+  try {
+    const waitlist = await loadWaitlistEmails();
+    if (waitlist.size === 0) return premium;
+    await Promise.all(
+      unique.map(async (id) => {
+        try {
+          const { data } = await supabase.auth.admin.getUserById(id);
+          const email = data?.user?.email?.trim().toLowerCase();
+          if (email && waitlist.has(email)) premium.add(id);
+        } catch {
+          /* ignore individual lookup failures — fail-open to non-premium */
+        }
+      }),
+    );
+  } catch {
+    /* waitlist unavailable — treat everyone as non-premium */
+  }
+  return premium;
 }
 
 /** Browser-facing public URL for a stored avatar. Prefers AVATAR_PUBLIC_BASE (so
@@ -150,6 +242,26 @@ async function enrichEvents(events: any[]): Promise<any[]> {
   });
 }
 
+/** Attach `going_count` (approved attendees: native user_events + webapp approved
+ *  members) to each event — powers the count badge on the map pins. Batched into
+ *  two `in(...)` queries so the whole feed costs the same regardless of size. */
+async function attachGoingCounts(events: any[]): Promise<any[]> {
+  const ids = events.map((e) => e.id).filter(Boolean);
+  if (ids.length === 0) return events;
+  const [{ data: ue }, { data: mem }] = await Promise.all([
+    supabase.from("user_events").select("event_id").in("event_id", ids),
+    supabase
+      .from("webapp_event_members")
+      .select("event_id")
+      .in("event_id", ids)
+      .eq("status", "approved"),
+  ]);
+  const counts: Record<string, number> = {};
+  for (const r of ue || []) counts[r.event_id] = (counts[r.event_id] || 0) + 1;
+  for (const r of mem || []) counts[r.event_id] = (counts[r.event_id] || 0) + 1;
+  return events.map((e) => ({ ...e, going_count: counts[e.id] || 0 }));
+}
+
 // ── Map feed: upcoming activities (excludes ended days; new events always in) ──
 // GET /api/webapp/events
 router.get("/events", async (req, res) => {
@@ -162,7 +274,7 @@ router.get("/events", async (req, res) => {
       .order("startDate", { ascending: true })
       .limit(200);
     if (error) throw error;
-    res.json(await enrichEvents(events || []));
+    res.json(await attachGoingCounts(await enrichEvents(events || [])));
   } catch (err: any) {
     console.error("[webapp] map events error:", err);
     res.status(500).json({ message: err.message || "Failed to fetch events" });
@@ -171,10 +283,9 @@ router.get("/events", async (req, res) => {
 
 // ── My activities: organized + approved-joined (any date — powers the rail) ───
 // GET /api/webapp/my-activities?webapp_user_id=...
-router.get("/my-activities", async (req, res) => {
+router.get("/my-activities", requireUser, async (req: any, res) => {
   try {
-    const uid = req.query.webapp_user_id as string | undefined;
-    if (!uid) return res.status(400).json({ message: "webapp_user_id is required" });
+    const uid = req.userId as string;
 
     const [{ data: organized }, { data: memberships }] = await Promise.all([
       supabase.from("events").select("id").eq("organizer_id", uid),
@@ -251,9 +362,10 @@ async function attachChannels(events: any[]): Promise<any[]> {
 // ── Rail unread counts: messages per channel since the caller last read ───────
 // POST /api/webapp/rail-unread { webapp_user_id, reads: { [channel_id]: iso|null } }
 // → { [channel_id]: { unread: number, last_message_at: string|null } }
-router.post("/rail-unread", async (req, res) => {
+router.post("/rail-unread", requireUser, async (req: any, res) => {
   try {
-    const { webapp_user_id, reads } = req.body ?? {};
+    const webapp_user_id = req.userId as string;
+    const { reads } = req.body ?? {};
     if (!reads || typeof reads !== "object") return res.json({});
     const entries = Object.entries(reads) as [string, string | null][];
 
@@ -293,11 +405,12 @@ router.post("/rail-unread", async (req, res) => {
 
 // ── Upsert / fetch the webapp profile ────────────────────────────────────────
 // POST /api/webapp/users { id, instagram }
-router.post("/users", async (req, res) => {
+router.post("/users", requireUser, async (req: any, res) => {
   try {
-    const { id, instagram, avatar_url } = req.body ?? {};
-    if (!id || !instagram?.trim()) {
-      return res.status(400).json({ message: "id and instagram are required" });
+    const id = req.userId as string;
+    const { instagram, avatar_url } = req.body ?? {};
+    if (!instagram?.trim()) {
+      return res.status(400).json({ message: "instagram is required" });
     }
     const handle = String(instagram).trim().replace(/^@/, "");
 
@@ -391,12 +504,14 @@ router.get("/users/:id", async (req, res) => {
 // unset we allow it (dev convenience) but warn so it isn't left open forever.
 function debugAllowed(req: any): boolean {
   const expected = process.env.ADMIN_TOKEN;
+  // Fail closed: if no secret is configured, the debug routes (which leak storage
+  // config and can trigger bulk avatar re-hosting) stay locked rather than open.
   if (!expected) {
-    console.warn("[webapp] debug route hit with no ADMIN_TOKEN set — open to anyone");
-    return true;
+    console.warn("[webapp] debug route blocked — ADMIN_TOKEN is not set");
+    return false;
   }
   const got = req.query?.token || req.headers?.["x-admin-token"];
-  return got === expected;
+  return typeof got === "string" && got.length > 0 && got === expected;
 }
 
 // ── Batch avatar lookup (powers chat message avatars) ────────────────────────
@@ -412,12 +527,15 @@ router.post("/avatars", async (req, res) => {
       supabase.from("webapp_users").select("id, instagram, avatar_url").in("id", ids),
     ]);
 
-    const out: Record<string, { instagram: string | null; avatar_url: string | null }> = {};
+    // Only webapp (Google-anchored) identities can be waitlist/premium members.
+    const premiumSet = await premiumIdsFor((webUsers || []).map((w: any) => w.id));
+
+    const out: Record<string, { instagram: string | null; avatar_url: string | null; premium: boolean }> = {};
     for (const p of profiles || [])
-      out[p.id] = { instagram: p.username ?? null, avatar_url: normalizeStoredAvatar(p.avatar_url ?? null) };
+      out[p.id] = { instagram: p.username ?? null, avatar_url: normalizeStoredAvatar(p.avatar_url ?? null), premium: false };
     // Webapp identities win over native profiles for the same id.
     for (const w of webUsers || [])
-      out[w.id] = { instagram: w.instagram ?? null, avatar_url: normalizeStoredAvatar(w.avatar_url ?? null) };
+      out[w.id] = { instagram: w.instagram ?? null, avatar_url: normalizeStoredAvatar(w.avatar_url ?? null), premium: premiumSet.has(w.id) };
 
     res.json(out);
   } catch (err: any) {
@@ -535,11 +653,14 @@ router.post("/debug/rehost-avatars", async (req, res) => {
 });
 
 // ── Chat: list / send (service-role; messages RLS blocks the anon role) ───────
-router.get("/messages", async (req, res) => {
+router.get("/messages", requireUser, async (req: any, res) => {
   try {
     const channel_id = req.query.channel_id as string | undefined;
     const limit = Math.min(Number(req.query.limit) || 100, 200);
     if (!channel_id) return res.status(400).json({ message: "channel_id is required" });
+    if (!(await canAccessChannel(req.userId, channel_id))) {
+      return res.status(403).json({ message: "You're not a member of this activity." });
+    }
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -554,19 +675,33 @@ router.get("/messages", async (req, res) => {
   }
 });
 
-router.post("/messages", async (req, res) => {
+router.post("/messages", requireUser, async (req: any, res) => {
   try {
-    const { channel_id, user_id, username, text } = req.body ?? {};
-    if (!channel_id || !user_id || !text?.trim()) {
-      return res.status(400).json({ message: "channel_id, user_id and text are required" });
+    const user_id = req.userId as string;
+    const { channel_id, text } = req.body ?? {};
+    if (!channel_id || !text?.trim()) {
+      return res.status(400).json({ message: "channel_id and text are required" });
     }
+    if (!(await canAccessChannel(user_id, channel_id))) {
+      return res.status(403).json({ message: "You're not a member of this activity." });
+    }
+    // Both the sender id and display name are derived server-side (id from the
+    // verified token, name from that account's saved handle), so neither can be
+    // spoofed. Bound the text so one request can't write an oversized row.
+    const cleanText = String(text).trim().slice(0, 2000);
+    const { data: prof } = await supabase
+      .from("webapp_users")
+      .select("instagram")
+      .eq("id", user_id)
+      .maybeSingle();
+    const cleanName = String(prof?.instagram || "guest").trim().slice(0, 60) || "guest";
     const { data, error } = await supabase
       .from("messages")
       .insert({
         channel_id,
         user_id,
-        username: username || "guest",
-        text: text.trim(),
+        username: cleanName,
+        text: cleanText,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -581,11 +716,25 @@ router.post("/messages", async (req, res) => {
 
 // ── Join an event (status depends on the event's approval setting) ───────────
 // POST /api/webapp/events/join { webapp_user_id, event_id }
-router.post("/events/join", async (req, res) => {
+router.post("/events/join", requireUser, async (req: any, res) => {
   try {
-    const { webapp_user_id, event_id } = req.body ?? {};
-    if (!webapp_user_id || !event_id) {
-      return res.status(400).json({ message: "webapp_user_id and event_id are required" });
+    const webapp_user_id = req.userId as string;
+    const { event_id } = req.body ?? {};
+    if (!event_id) {
+      return res.status(400).json({ message: "event_id is required" });
+    }
+
+    // Banned accounts can't join any activity (banhammer).
+    const { data: me } = await supabase
+      .from("webapp_users")
+      .select("banned")
+      .eq("id", webapp_user_id)
+      .maybeSingle();
+    if (me?.banned) {
+      return res.status(403).json({
+        message: "Your account is banned from joining activities.",
+        code: "banned",
+      });
     }
 
     const { data: existing } = await supabase
@@ -594,6 +743,13 @@ router.post("/events/join", async (req, res) => {
       .eq("webapp_user_id", webapp_user_id)
       .eq("event_id", event_id)
       .maybeSingle();
+    // Removed (voted/kicked-out) members can't rejoin.
+    if (existing?.status === "kicked") {
+      return res.status(403).json({
+        message: "You were removed from this activity and can't rejoin.",
+        code: "kicked",
+      });
+    }
     if (existing) return res.status(409).json({ message: "Already joined", status: existing.status });
 
     // Organizer auto-approves; otherwise gate on require_approval.
@@ -620,11 +776,12 @@ router.post("/events/join", async (req, res) => {
 });
 
 // POST /api/webapp/events/leave { webapp_user_id, event_id }
-router.post("/events/leave", async (req, res) => {
+router.post("/events/leave", requireUser, async (req: any, res) => {
   try {
-    const { webapp_user_id, event_id } = req.body ?? {};
-    if (!webapp_user_id || !event_id) {
-      return res.status(400).json({ message: "webapp_user_id and event_id are required" });
+    const webapp_user_id = req.userId as string;
+    const { event_id } = req.body ?? {};
+    if (!event_id) {
+      return res.status(400).json({ message: "event_id is required" });
     }
     const { error } = await supabase
       .from("webapp_event_members")
@@ -640,10 +797,9 @@ router.post("/events/leave", async (req, res) => {
 });
 
 // GET /api/webapp/events/joined?webapp_user_id=...  (approved only)
-router.get("/events/joined", async (req, res) => {
+router.get("/events/joined", requireUser, async (req: any, res) => {
   try {
-    const webapp_user_id = req.query.webapp_user_id as string | undefined;
-    if (!webapp_user_id) return res.status(400).json({ message: "webapp_user_id is required" });
+    const webapp_user_id = req.userId as string;
     const { data, error } = await supabase
       .from("webapp_event_members")
       .select("event_id")
@@ -659,11 +815,10 @@ router.get("/events/joined", async (req, res) => {
 
 // ── Organizer dashboard: list pending requests ───────────────────────────────
 // GET /api/webapp/events/:id/requests?host_id=...
-router.get("/events/:id/requests", async (req, res) => {
+router.get("/events/:id/requests", requireUser, async (req: any, res) => {
   try {
     const event_id = req.params.id;
-    const host_id = req.query.host_id as string | undefined;
-    if (!host_id) return res.status(400).json({ message: "host_id is required" });
+    const host_id = req.userId as string;
 
     const { data: ev } = await supabase
       .from("events")
@@ -707,12 +862,13 @@ router.get("/events/:id/requests", async (req, res) => {
 });
 
 // POST /api/webapp/events/:id/requests/respond { host_id, webapp_user_id, action }
-router.post("/events/:id/requests/respond", async (req, res) => {
+router.post("/events/:id/requests/respond", requireUser, async (req: any, res) => {
   try {
     const event_id = req.params.id;
-    const { host_id, webapp_user_id, action } = req.body ?? {};
-    if (!host_id || !webapp_user_id || !action) {
-      return res.status(400).json({ message: "host_id, webapp_user_id and action are required" });
+    const host_id = req.userId as string;
+    const { webapp_user_id, action } = req.body ?? {};
+    if (!webapp_user_id || !action) {
+      return res.status(400).json({ message: "webapp_user_id and action are required" });
     }
 
     const { data: ev } = await supabase
@@ -818,6 +974,7 @@ router.get("/events/:id", async (req, res) => {
           .from("webapp_users")
           .select("id, instagram, avatar_url")
           .in("id", approvedIds);
+        const premiumSet = await premiumIdsFor((webUsers || []).map((w: any) => w.id));
         for (const w of webUsers || []) {
           participants.push({
             id: w.id,
@@ -826,6 +983,7 @@ router.get("/events/:id", async (req, res) => {
             main_interest: null,
             source: "webapp",
             status: "approved",
+            premium: premiumSet.has(w.id),
           });
         }
       }
@@ -833,10 +991,863 @@ router.get("/events/:id", async (req, res) => {
       console.warn("[webapp] webapp participants unavailable:", e);
     }
 
-    res.json({ ...ev, participants, my_status: myStatus });
+    // Public activities expose vote-to-kick tallies so the roster can show
+    // progress + whether the caller has already voted out each member.
+    const is_public = isPublicEvent(ev);
+    const kick_votes: Record<string, number> = {};
+    const my_kick_votes: string[] = [];
+    if (is_public) {
+      const { data: ballots } = await supabase
+        .from("webapp_kick_votes")
+        .select("voter_id, target_id")
+        .eq("event_id", id);
+      const voters: Record<string, Set<string>> = {};
+      for (const b of ballots || []) {
+        (voters[b.target_id] ??= new Set()).add(b.voter_id);
+        if (webapp_user_id && b.voter_id === webapp_user_id) my_kick_votes.push(b.target_id);
+      }
+      for (const t of Object.keys(voters)) kick_votes[t] = voters[t].size;
+    }
+
+    res.json({ ...ev, participants, my_status: myStatus, is_public, kick_votes, my_kick_votes });
   } catch (err: any) {
     console.error("[webapp] event detail error:", err);
     res.status(500).json({ message: err.message || "Failed to fetch event" });
+  }
+});
+
+// ── Report a user ─────────────────────────────────────────────────────────────
+// POST /api/webapp/events/:id/report { reporter_id, reportee_id, reason }
+// (use :id = "none" to file a report not tied to a specific event)
+router.post("/events/:id/report", requireUser, async (req: any, res) => {
+  try {
+    const event_id = req.params.id === "none" ? null : req.params.id;
+    const reporter_id = req.userId as string;
+    const { reportee_id, reason } = req.body ?? {};
+    if (!reportee_id || !reason?.trim()) {
+      return res.status(400).json({ message: "reportee_id and reason are required" });
+    }
+    if (reporter_id === reportee_id) {
+      return res.status(400).json({ message: "You can't report yourself" });
+    }
+    const { error } = await supabase.from("reports").insert({
+      event_id,
+      reporter_id,
+      reportee_id,
+      reason: String(reason).trim().slice(0, 1000),
+    });
+    if (error) throw error;
+    res.status(201).json({ success: true });
+  } catch (err: any) {
+    console.error("[webapp] report error:", err);
+    res.status(500).json({ message: err.message || "Failed to submit report" });
+  }
+});
+
+// ── Report an activity ────────────────────────────────────────────────────────
+// POST /api/webapp/events/:id/report-activity { reason }
+// Reporting an event itself (not a person). Filed against the organizer — the
+// party responsible for the activity — with event_id for context, so it reuses
+// the reports table with no schema change.
+router.post("/events/:id/report-activity", requireUser, async (req: any, res) => {
+  try {
+    const event_id = req.params.id;
+    const reporter_id = req.userId as string;
+    const { reason } = req.body ?? {};
+    if (!reason?.trim()) {
+      return res.status(400).json({ message: "A reason is required" });
+    }
+    const { data: ev, error: evErr } = await supabase
+      .from("events")
+      .select("organizer_id")
+      .eq("id", event_id)
+      .single();
+    if (evErr && (evErr as any).code !== "PGRST116") throw evErr;
+    if (!ev) return res.status(404).json({ message: "Activity not found" });
+    const { error } = await supabase.from("reports").insert({
+      event_id,
+      reporter_id,
+      // Organizer is the responsible party; fall back to the reporter only to
+      // satisfy the NOT NULL column for the (practically impossible) orphan event.
+      reportee_id: ev.organizer_id ?? reporter_id,
+      reason: `Activity report — ${String(reason).trim().slice(0, 1000)}`,
+    });
+    if (error) throw error;
+    res.status(201).json({ success: true });
+  } catch (err: any) {
+    console.error("[webapp] report activity error:", err);
+    res.status(500).json({ message: err.message || "Failed to submit report" });
+  }
+});
+
+// ── Vote to kick (public activities only; majority of approved members wins) ───
+// POST /api/webapp/events/:id/kick-vote { voter_id, target_id }
+router.post("/events/:id/kick-vote", requireUser, async (req: any, res) => {
+  try {
+    const event_id = req.params.id;
+    const voter_id = req.userId as string;
+    const { target_id } = req.body ?? {};
+    if (!target_id) {
+      return res.status(400).json({ message: "target_id is required" });
+    }
+    if (voter_id === target_id) {
+      return res.status(400).json({ message: "You can't vote to kick yourself" });
+    }
+
+    const { data: ev } = await supabase
+      .from("events")
+      .select("organizer_id, require_approval, visibility")
+      .eq("id", event_id)
+      .single();
+    if (!ev) return res.status(404).json({ message: "Event not found" });
+    if (!isPublicEvent(ev)) {
+      return res.status(403).json({ message: "Vote-to-kick is only available for public activities." });
+    }
+    if (ev.organizer_id === target_id) {
+      return res.status(403).json({ message: "The organizer can't be voted out." });
+    }
+
+    // Voter and target must both be approved members of this activity.
+    const { data: members } = await supabase
+      .from("webapp_event_members")
+      .select("webapp_user_id")
+      .eq("event_id", event_id)
+      .eq("status", "approved");
+    const approved = new Set((members || []).map((m: any) => m.webapp_user_id));
+    if (!approved.has(voter_id)) return res.status(403).json({ message: "Only members can vote." });
+    if (!approved.has(target_id)) return res.status(404).json({ message: "That person isn't a member." });
+
+    // Record the ballot — unique(event, voter, target) makes this idempotent.
+    const { error: voteErr } = await supabase
+      .from("webapp_kick_votes")
+      .insert({ event_id, voter_id, target_id });
+    if (voteErr && (voteErr as any).code !== "23505") throw voteErr;
+
+    // Tally distinct voters against the target; majority = > 50% of members.
+    const { data: ballots } = await supabase
+      .from("webapp_kick_votes")
+      .select("voter_id")
+      .eq("event_id", event_id)
+      .eq("target_id", target_id);
+    const votes = new Set((ballots || []).map((b: any) => b.voter_id)).size;
+    const participants = approved.size;
+    const kicked = votes > participants / 2;
+
+    if (kicked) {
+      await supabase
+        .from("webapp_event_members")
+        .update({ status: "kicked" })
+        .eq("event_id", event_id)
+        .eq("webapp_user_id", target_id);
+      // The member is gone — clear their ballots so a re-add would start fresh.
+      await supabase
+        .from("webapp_kick_votes")
+        .delete()
+        .eq("event_id", event_id)
+        .eq("target_id", target_id);
+    }
+
+    res.json({ votes, participants, kicked });
+  } catch (err: any) {
+    console.error("[webapp] kick-vote error:", err);
+    res.status(500).json({ message: err.message || "Failed to record vote" });
+  }
+});
+
+// ── Organizer removes a participant (private / approval-gated activities) ──────
+// POST /api/webapp/events/:id/remove { host_id, webapp_user_id }
+router.post("/events/:id/remove", requireUser, async (req: any, res) => {
+  try {
+    const event_id = req.params.id;
+    const host_id = req.userId as string;
+    const { webapp_user_id } = req.body ?? {};
+    if (!webapp_user_id) {
+      return res.status(400).json({ message: "webapp_user_id is required" });
+    }
+    const { data: ev } = await supabase
+      .from("events")
+      .select("organizer_id")
+      .eq("id", event_id)
+      .single();
+    if (!ev) return res.status(404).json({ message: "Event not found" });
+    if (ev.organizer_id !== host_id) {
+      return res.status(403).json({ message: "Only the organizer can remove participants." });
+    }
+    if (webapp_user_id === host_id) {
+      return res.status(400).json({ message: "You can't remove yourself." });
+    }
+    const { error } = await supabase
+      .from("webapp_event_members")
+      .update({ status: "kicked" })
+      .eq("event_id", event_id)
+      .eq("webapp_user_id", webapp_user_id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[webapp] remove participant error:", err);
+    res.status(500).json({ message: err.message || "Failed to remove participant" });
+  }
+});
+
+// ── Organizer deletes their own activity (removes the map pin + related rows) ──
+router.delete("/events/:id", requireUser, async (req: any, res) => {
+  try {
+    const event_id = req.params.id;
+    const host_id = req.userId as string;
+
+    // Only the organizer may delete.
+    const { data: ev, error: evErr } = await supabase
+      .from("events")
+      .select("organizer_id")
+      .eq("id", event_id)
+      .single();
+    if (evErr || !ev) return res.status(404).json({ message: "Event not found" });
+    if (ev.organizer_id !== host_id) {
+      return res.status(403).json({ message: "Only the organizer can delete this activity." });
+    }
+
+    // Clear related rows first — the webapp tables aren't ON DELETE CASCADE.
+    await supabase.from("webapp_event_members").delete().eq("event_id", event_id);
+    await supabase.from("channels").delete().eq("event_id", event_id);
+    await supabase.from("user_events").delete().eq("event_id", event_id);
+
+    const { error: delErr } = await supabase.from("events").delete().eq("id", event_id);
+    if (delErr) throw delErr;
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[webapp] delete event error:", err);
+    res.status(500).json({ message: err.message || "Failed to delete activity" });
+  }
+});
+
+// ── Premium check: is this Google account on the launch waitlist? ──
+// Early waitlist members get the Soonest+ early-access badge + 3-months-free
+// perk. The waitlist stores only emails, so we match on the verified Google
+// email, case-insensitively.
+router.get("/waitlist-status", requireUser, async (req: any, res) => {
+  try {
+    // Use the verified token email — never a client-supplied address (prevents
+    // probing whether arbitrary emails are on the waitlist).
+    const premium = await isWaitlisted(req.userEmail);
+    res.json({ premium });
+  } catch (err: any) {
+    console.error("[webapp] waitlist-status error:", err);
+    res.json({ premium: false }); // fail-open: never block the app on this check
+  }
+});
+
+// ── Create an activity (webapp) ───────────────────────────────────────────────
+// POST /api/webapp/events — mirrors the native create but derives the organizer
+// from the verified session (never the body) and skips cover upload. This keeps
+// the spoofable native POST /api/events out of the webapp's path entirely.
+router.post("/events", requireUser, async (req: any, res) => {
+  try {
+    const organizer_id = req.userId as string;
+    const {
+      name,
+      description = null,
+      startDate = null,
+      startTime = null,
+      startAnytime = true,
+      end_at = null,
+      location_text = null,
+      location_lat = null,
+      location_lng = null,
+      location_instructions = null,
+      require_approval = false,
+      visibility = "public",
+      category = null,
+      capacity = null,
+    } = req.body ?? {};
+
+    if (!name || String(name).trim().length < 3) {
+      return res.status(400).json({ message: "A name (3+ characters) is required." });
+    }
+    if (location_lat == null || location_lng == null) {
+      return res.status(400).json({ message: "A location is required." });
+    }
+
+    // Banned accounts can't host activities either.
+    const { data: meCreate } = await supabase
+      .from("webapp_users")
+      .select("banned")
+      .eq("id", organizer_id)
+      .maybeSingle();
+    if (meCreate?.banned) {
+      return res.status(403).json({ message: "Your account is banned.", code: "banned" });
+    }
+
+    const { data: created, error } = await supabase
+      .from("events")
+      .insert({
+        organizer_id,
+        name: String(name).trim().slice(0, 120),
+        description: description ? String(description).slice(0, 2000) : null,
+        startDate: startDate || null,
+        startTime: startTime || null,
+        startAnytime: startAnytime ?? true,
+        end_at: end_at || null,
+        location_text: location_text ? String(location_text).slice(0, 300) : null,
+        location_lat: Number(location_lat),
+        location_lng: Number(location_lng),
+        location_instructions: location_instructions || null,
+        category: category || null,
+        require_approval: !!require_approval,
+        is_paid: false,
+        price: 0,
+        visibility: visibility === "private" ? "private" : "public",
+        capacity: capacity === null ? null : capacity,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    // Auto-create the chat channel so the activity is chattable immediately.
+    if (created?.id) {
+      const { error: chanErr } = await supabase.from("channels").insert({
+        name: created.name,
+        description: `Chat for ${created.name}`,
+        event_id: created.id,
+      });
+      if (chanErr) console.error("[webapp] channel creation failed:", chanErr.message);
+    }
+
+    // Enrich with the organizer's handle/avatar (same shape as the GET feed) so
+    // the optimistic pin + event sheet show "@handle wants to…" immediately,
+    // instead of "Someone" until the next refresh re-fetches the enriched feed.
+    const [enriched] = await enrichEvents([created]);
+    res.status(201).json(enriched ?? created);
+  } catch (err: any) {
+    console.error("[webapp] create event error:", err);
+    res.status(500).json({ message: err.message || "Failed to create activity" });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// ADMIN (banhammer) — every route below is gated by requireAdmin (the caller's
+// VERIFIED email must be on the ADMIN_EMAILS allowlist). The webapp only shows
+// the admin panel to allow-listed accounts, but that gate is cosmetic:
+// authorisation is enforced HERE on every request. These routes use the service
+// role, so they intentionally bypass the per-user ownership checks the normal
+// routes apply (an admin can edit/delete anyone's events + remove anyone).
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Best-effort email lookup for a set of auth uids (fail-open to null). */
+async function emailsFor(ids: string[]): Promise<Record<string, string | null>> {
+  const out: Record<string, string | null> = {};
+  await Promise.all(
+    [...new Set(ids.filter(Boolean))].map(async (id) => {
+      try {
+        const { data } = await supabase.auth.admin.getUserById(id);
+        out[id] = data?.user?.email ?? null;
+      } catch {
+        out[id] = null;
+      }
+    }),
+  );
+  return out;
+}
+
+// GET /api/webapp/admin/check → 200 { admin: true } for admins, 403 otherwise.
+router.get("/admin/check", requireAdmin, (req: any, res) => {
+  res.json({ admin: true, email: req.userEmail });
+});
+
+// ── Users: search ────────────────────────────────────────────────────────────
+// GET /api/webapp/admin/users?q=handle
+router.get("/admin/users", requireAdmin, async (req: any, res) => {
+  try {
+    const q = String(req.query.q ?? "").trim().replace(/^@/, "");
+    let query = supabase
+      .from("webapp_users")
+      .select("id, instagram, avatar_url, banned, banned_at, ban_reason, created_at")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (q) query = query.ilike("instagram", `%${q}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+    const emails = await emailsFor((data || []).map((u: any) => u.id));
+    res.json(
+      (data || []).map((u: any) => ({
+        ...u,
+        avatar_url: normalizeStoredAvatar(u.avatar_url),
+        email: emails[u.id] ?? null,
+      })),
+    );
+  } catch (err: any) {
+    console.error("[admin] search users error:", err);
+    res.status(500).json({ message: err.message || "Failed to search users" });
+  }
+});
+
+// ── Users: edit (IG handle / avatar) ─────────────────────────────────────────
+// PATCH /api/webapp/admin/users/:id { instagram?, avatar_url? }
+router.patch("/admin/users/:id", requireAdmin, async (req: any, res) => {
+  try {
+    const id = req.params.id;
+    const { instagram, avatar_url } = req.body ?? {};
+    const patch: Record<string, any> = { updated_at: new Date().toISOString() };
+
+    if (instagram !== undefined) {
+      const handle = String(instagram).trim().replace(/^@/, "");
+      if (handle.length < 2) return res.status(400).json({ message: "Handle is too short." });
+      // Reject a handle already owned by a DIFFERENT account.
+      const { data: clashRows } = await supabase
+        .from("webapp_users")
+        .select("id")
+        .ilike("instagram", handle)
+        .limit(2);
+      const clash = (clashRows || []).find((r: any) => r.id !== id);
+      if (clash) return res.status(409).json({ message: `@${handle} is already in use.`, code: "ig_taken" });
+      patch.instagram = handle;
+    }
+    if (avatar_url !== undefined) patch.avatar_url = avatar_url;
+
+    const { data, error } = await supabase
+      .from("webapp_users")
+      .update(patch)
+      .eq("id", id)
+      .select("id, instagram, avatar_url, banned, banned_at, ban_reason, created_at")
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "User not found" });
+    res.json({ ...data, avatar_url: normalizeStoredAvatar(data.avatar_url) });
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      return res.status(409).json({ message: "That handle is already in use.", code: "ig_taken" });
+    }
+    console.error("[admin] update user error:", err);
+    res.status(500).json({ message: err.message || "Failed to update user" });
+  }
+});
+
+// ── Users: ban (block joins/creates + yank from all current activities) ──────
+// POST /api/webapp/admin/users/:id/ban { reason? }
+router.post("/admin/users/:id/ban", requireAdmin, async (req: any, res) => {
+  try {
+    const id = req.params.id;
+    if (id === req.userId) return res.status(400).json({ message: "You can't ban yourself." });
+    const reason = req.body?.reason ? String(req.body.reason).trim().slice(0, 500) : null;
+
+    const { data, error } = await supabase
+      .from("webapp_users")
+      .update({ banned: true, banned_at: new Date().toISOString(), ban_reason: reason })
+      .eq("id", id)
+      .select("id, instagram, banned, banned_at, ban_reason")
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "User not found" });
+
+    // The hammer: remove them from every webapp activity they're currently in.
+    await supabase
+      .from("webapp_event_members")
+      .update({ status: "kicked" })
+      .eq("webapp_user_id", id);
+
+    res.json({ success: true, user: data });
+  } catch (err: any) {
+    console.error("[admin] ban error:", err);
+    res.status(500).json({ message: err.message || "Failed to ban user" });
+  }
+});
+
+// POST /api/webapp/admin/users/:id/unban  (lifts the flag only; no auto-rejoin)
+router.post("/admin/users/:id/unban", requireAdmin, async (req: any, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("webapp_users")
+      .update({ banned: false, banned_at: null, ban_reason: null })
+      .eq("id", req.params.id)
+      .select("id, instagram, banned")
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "User not found" });
+    res.json({ success: true, user: data });
+  } catch (err: any) {
+    console.error("[admin] unban error:", err);
+    res.status(500).json({ message: err.message || "Failed to unban user" });
+  }
+});
+
+// ── Events: search ───────────────────────────────────────────────────────────
+// GET /api/webapp/admin/events?q=name
+router.get("/admin/events", requireAdmin, async (req: any, res) => {
+  try {
+    const q = String(req.query.q ?? "").trim();
+    let query = supabase.from("events").select("*").order("startDate", { ascending: false }).limit(30);
+    if (q) query = query.ilike("name", `%${q}%`);
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(await attachGoingCounts(await enrichEvents(data || [])));
+  } catch (err: any) {
+    console.error("[admin] search events error:", err);
+    res.status(500).json({ message: err.message || "Failed to search events" });
+  }
+});
+
+// ── Events: edit (whitelisted fields only) ───────────────────────────────────
+// PATCH /api/webapp/admin/events/:id
+const ADMIN_EVENT_FIELDS = [
+  "name", "description", "startDate", "startTime", "startAnytime", "end_at",
+  "location_text", "location_lat", "location_lng", "location_instructions",
+  "category", "require_approval", "visibility", "capacity",
+];
+router.patch("/admin/events/:id", requireAdmin, async (req: any, res) => {
+  try {
+    const body = req.body ?? {};
+    const patch: Record<string, any> = {};
+    for (const k of ADMIN_EVENT_FIELDS) if (body[k] !== undefined) patch[k] = body[k];
+
+    if (patch.name !== undefined) {
+      patch.name = String(patch.name).trim().slice(0, 120);
+      if (patch.name.length < 3) return res.status(400).json({ message: "Name must be 3+ characters." });
+    }
+    if (patch.description !== undefined && patch.description !== null) {
+      patch.description = String(patch.description).slice(0, 2000);
+    }
+    if (patch.location_text !== undefined && patch.location_text !== null) {
+      patch.location_text = String(patch.location_text).slice(0, 300);
+    }
+    if (patch.location_lat !== undefined && patch.location_lat !== null) patch.location_lat = Number(patch.location_lat);
+    if (patch.location_lng !== undefined && patch.location_lng !== null) patch.location_lng = Number(patch.location_lng);
+    if (patch.visibility !== undefined) patch.visibility = patch.visibility === "private" ? "private" : "public";
+    if (patch.require_approval !== undefined) patch.require_approval = !!patch.require_approval;
+    if (Object.keys(patch).length === 0) return res.status(400).json({ message: "No fields to update." });
+
+    const { data, error } = await supabase.from("events").update(patch).eq("id", req.params.id).select().single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ message: "Event not found" });
+    const [enriched] = await attachGoingCounts(await enrichEvents([data]));
+    res.json(enriched ?? data);
+  } catch (err: any) {
+    console.error("[admin] update event error:", err);
+    res.status(500).json({ message: err.message || "Failed to update event" });
+  }
+});
+
+// ── Events: delete (remove the pin + related rows) ───────────────────────────
+// DELETE /api/webapp/admin/events/:id
+router.delete("/admin/events/:id", requireAdmin, async (req: any, res) => {
+  try {
+    const id = req.params.id;
+    // Webapp tables aren't ON DELETE CASCADE — clear related rows first.
+    await supabase.from("webapp_event_members").delete().eq("event_id", id);
+    await supabase.from("channels").delete().eq("event_id", id);
+    await supabase.from("user_events").delete().eq("event_id", id);
+    const { error } = await supabase.from("events").delete().eq("id", id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[admin] delete event error:", err);
+    res.status(500).json({ message: err.message || "Failed to delete event" });
+  }
+});
+
+// ── Events: roster (webapp + native, any non-kicked status) ──────────────────
+// GET /api/webapp/admin/events/:id/members
+router.get("/admin/events/:id/members", requireAdmin, async (req: any, res) => {
+  try {
+    const id = req.params.id;
+    const members: any[] = [];
+
+    const { data: memRows } = await supabase
+      .from("webapp_event_members")
+      .select("webapp_user_id, status, joined_at")
+      .eq("event_id", id)
+      .neq("status", "kicked");
+    const wIds = (memRows || []).map((m: any) => m.webapp_user_id);
+    const wMap: Record<string, any> = {};
+    if (wIds.length) {
+      const { data: wu } = await supabase
+        .from("webapp_users")
+        .select("id, instagram, avatar_url")
+        .in("id", wIds);
+      for (const u of wu || []) wMap[u.id] = u;
+    }
+    for (const m of memRows || []) {
+      members.push({
+        id: m.webapp_user_id,
+        source: "webapp",
+        status: m.status,
+        instagram: wMap[m.webapp_user_id]?.instagram ?? null,
+        avatar_url: normalizeStoredAvatar(wMap[m.webapp_user_id]?.avatar_url ?? null),
+      });
+    }
+
+    const { data: ueRows } = await supabase.from("user_events").select("user_id").eq("event_id", id);
+    const aIds = (ueRows || []).map((r: any) => r.user_id);
+    if (aIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id, username, instagram_handle, avatar_url")
+        .in("id", aIds);
+      for (const p of profs || []) {
+        members.push({
+          id: p.id,
+          source: "app",
+          status: "approved",
+          instagram: p.instagram_handle ?? p.username ?? null,
+          avatar_url: normalizeStoredAvatar(p.avatar_url ?? null),
+        });
+      }
+    }
+    res.json(members);
+  } catch (err: any) {
+    console.error("[admin] event members error:", err);
+    res.status(500).json({ message: err.message || "Failed to fetch members" });
+  }
+});
+
+// ── Events: remove a member ──────────────────────────────────────────────────
+// POST /api/webapp/admin/events/:id/remove-member { user_id, source }
+router.post("/admin/events/:id/remove-member", requireAdmin, async (req: any, res) => {
+  try {
+    const event_id = req.params.id;
+    const { user_id, source } = req.body ?? {};
+    if (!user_id) return res.status(400).json({ message: "user_id is required" });
+    if (source === "app") {
+      const { error } = await supabase
+        .from("user_events")
+        .delete()
+        .eq("event_id", event_id)
+        .eq("user_id", user_id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("webapp_event_members")
+        .update({ status: "kicked" })
+        .eq("event_id", event_id)
+        .eq("webapp_user_id", user_id);
+      if (error) throw error;
+    }
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[admin] remove member error:", err);
+    res.status(500).json({ message: err.message || "Failed to remove member" });
+  }
+});
+
+// ── Reports: review the moderation queue ─────────────────────────────────────
+// GET /api/webapp/admin/reports
+router.get("/admin/reports", requireAdmin, async (req: any, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from("reports")
+      .select("id, event_id, reporter_id, reportee_id, reason, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) throw error;
+
+    const userIds = [
+      ...new Set((rows || []).flatMap((r: any) => [r.reporter_id, r.reportee_id]).filter(Boolean)),
+    ] as string[];
+    const eventIds = [...new Set((rows || []).map((r: any) => r.event_id).filter(Boolean))] as string[];
+
+    const handleMap: Record<string, string | null> = {};
+    if (userIds.length) {
+      const [{ data: wu }, { data: profs }] = await Promise.all([
+        supabase.from("webapp_users").select("id, instagram").in("id", userIds),
+        supabase.from("profiles").select("id, username, instagram_handle").in("id", userIds),
+      ]);
+      for (const p of profs || []) handleMap[p.id] = p.instagram_handle ?? p.username ?? null;
+      // Webapp identities win for shared ids.
+      for (const w of wu || []) handleMap[w.id] = w.instagram ?? handleMap[w.id] ?? null;
+    }
+    const eventMap: Record<string, string | null> = {};
+    if (eventIds.length) {
+      const { data: evs } = await supabase.from("events").select("id, name").in("id", eventIds);
+      for (const e of evs || []) eventMap[e.id] = e.name ?? null;
+    }
+
+    res.json(
+      (rows || []).map((r: any) => ({
+        ...r,
+        reporter_instagram: handleMap[r.reporter_id] ?? null,
+        reportee_instagram: handleMap[r.reportee_id] ?? null,
+        event_name: r.event_id ? eventMap[r.event_id] ?? null : null,
+      })),
+    );
+  } catch (err: any) {
+    console.error("[admin] reports error:", err);
+    res.status(500).json({ message: err.message || "Failed to fetch reports" });
+  }
+});
+
+// ── Broadcast email to the launch waitlist (SMTP2GO) ─────────────────────────
+// Sends one email per recipient (so addresses are never leaked to each other).
+async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  const API_KEY = process.env.SMTP_API_KEY;
+  if (!API_KEY) throw new Error("SMTP_API_KEY is not configured.");
+  const resp = await fetch("https://api.smtp2go.com/v3/email/send", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      api_key: API_KEY,
+      to: [to],
+      sender: "bryan@soonest.app",
+      subject,
+      html_body: html,
+    }),
+  });
+  const data: any = await resp.json().catch(() => ({}));
+  if (!resp.ok || data?.data?.error) {
+    throw new Error(`SMTP2GO: ${data?.data?.error || resp.statusText}`);
+  }
+}
+
+const BROADCAST_DEFAULT_SUBJECT = "You're off the waitlist! 🚀 Soonest is live";
+// Launch email — mirrors webapp/emails/launch.html. Keep the two in sync if you
+// edit the design (this is the version that actually gets sent).
+const BROADCAST_DEFAULT_HTML = `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <title>You're off the waitlist</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    /* Client resets */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0; padding: 0; width: 100% !important; height: 100% !important; }
+    a { text-decoration: none; }
+
+    /* Mobile */
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .px { padding-left: 24px !important; padding-right: 24px !important; }
+      .h1 { font-size: 30px !important; line-height: 36px !important; }
+      .stack { display: block !important; width: 100% !important; }
+      .stack-pad { padding: 0 0 14px 0 !important; }
+      .footer-text { text-align: left !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#f1eafc;">
+  <!-- Preheader (hidden) -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1eafc;">
+    <tr>
+      <td align="center" style="padding-top: 32px;
+padding-right: 48px;
+padding-left: 48px;">
+
+        <!-- ───────── Header banner ───────── -->
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" border="0" style="">
+          <tr>
+            <td align="center">
+              <img src="https://supabase.hangoutstudios.com/storage/v1/object/public/soonest/avatars/soonestheader.png" width="600" alt="Soonest" style="display:block; width:100%; max-width:400px; height:auto; border-radius:20px;">
+            </td>
+          </tr>
+        </table>
+
+        <!-- ───────── Hero card ───────── -->
+          <!-- Body copy -->
+          <tr>
+            <td class="px" align="left" style="padding:40px 48px 8px 48px; font-family:'Nunito',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 18px 0; font-size:17px; line-height:27px; color:#332F3A; font-weight:700;">
+                hey there 👋
+              </p>
+              <p style="margin:0 0 18px 0; font-size:16px; line-height:27px; color:#635F69;">
+                first of all, thank youuu so much for joining the waitlist so early, it really means a ton to me. Soonest is finally live on the web!
+                <br /><br />
+                i built this because i wanted a place where anyone can easily create or find activities with others anytime anywhere. if you are a social butterfly, or want to expand your social circle, this is for you.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA button (bulletproof) -->
+          <tr>
+            <td class="px" align="center" style="padding: 4px 48px 36px 48px;">
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="https://soonest.app" style="height:54px;v-text-anchor:middle;width:300px;" arcsize="50%" fillcolor="#7C3AED" stroke="f">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:sans-serif;font-size:16px;font-weight:bold;">get out there! →</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-->
+              <a href="https://soonest.app" target="_blank" style="display:inline-block; background-color:#7C3AED; background-image:linear-gradient(135deg,#A78BFA 0%,#7C3AED 100%); color:#ffffff; font-family:'Nunito',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:800; letter-spacing:0.2px; padding:16px 34px; border-radius:999px; box-shadow:0 12px 24px -10px rgba(124,58,237,0.6);">
+                get out there!&nbsp;&nbsp;→
+              </a>
+              <!--<![endif]-->
+            </td>
+          </tr>
+
+          <!-- Sign-off -->
+          <tr>
+            <td class="px" style="padding:30px 48px 44px 48px; font-family:'Nunito',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 4px 0; font-size:16px; line-height:25px; color:#635F69;">see you on the map,</p>
+              <p style="margin:0; font-size:16px; line-height:25px; color:#332F3A; font-weight:800;">bryan &amp; the Soonest team</p>
+            </td>
+          </tr>
+
+
+        <!-- ───────── Footer ───────── -->
+        <table role="presentation" class="container" align="center" width="600" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td class="px footer-text" align="center" style="padding:28px 48px 8px 48px; font-family:'Nunito',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; text-align:center;">
+              <p style="margin:0 0 8px 0; font-size:13px; line-height:20px; color:#9B96A3;">
+                you're getting this because you joined the Soonest waitlist.
+              </p>
+              <p style="margin:0 0 8px 0; font-size:13px; line-height:20px; color:#9B96A3;">
+                Soonest app coming soon to stores near you.
+              </p>
+              <p style="margin:0 0 8px 0; font-size:13px; line-height:20px; color:#9B96A3;">
+                <a href="https://soonest.app" target="_blank" style="color:#7C3AED;">soonest.app</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+// POST /api/webapp/admin/broadcast { subject?, html? }
+// While TEST_MODE is true, every broadcast goes ONLY to the admin's own inbox —
+// it still reports how many waitlist emails it WOULD reach. Flip TEST_MODE to
+// false to email the whole soonest_waitlist for real.
+router.post("/admin/broadcast", requireAdmin, async (req: any, res) => {
+  try {
+    if (!process.env.SMTP_API_KEY) {
+      return res.status(500).json({ message: "SMTP_API_KEY isn't configured on the server." });
+    }
+    const subject = String(req.body?.subject ?? "").trim() || BROADCAST_DEFAULT_SUBJECT;
+    const html = String(req.body?.html ?? "").trim() || BROADCAST_DEFAULT_HTML;
+
+    const { data, error } = await supabase.from("soonest_waitlist").select("email");
+    if (error) throw error;
+    const allEmails = [
+      ...new Set((data || []).map((r: any) => String(r.email ?? "").trim().toLowerCase()).filter(Boolean)),
+    ] as string[];
+
+    const TEST_MODE = false; // ← set to false to send to the real waitlist
+    const recipients = TEST_MODE ? ["bryanchewzy24@gmail.com"] : allEmails;
+    if (recipients.length === 0) return res.status(400).json({ message: "No recipients to email." });
+
+    let sent = 0;
+    const failures: string[] = [];
+    for (const to of recipients) {
+      try {
+        await sendEmail(to, subject, html);
+        sent++;
+      } catch (e: any) {
+        failures.push(to);
+        console.error("[admin] broadcast send failed:", to, e?.message);
+      }
+    }
+    res.json({ success: true, test_mode: TEST_MODE, waitlist_count: allEmails.length, sent, failed: failures.length });
+  } catch (err: any) {
+    console.error("[admin] broadcast error:", err);
+    res.status(500).json({ message: err.message || "Failed to send broadcast" });
   }
 });
 

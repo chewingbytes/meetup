@@ -6,8 +6,7 @@ const router = express.Router();
 // POST /api/auth/signup { email, password, username? }
 router.post("/signup", async (req, res) => {
   try {
-
-    console.log("TRIGGERING SIGNUP ROUTE WITH BODY:", req.body);
+    // Never log req.body here — it contains the plaintext password.
     const { email, password, username, image_url, bio, interests } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "Missing email or password" });
