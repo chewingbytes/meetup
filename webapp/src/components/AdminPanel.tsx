@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   X, Search, Shield, Ban, RotateCcw, Pencil, Trash2, Users as UsersIcon,
-  Flag, Loader2, Check, AlertTriangle, Save, ChevronLeft,
+  Flag, Loader2, Check, AlertTriangle, Save, ChevronLeft, Mail,
 } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { grad, authorGradient } from "@/lib/theme";
 import {
   adminSearchUsers, adminUpdateUser, adminBanUser, adminUnbanUser,
   adminSearchEvents, adminUpdateEvent, adminDeleteEvent,
-  adminEventMembers, adminRemoveMember, adminListReports,
+  adminEventMembers, adminRemoveMember, adminListReports, adminBroadcast,
   type AdminUser, type AdminMember, type AdminReport,
 } from "@/lib/api";
 import type { EventProps } from "@/lib/types";
@@ -38,6 +38,24 @@ export function AdminPanel({ open, onClose, onEventsChanged }: AdminPanelProps) 
 
   const ok = useCallback((text: string) => setFlash({ kind: "ok", text }), []);
   const err = useCallback((e: any) => setFlash({ kind: "err", text: e?.body?.message || e?.message || "Something went wrong" }), []);
+
+  const [broadcasting, setBroadcasting] = useState(false);
+  const sendBroadcast = async () => {
+    if (!window.confirm("Send the launch email?\n\nTest mode: it only goes to your own inbox for now (not the real waitlist).")) return;
+    setBroadcasting(true);
+    try {
+      const r = await adminBroadcast();
+      ok(
+        r.test_mode
+          ? `Test email sent to your inbox · ${r.waitlist_count} on the waitlist`
+          : `Sent to ${r.sent} of ${r.waitlist_count} waitlist emails`,
+      );
+    } catch (e) {
+      err(e);
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   return (
     <Sheet open={open} onClose={onClose} variant="right" widthClass="w-[94vw] max-w-[460px]" zClass="z-[1100]">
@@ -78,6 +96,16 @@ export function AdminPanel({ open, onClose, onEventsChanged }: AdminPanelProps) 
             </button>
           ))}
         </div>
+
+        {/* Broadcast */}
+        <button
+          onClick={sendBroadcast}
+          disabled={broadcasting}
+          className="mx-5 mt-3 flex items-center justify-center gap-2 rounded-xl border border-accent/20 bg-accentMuted/50 py-2.5 text-xs font-bold text-accent transition hover:bg-accentMuted disabled:opacity-60"
+        >
+          {broadcasting ? <Loader2 size={13} className="spin" /> : <Mail size={13} strokeWidth={2.6} />}
+          Email the waitlist (test → your inbox)
+        </button>
 
         {/* Flash */}
         {flash && (

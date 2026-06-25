@@ -161,9 +161,47 @@ export default function Home() {
 
   const openEvent = useCallback((e: EventProps) => {
     setSelectedEvent(e);
-    console.log("EVENT:", e)
+    const lat = Number(e.location_lat);
+    const lng = Number(e.location_lng);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      mapRef.current?.flyTo([lat, lng], 15, { duration: 0.8 });
+    }
     setEventOpen(true);
   }, []);
+
+  // ── Deep link: opening soonest.app/?event=<id> selects that pin + opens the
+  // sheet. Resolve against the loaded feed first; fall back to a direct fetch so
+  // the link still works for activities filtered out of the map (e.g. expired).
+  const deepLinkRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkRef.current || !ready) return;
+    let id: string | null = null;
+    try {
+      id = new URLSearchParams(window.location.search).get("event");
+    } catch {
+      /* no window / malformed */
+    }
+    if (!id) {
+      deepLinkRef.current = true; // nothing to do — don't re-check
+      return;
+    }
+    if (events.length === 0) return; // wait for the feed before resolving
+    deepLinkRef.current = true;
+    // Strip the param so a refresh/share-back doesn't keep reopening it.
+    try {
+      window.history.replaceState(null, "", window.location.pathname);
+    } catch {
+      /* ignore */
+    }
+    const known = events.find((e) => e.id === id);
+    if (known) {
+      openEvent(known);
+      return;
+    }
+    getWebappEvent(id, user?.id)
+      .then((d) => d && openEvent(d))
+      .catch(() => {});
+  }, [ready, events, user?.id, openEvent]);
 
   const openChat = useCallback((e: EventProps) => {
     setEventOpen(false);
