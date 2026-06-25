@@ -517,7 +517,7 @@ export default function Home() {
       <ChatPopup event={chatEvent} open={chatOpen} onClose={() => setChatOpen(false)} />
 
       {/* Profile drawer */}
-      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} onlineCount={onlineCount} />
+      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} onlineCount={onlineCount} onEventsChanged={reload} />
 
       {/* "What is Soonest?" intro — auto-shown to signed-out visitors, re-openable from the logo pill */}
       <WhatIsSoonest open={introOpen} onClose={closeIntro} />

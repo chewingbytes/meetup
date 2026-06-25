@@ -12,6 +12,7 @@ import {
   Inbox,
   Trash2,
   MapPin,
+  Flag,
 } from "lucide-react";
 import type {
   EventProps,
@@ -31,8 +32,17 @@ import {
   getEventRequests,
   respondToRequest,
   deleteWebappEvent,
+  reportEvent,
 } from "@/lib/api";
 import { Sheet } from "./Sheet";
+
+const REPORT_REASONS = [
+  "Spam or scam",
+  "Inappropriate or offensive",
+  "Safety concern",
+  "Fake or misleading",
+  "Other",
+];
 
 interface EventSheetProps {
   event: EventProps | null;
@@ -72,6 +82,13 @@ export function EventSheet({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Report-this-activity modal.
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportText, setReportText] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportToast, setReportToast] = useState<string | null>(null);
+
   const isOrganizer = !!user && event?.organizer_id === user.id;
 
   const refetchDetail = useCallback(
@@ -100,6 +117,9 @@ export function EventSheet({
     setNewParticipantId(null);
     setConfirmingDelete(false);
     setDeleting(false);
+    setReportOpen(false);
+    setReportReason("");
+    setReportText("");
     setLoading(true);
     getWebappEvent(event.id, user?.id)
       .then((d) => !cancelled && setDetail(d))
@@ -185,6 +205,31 @@ export function EventSheet({
     [event, user, refetchRequests, refetchDetail],
   );
 
+  const submitReport = useCallback(async () => {
+    if (!event) return;
+    const reason = [reportReason, reportText.trim()].filter(Boolean).join(" — ");
+    if (!reason) return;
+    setReportSubmitting(true);
+    try {
+      await reportEvent(event.id, { reason });
+      setReportOpen(false);
+      setReportReason("");
+      setReportText("");
+      setReportToast("Report submitted. Thanks for keeping Soonest safe.");
+    } catch (e: any) {
+      setReportToast(e?.message || "Couldn't submit report.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [event, reportReason, reportText]);
+
+  // Auto-dismiss the report toast.
+  useEffect(() => {
+    if (!reportToast) return;
+    const t = setTimeout(() => setReportToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [reportToast]);
+
   if (!event) return null;
 
   const cat = getCategoryConfig(event.category);
@@ -199,6 +244,7 @@ export function EventSheet({
   const canChat = isOrganizer || myStatus === "approved";
 
   return (
+    <>
     <Sheet open={open} onClose={onClose} variant="responsive">
       <div className="relative max-h-[86vh] overflow-y-auto no-scrollbar rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-clayHero md:max-h-[calc(100vh-2rem)] md:rounded-[28px]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 md:hidden" />
@@ -539,7 +585,102 @@ export function EventSheet({
             </button>
           )}
         </div>
+
+        {/* Report — any signed-in non-organizer can flag the activity itself. */}
+        {!isOrganizer && user && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setReportOpen(true)}
+              className="mx-auto inline-flex items-center gap-1.5 text-xs font-semibold text-textTertiary transition hover:text-error"
+            >
+              <Flag size={13} strokeWidth={2.4} /> Report this activity
+            </button>
+          </div>
+        )}
       </div>
     </Sheet>
+
+      {/* Report-this-activity modal */}
+      <Sheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        variant="center"
+        widthClass="max-w-sm"
+        zClass="z-[1200]"
+      >
+        <div className="rounded-[28px] bg-white p-6 shadow-clayHero">
+          <div className="mb-1 flex items-center gap-2.5">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-50">
+              <Flag size={18} className="text-error" strokeWidth={2.4} />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-heading text-lg font-extrabold text-textPrimary">
+                Report activity
+              </h3>
+              <p className="truncate text-xs font-semibold text-textSecondary">
+                {event.name}
+              </p>
+            </div>
+          </div>
+          <p className="mb-3 mt-2 text-sm text-textSecondary">
+            Reports are private and help us keep Soonest safe. What&apos;s wrong?
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {REPORT_REASONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => setReportReason(r)}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                  reportReason === r
+                    ? "bg-accent text-white shadow-clayButton"
+                    : "bg-canvas text-textSecondary hover:bg-accentMuted"
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            value={reportText}
+            onChange={(e) => setReportText(e.target.value)}
+            placeholder="Add details (optional)…"
+            rows={3}
+            className="mt-3 w-full resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-3 text-sm text-textPrimary outline-none transition focus:border-accentLight focus:bg-white"
+          />
+
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={() => setReportOpen(false)}
+              className="flex-1 rounded-2xl bg-canvas py-3 font-bold text-textSecondary transition hover:bg-accentMuted"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submitReport}
+              disabled={reportSubmitting || !reportReason}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 font-bold text-white shadow-clayButton transition active:scale-[0.98] disabled:opacity-60"
+              style={{ background: grad(["#F87171", "#EF4444"]) }}
+            >
+              {reportSubmitting ? (
+                <Loader2 size={16} className="spin" />
+              ) : (
+                <Check size={16} strokeWidth={2.6} />
+              )}
+              Submit
+            </button>
+          </div>
+        </div>
+      </Sheet>
+
+      {reportToast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[1300] flex justify-center px-4">
+          <div className="rounded-2xl bg-textPrimary px-4 py-3 text-center text-sm font-semibold text-white shadow-clayHero">
+            {reportToast}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
