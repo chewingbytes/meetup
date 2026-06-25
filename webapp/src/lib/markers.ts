@@ -20,6 +20,8 @@ export function eventPinIcon(event: EventProps, joined: boolean): L.DivIcon {
   const initial = (event.organizer_username ?? event.name ?? "?").charAt(0).toUpperCase();
   const photo = event.organizer_photo_url ?? event.organizer_avatar_url ?? null;
   const gid = `pin${pinSeq++}`;
+  const goingCount = Number(event.going_count) || 0;
+  const titleText = esc(event.name ?? "");
 
   // Teardrop body: 46-wide head, point at (23,53). White avatar disc sits in it.
   // NOTE: the drop-shadow lives on the parent container, NOT on this SVG. A
@@ -43,18 +45,35 @@ export function eventPinIcon(event: EventProps, joined: boolean): L.DivIcon {
     ? `<img src="${esc(photo)}" alt="" referrerpolicy="no-referrer" style="width:100%;height:100%;object-fit:cover;"/>`
     : `<span style="font-family:var(--font-dmsans);font-weight:800;font-size:13px;color:${g1};">${esc(initial)}</span>`;
 
+  // Small truncated title above the pin (decorative — pointer-events off so it
+  // never intercepts taps on neighbouring pins).
+  const titleLabel = titleText
+    ? `<div style="position:absolute;left:50%;bottom:58px;transform:translateX(-50%);max-width:104px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;background:rgba(255,255,255,0.96);color:#332F3A;font-family:var(--font-dmsans);font-weight:700;font-size:11px;line-height:1.2;padding:3px 7px;border-radius:9px;box-shadow:0 2px 5px rgba(0,0,0,0.18);">${titleText}</div>`
+    : "";
+
+  // Attendee-count badge on the pin's lower-right (hidden when no one's going).
+  // High z-index so Leaflet's compositor paints it above the teardrop SVG.
+  const countBadge =
+    goingCount > 0
+      ? `<div style="position:absolute;right:4px;bottom:11px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:${grad(
+          ["#A78BFA", "#7C3AED"],
+        )};border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.28);z-index:10001;"><span style="font-family:var(--font-dmsans);font-weight:800;font-size:10px;color:#fff;line-height:1;">${goingCount}</span></div>`
+      : "";
+
   // Organizer avatar — sits in the head (top) of the pin. Drop-shadow is on this
-  // container (see teardrop note). The avatar disc + joined badge carry very high
-  // z-index so Leaflet's compositor paints them above the teardrop SVG; the
+  // container (see teardrop note). The avatar disc + joined/count badges carry very
+  // high z-index so Leaflet's compositor paints them above the teardrop SVG; the
   // z-index is scoped to this pin's stacking context, so it can't affect other
   // markers. (z-index:10 was too low and the avatar vanished behind the SVG.)
   const html = `
     <div style="position:relative;width:46px;height:54px;cursor:pointer;filter:drop-shadow(0 4px 6px rgba(124,58,237,0.35));">
+      ${titleLabel}
       ${teardrop}
       <div style="position:absolute;left:-6px;width:33px;height:33px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.25);z-index:9999;">
         ${avatarInner}
       </div>
       ${joined ? `<div style="position:absolute;top:0px;right:-1px;width:17px;height:17px;border-radius:99px;background:#10B981;border:2px solid #fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(0,0,0,0.25);z-index:10000;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>` : ""}
+      ${countBadge}
     </div>`;
 
   return L.divIcon({

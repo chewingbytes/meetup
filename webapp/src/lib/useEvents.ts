@@ -69,9 +69,16 @@ export function useEvents() {
   const addEvent = useCallback((e: EventProps) => {
     const c = coerce(e);
     if (!hasCoords(c)) return;
-    setEvents((prev) =>
-      prev.some((x) => x.id === c.id) ? prev.map((x) => (x.id === c.id ? c : x)) : [c, ...prev],
-    );
+    setEvents((prev) => {
+      const i = prev.findIndex((x) => x.id === c.id);
+      if (i === -1) return [c, ...prev];
+      // Merge rather than replace: a just-reloaded copy may already carry
+      // server-enriched fields (organizer_*, going_count) that the raw optimistic
+      // event lacks — keep those instead of clobbering them back to undefined.
+      const next = prev.slice();
+      next[i] = { ...prev[i], ...c };
+      return next;
+    });
   }, []);
 
   /** Optimistically drop a deleted event so its pin disappears immediately. */
