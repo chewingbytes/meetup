@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, LogOut, Instagram, Sparkles, Loader2, Plus, Star, Shield } from "lucide-react";
+import { X, LogOut, Instagram, Sparkles, Loader2, Plus, Star, Shield, Mail } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { AdminPanel } from "./AdminPanel";
@@ -17,6 +17,15 @@ interface ProfileDrawerProps {
 }
 
 const igUrl = (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`;
+
+/** TikTok glyph — lucide has no TikTok icon, so we inline it. */
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M16.5 3a5.6 5.6 0 0 0 3.9 4.6c.36.1.73.17 1.1.2v2.78a8.4 8.4 0 0 1-5-1.6v6.9a6.32 6.32 0 1 1-6.32-6.32c.21 0 .42.01.63.04v2.85a3.5 3.5 0 1 0 2.86 3.43V3h2.83Z" />
+    </svg>
+  );
+}
 
 export function ProfileDrawer({ open, onClose, onlineCount, onEventsChanged }: ProfileDrawerProps) {
   const { user, isAuthed, hasProfile, isPremium, isAdmin, saveInstagram, signOut } = useIdentity();
@@ -134,11 +143,48 @@ export function ProfileDrawer({ open, onClose, onlineCount, onEventsChanged }: P
           ) : (
             <>
               <p className="mb-4 text-sm leading-relaxed text-textSecondary">
-                Set up your profile to join and host activities.
+                Set up your profile to join and create activities.
               </p>
               <AuthSteps action={{ type: "profile" }} />
             </>
           )}
+        </div>
+
+        {/* Socials footer */}
+        <div className="border-t border-black/5 px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+          <p className="mb-3 text-center text-[11px] font-bold uppercase tracking-wider text-textTertiary">
+            Stay in the loop
+          </p>
+          <div className="flex flex-col gap-1">
+            <a
+              href="https://instagram.com/soonest.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-textSecondary transition hover:bg-canvas hover:text-accent"
+            >
+              <Instagram size={16} strokeWidth={2.4} className="shrink-0" />
+              <span>@soonest.app</span>
+              <span className="ml-auto text-xs font-medium text-textTertiary">instagram</span>
+            </a>
+            <a
+              href="https://tiktok.com/@soonestapp"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-textSecondary transition hover:bg-canvas hover:text-accent"
+            >
+              <TikTokIcon className="h-4 w-4 shrink-0" />
+              <span>@soonestapp</span>
+              <span className="ml-auto text-xs font-medium text-textTertiary">tiktok</span>
+            </a>
+            <a
+              href="mailto:bryan@soonest.app"
+              className="flex items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-textSecondary transition hover:bg-canvas hover:text-accent"
+            >
+              <Mail size={16} strokeWidth={2.4} className="shrink-0" />
+              <span>bryan@soonest.app</span>
+              <span className="ml-auto text-xs font-medium text-textTertiary">email me!</span>
+            </a>
+          </div>
         </div>
       </div>
     </Sheet>
