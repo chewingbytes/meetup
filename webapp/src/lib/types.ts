@@ -25,6 +25,8 @@ export interface EventProps {
   // Attached by GET /webapp/my-activities (for the rail's chat ordering/badges)
   channel_id?: string | null;
   last_message_at?: string | null;
+  // Total approved attendees (native + webapp) — powers the map pin's count badge.
+  going_count?: number;
   created_at?: string;
   [key: string]: any;
 }
