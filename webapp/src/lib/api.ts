@@ -343,3 +343,10 @@ export const adminRemoveMember = (
 
 export const adminListReports = (): Promise<AdminReport[]> =>
   request("/webapp/admin/reports");
+
+/** Email the launch waitlist. While the server is in test mode this only sends
+ *  to the admin's own inbox (but still reports the real waitlist size). */
+export const adminBroadcast = (
+  body?: { subject?: string; html?: string },
+): Promise<{ success: true; test_mode: boolean; waitlist_count: number; sent: number; failed: number }> =>
+  request("/webapp/admin/broadcast", { method: "POST", body: JSON.stringify(body ?? {}) });

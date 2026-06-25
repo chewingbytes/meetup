@@ -13,6 +13,7 @@ import {
   Trash2,
   MapPin,
   Flag,
+  Share2,
 } from "lucide-react";
 import type {
   EventProps,
@@ -172,6 +173,32 @@ export function EventSheet({
     }
   }, [event, user, onJoinedChange, refetchDetail]);
 
+  const handleShare = useCallback(async () => {
+    if (!event) return;
+    const url = `https://soonest.app/?event=${event.id}`;
+    const who = event.organizer_username || "Someone";
+    const title = event.name;
+    const text = `${who} wants you to join "${event.name}" on Soonest — join now!`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title, text, url });
+        return;
+      }
+      // Fallback for browsers without the native share sheet.
+      await navigator.clipboard?.writeText(url);
+      setReportToast("Link copied to clipboard");
+    } catch (e: any) {
+      // User dismissed the share sheet — not an error worth surfacing.
+      if (e?.name === "AbortError") return;
+      try {
+        await navigator.clipboard?.writeText(url);
+        setReportToast("Link copied to clipboard");
+      } catch {
+        /* nothing more we can do */
+      }
+    }
+  }, [event]);
+
   const handleDelete = useCallback(async () => {
     if (!event || !user) return;
     setDeleting(true);
@@ -248,6 +275,13 @@ export function EventSheet({
     <Sheet open={open} onClose={onClose} variant="responsive">
       <div className="relative max-h-[86vh] overflow-y-auto no-scrollbar rounded-t-[28px] bg-white px-6 pb-8 pt-5 shadow-clayHero md:max-h-[calc(100vh-2rem)] md:rounded-[28px]">
         <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 md:hidden" />
+        <button
+          onClick={handleShare}
+          aria-label="Share"
+          className="absolute right-14 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-canvas text-textSecondary transition hover:bg-accentMuted"
+        >
+          <Share2 size={15} strokeWidth={2.5} />
+        </button>
         <button
           onClick={onClose}
           aria-label="Close"

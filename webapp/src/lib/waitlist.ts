@@ -10,7 +10,7 @@ async function sendBulkEmails(
   subject: any,
   htmlContent: any,
 ) {
-  const API_KEY = "api-770312A37CFC4BEC8CB6EE83B252721A";
+  const API_KEY = process.env.SMTP_API_KEY;
   const ENDPOINT = "https://api.smtp2go.com/v3/email/send";
 
   if (!API_KEY) {
