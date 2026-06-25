@@ -75,7 +75,7 @@ export function WhatIsSoonest({ open, onClose }: Props) {
               <X size={16} strokeWidth={2.6} />
             </button>
 
-            <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 backdrop-blur">
+            <span className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f1eafd] backdrop-blur">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/transparentlogo.png" alt="" className="h-7 w-7" />
             </span>
