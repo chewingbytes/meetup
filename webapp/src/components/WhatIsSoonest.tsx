@@ -61,7 +61,7 @@ export function WhatIsSoonest({ open, onClose }: Props) {
         <div className="grid grid-cols-2 gap-3 md:h-[600px] md:grid-cols-3 md:auto-rows-fr">
           {/* Hero — what Soonest is */}
           <div
-            className="relative col-span-2 flex flex-col justify-between overflow-hidden rounded-[28px] p-6 text-white shadow-clayHero md:row-span-2 md:p-7"
+            className="relative col-span-2 flex flex-col justify-between overflow-hidden rounded-[28px] p-6 text-white md:row-span-2 md:p-7"
             style={{ background: grad(Gradients.primary) }}
           >
             <div className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
@@ -118,7 +118,7 @@ export function WhatIsSoonest({ open, onClose }: Props) {
             icon={Smartphone}
             gradient={Gradients.coral}
             title="App coming soon"
-            body="Landing on the App Store & Google Play near you."
+            body="Landing on an App Store & Google Play Store near you."
             badge="Coming soon"
             className="col-span-2 md:col-span-1"
           />
