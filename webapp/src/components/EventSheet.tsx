@@ -63,6 +63,17 @@ function igUrl(handle: string) {
   return `https://instagram.com/${handle.replace(/^@/, "")}`;
 }
 
+/** Google Maps link for an activity — exact pin if we have coords, else a text search. */
+function mapsUrl(event: EventProps) {
+  const lat = Number(event.location_lat);
+  const lng = Number(event.location_lng);
+  const query =
+    Number.isFinite(lat) && Number.isFinite(lng)
+      ? `${lat},${lng}`
+      : event.location_text || "";
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 export function EventSheet({
   event,
   open,
@@ -336,9 +347,14 @@ export function EventSheet({
           </p>
         )}
         {event.location_text && (
-          <p className="mt-1 truncate text-sm text-textSecondary">
-            📍 {event.location_text}
-          </p>
+          <a
+            href={mapsUrl(event)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 flex items-center gap-1 truncate text-sm text-textSecondary transition hover:text-accent hover:underline"
+          >
+            📍 <span className="truncate">{event.location_text}</span>
+          </a>
         )}
         {event.description && (
           <p className="mt-2 text-sm leading-relaxed text-textSecondary">
