@@ -1757,7 +1757,7 @@ padding-left: 48px;">
               <p style="margin:0 0 18px 0; font-size:16px; line-height:27px; color:#635F69;">
                 first of all, thank youuu so much for joining the waitlist so early, it really means a ton to me. Soonest is finally live on the web!
                 <br /><br />
-                i built this because i wanted a place where anyone can easily create or find activities with others anytime anywhere. if you are a social butterfly, or want to expand your social circle, this is for you.
+                i built this because i wanted a place where anyone can easily create or find activities with others anytime anywhere. if you're a social butterfly or looking to expand your social circle by meeting new people at your favorite events and interests, this is for you. 
               </p>
             </td>
           </tr>
