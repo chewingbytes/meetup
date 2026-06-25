@@ -10,6 +10,7 @@ import type {
   WebappUser,
   ChatMessage,
   PendingRequest,
+  MemberStatus,
 } from "./types";
 
 const API_BASE =
@@ -213,6 +214,17 @@ export const reportUser = (
     body: JSON.stringify(body),
   });
 
+/** Report an activity itself (scam, inappropriate, unsafe…). Filed against the
+ *  organizer with the event for context — reuses the reports table server-side. */
+export const reportEvent = (
+  eventId: string,
+  body: { reason: string },
+): Promise<{ success: true }> =>
+  request(`/webapp/events/${encodeURIComponent(eventId)}/report-activity`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
 /** Cast a vote to kick a member out of a public activity. Returns the running
  *  tally and whether that vote crossed the >50% threshold (target removed). */
 export const voteKick = (
@@ -233,3 +245,101 @@ export const removeParticipant = (
     method: "POST",
     body: JSON.stringify(body),
   });
+
+// ── Admin (banhammer) — every call is authorised server-side by requireAdmin ──
+// (verified email on the ADMIN_EMAILS allowlist). 403 for non-admins.
+
+export interface AdminUser {
+  id: string;
+  instagram: string;
+  avatar_url: string | null;
+  banned: boolean;
+  banned_at: string | null;
+  ban_reason: string | null;
+  created_at: string | null;
+  email: string | null;
+}
+
+export interface AdminMember {
+  id: string;
+  source: "webapp" | "app";
+  status: MemberStatus;
+  instagram: string | null;
+  avatar_url: string | null;
+}
+
+export interface AdminReport {
+  id: string;
+  event_id: string | null;
+  reporter_id: string;
+  reportee_id: string;
+  reason: string;
+  created_at: string;
+  reporter_instagram: string | null;
+  reportee_instagram: string | null;
+  event_name: string | null;
+}
+
+/** Confirm the signed-in account is an admin (resolves true / false; never throws). */
+export const adminCheck = async (): Promise<boolean> => {
+  try {
+    const r = await request<{ admin?: boolean }>("/webapp/admin/check");
+    return !!r?.admin;
+  } catch {
+    return false;
+  }
+};
+
+export const adminSearchUsers = (q: string): Promise<AdminUser[]> =>
+  request(`/webapp/admin/users?q=${encodeURIComponent(q)}`);
+
+export const adminUpdateUser = (
+  id: string,
+  body: { instagram?: string; avatar_url?: string | null },
+): Promise<AdminUser> =>
+  request(`/webapp/admin/users/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+export const adminBanUser = (
+  id: string,
+  reason?: string,
+): Promise<{ success: true }> =>
+  request(`/webapp/admin/users/${encodeURIComponent(id)}/ban`, {
+    method: "POST",
+    body: JSON.stringify({ reason: reason ?? null }),
+  });
+
+export const adminUnbanUser = (id: string): Promise<{ success: true }> =>
+  request(`/webapp/admin/users/${encodeURIComponent(id)}/unban`, { method: "POST" });
+
+export const adminSearchEvents = (q: string): Promise<EventProps[]> =>
+  request(`/webapp/admin/events?q=${encodeURIComponent(q)}`);
+
+export const adminUpdateEvent = (
+  id: string,
+  body: Record<string, any>,
+): Promise<EventProps> =>
+  request(`/webapp/admin/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+
+export const adminDeleteEvent = (id: string): Promise<{ success: true }> =>
+  request(`/webapp/admin/events/${encodeURIComponent(id)}`, { method: "DELETE" });
+
+export const adminEventMembers = (id: string): Promise<AdminMember[]> =>
+  request(`/webapp/admin/events/${encodeURIComponent(id)}/members`);
+
+export const adminRemoveMember = (
+  id: string,
+  body: { user_id: string; source: "webapp" | "app" },
+): Promise<{ success: true }> =>
+  request(`/webapp/admin/events/${encodeURIComponent(id)}/remove-member`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+export const adminListReports = (): Promise<AdminReport[]> =>
+  request("/webapp/admin/reports");

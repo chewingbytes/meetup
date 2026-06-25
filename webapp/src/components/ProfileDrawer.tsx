@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, LogOut, Instagram, Sparkles, Loader2, Plus, Star } from "lucide-react";
+import { X, LogOut, Instagram, Sparkles, Loader2, Plus, Star, Shield } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
+import { AdminPanel } from "./AdminPanel";
 import { useIdentity } from "@/lib/webappUser";
 import { grad, authorGradient } from "@/lib/theme";
 
@@ -11,15 +12,19 @@ interface ProfileDrawerProps {
   open: boolean;
   onClose: () => void;
   onlineCount: number;
+  /** Refresh the map pins after an admin edits/deletes an activity. */
+  onEventsChanged?: () => void;
 }
 
 const igUrl = (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`;
 
-export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps) {
-  const { user, isAuthed, hasProfile, isPremium, saveInstagram, signOut } = useIdentity();
+export function ProfileDrawer({ open, onClose, onlineCount, onEventsChanged }: ProfileDrawerProps) {
+  const { user, isAuthed, hasProfile, isPremium, isAdmin, saveInstagram, signOut } = useIdentity();
   const g = authorGradient(user?.instagram ?? user?.id ?? "guest");
+  const [adminOpen, setAdminOpen] = useState(false);
 
   return (
+    <>
     <Sheet open={open} onClose={onClose} variant="right" widthClass="w-[88vw] max-w-[380px]">
       <div className="flex h-full flex-col bg-white shadow-clayHero">
         <div className="flex items-center justify-between px-6 pb-4 pt-6">
@@ -102,6 +107,16 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
                 </div>
               )}
 
+              {isAdmin && (
+                <button
+                  onClick={() => setAdminOpen(true)}
+                  className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-sm font-bold text-white shadow-clayButton transition active:scale-[0.98]"
+                  style={{ background: grad(["#A78BFA", "#7C3AED"]) }}
+                >
+                  <Shield size={15} strokeWidth={2.6} /> Admin controls
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   if (confirm("Sign out of this device?")) {
@@ -127,6 +142,11 @@ export function ProfileDrawer({ open, onClose, onlineCount }: ProfileDrawerProps
         </div>
       </div>
     </Sheet>
+
+    {isAdmin && (
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} onEventsChanged={onEventsChanged} />
+    )}
+    </>
   );
 }
 

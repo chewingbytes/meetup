@@ -31,6 +31,7 @@ interface IdentityContextValue {
   isAuthed: boolean;
   hasProfile: boolean;
   isPremium: boolean; // on the launch waitlist → Soonest+ early-member perk
+  isAdmin: boolean; // email on the admin allowlist → unlocks the admin panel
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   saveInstagram: (handle: string) => Promise<WebappUser>;
@@ -38,6 +39,14 @@ interface IdentityContextValue {
 }
 
 const IdentityContext = createContext<IdentityContextValue | null>(null);
+
+/** Admin allowlist (UI gate only — the server independently re-checks the
+ *  verified email on every admin route, so this can't grant real access). Keep
+ *  in sync with the server's ADMIN_EMAILS env / default. */
+const ADMIN_EMAILS = new Set(["bryanchewzy24@gmail.com"]);
+function isAdminEmail(email: string | null | undefined): boolean {
+  return !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
 
 /** Google stores the profile picture in user_metadata (avatar_url / picture). */
 function googleAvatar(session: Session | null): string | null {
@@ -174,6 +183,7 @@ export function IdentityProvider({ children }: { children: ReactNode }) {
       isAuthed: !!session?.user,
       hasProfile: !!user?.instagram,
       isPremium,
+      isAdmin: isAdminEmail(session?.user?.email),
       signInWithGoogle,
       signOut,
       saveInstagram,
