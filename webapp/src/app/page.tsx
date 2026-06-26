@@ -37,31 +37,12 @@ export default function Home() {
   const mapRef = useRef<LeafletMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const { events, reload, addEvent, removeEvent } = useEvents();
-  const { user, ready, session, isAuthed, saveInstagram, signOut, isPremium } = useIdentity();
+  const { user, ready, session, saveInstagram, signOut, isPremium } = useIdentity();
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // ── "What is Soonest?" intro — auto-shown once to signed-out visitors, and
-  // re-openable any time from the logo pill. Dismissal is remembered per-browser
-  // so returning guests aren't nagged (the pill always brings it back).
+  // ── "What is Soonest?" intro — opened on demand from the logo pill only.
   const [introOpen, setIntroOpen] = useState(false);
-  useEffect(() => {
-    if (!ready || isAuthed) return;
-    let seen = false;
-    try {
-      seen = !!localStorage.getItem("soonest_intro_seen");
-    } catch {
-      /* storage blocked (private mode) — just show it */
-    }
-    if (!seen) setIntroOpen(true);
-  }, [ready, isAuthed]);
-  const closeIntro = useCallback(() => {
-    setIntroOpen(false);
-    try {
-      localStorage.setItem("soonest_intro_seen", "1");
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const closeIntro = useCallback(() => setIntroOpen(false), []);
 
   // ── Presence ("people online now") — counts everyone, incl. guests ──
   const [guestId, setGuestId] = useState<string | null>(null);
