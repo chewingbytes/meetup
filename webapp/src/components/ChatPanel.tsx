@@ -63,38 +63,46 @@ export function ChatPanel({
   // ── Mobile keyboard handling ──────────────────────────────────────────────
   // The chat is anchored to the bottom of the layout viewport, so when the
   // on-screen keyboard opens it would sit *behind* the keyboard and the browser
-  // scrolls everything up. Instead we track the visual viewport and shrink the
-  // panel to the space above the keyboard (lifting the composer, not the chat).
-  const [kb, setKb] = useState<{ overlap: number; height: number }>({
-    overlap: 0,
-    height: 0,
-  });
+  // scrolls everything up. We track the visual viewport and shrink the panel to
+  // the space above the keyboard (lifting the composer, not the chat).
+  //
+  // This is done imperatively (writing styles straight to the node, coalesced in
+  // rAF) rather than via React state: a chat can have hundreds of messages, and
+  // re-rendering that list on every viewport event is what made scrolling lag.
+  const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!vv) return;
-    const onChange = () => {
-      const overlap = Math.max(
-        0,
-        window.innerHeight - vv.height - vv.offsetTop,
-      );
-      setKb({ overlap, height: vv.height });
+    let raf = 0;
+    let prevOverlap = -1;
+    const apply = () => {
+      raf = 0;
+      const el = rootRef.current;
+      if (!el) return;
+      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (overlap > 0) {
+        el.style.height = `${vv.height}px`;
+        el.style.marginBottom = `${overlap}px`;
+      } else {
+        el.style.height = "";
+        el.style.marginBottom = "";
+      }
+      // Keep the newest message in view when the keyboard first opens.
+      if (overlap > 0 && prevOverlap <= 0) bottomRef.current?.scrollIntoView();
+      prevOverlap = overlap;
     };
-    onChange();
-    vv.addEventListener("resize", onChange);
-    vv.addEventListener("scroll", onChange);
+    const onResize = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    apply();
+    // Only `resize` — the keyboard changes the viewport *size*. We deliberately
+    // skip `scroll` so panning the message list never triggers a relayout.
+    vv.addEventListener("resize", onResize);
     return () => {
-      vv.removeEventListener("resize", onChange);
-      vv.removeEventListener("scroll", onChange);
+      vv.removeEventListener("resize", onResize);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, []);
-  // Keep the latest message in view as the keyboard opens/closes.
-  useEffect(() => {
-    if (kb.overlap > 0) bottomRef.current?.scrollIntoView();
-  }, [kb.overlap]);
-  const rootStyle =
-    kb.overlap > 0
-      ? { height: `${kb.height}px`, marginBottom: `${kb.overlap}px` }
-      : undefined;
 
   // Resolve sender avatars by user_id (messages only carry id + username).
   // undefined = not fetched yet, null = fetched but no avatar → show initial.
@@ -147,7 +155,7 @@ export function ChatPanel({
 
   return (
     <>
-      <div className={rootClass} style={rootStyle}>
+      <div ref={rootRef} className={rootClass}>
         {/* Header */}
         <header className="flex items-center gap-3 border-b border-black/5 bg-white px-4 py-3 shadow-clayCardSm">
           <button
@@ -187,7 +195,7 @@ export function ChatPanel({
         </header>
 
         {/* Messages */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 no-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 no-scrollbar [-webkit-overflow-scrolling:touch]">
           {isLoading ? (
             <div className="flex h-full items-center justify-center text-textTertiary">
               Loading…
