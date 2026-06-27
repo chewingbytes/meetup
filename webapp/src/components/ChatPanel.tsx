@@ -60,6 +60,42 @@ export function ChatPanel({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  // ── Mobile keyboard handling ──────────────────────────────────────────────
+  // The chat is anchored to the bottom of the layout viewport, so when the
+  // on-screen keyboard opens it would sit *behind* the keyboard and the browser
+  // scrolls everything up. Instead we track the visual viewport and shrink the
+  // panel to the space above the keyboard (lifting the composer, not the chat).
+  const [kb, setKb] = useState<{ overlap: number; height: number }>({
+    overlap: 0,
+    height: 0,
+  });
+  useEffect(() => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    if (!vv) return;
+    const onChange = () => {
+      const overlap = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      setKb({ overlap, height: vv.height });
+    };
+    onChange();
+    vv.addEventListener("resize", onChange);
+    vv.addEventListener("scroll", onChange);
+    return () => {
+      vv.removeEventListener("resize", onChange);
+      vv.removeEventListener("scroll", onChange);
+    };
+  }, []);
+  // Keep the latest message in view as the keyboard opens/closes.
+  useEffect(() => {
+    if (kb.overlap > 0) bottomRef.current?.scrollIntoView();
+  }, [kb.overlap]);
+  const rootStyle =
+    kb.overlap > 0
+      ? { height: `${kb.height}px`, marginBottom: `${kb.overlap}px` }
+      : undefined;
+
   // Resolve sender avatars by user_id (messages only carry id + username).
   // undefined = not fetched yet, null = fetched but no avatar → show initial.
   const [avatars, setAvatars] = useState<Record<string, string | null>>({});
@@ -111,7 +147,7 @@ export function ChatPanel({
 
   return (
     <>
-      <div className={rootClass}>
+      <div className={rootClass} style={rootStyle}>
         {/* Header */}
         <header className="flex items-center gap-3 border-b border-black/5 bg-white px-4 py-3 shadow-clayCardSm">
           <button
