@@ -56,6 +56,7 @@ export function ChatPanel({
 
   const [text, setText] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
@@ -91,15 +92,21 @@ export function ChatPanel({
       if (overlap > 0 && prevOverlap <= 0) bottomRef.current?.scrollIntoView();
       prevOverlap = overlap;
     };
-    const onResize = () => {
+    const schedule = () => {
       if (!raf) raf = requestAnimationFrame(apply);
     };
     apply();
-    // Only `resize` — the keyboard changes the viewport *size*. We deliberately
-    // skip `scroll` so panning the message list never triggers a relayout.
-    vv.addEventListener("resize", onResize);
+    // `resize` = keyboard opens/closes (height changes). `scroll` = iOS Safari
+    // shifting the visual viewport's offsetTop when it auto-scrolls the focused
+    // input into view — without this, the panel drifts to the top of the screen.
+    // Both are handled imperatively + rAF-coalesced, so neither re-renders the
+    // message list. (visualViewport.scroll does NOT fire when panning the inner
+    // list, so list-scroll performance is unaffected.)
+    vv.addEventListener("resize", schedule);
+    vv.addEventListener("scroll", schedule);
     return () => {
-      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("resize", schedule);
+      vv.removeEventListener("scroll", schedule);
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
@@ -146,6 +153,8 @@ export function ChatPanel({
     if (!t) return;
     sendMessage(t);
     setText("");
+    // Keep the keyboard up after sending (tapping the button can blur the input).
+    inputRef.current?.focus();
   };
 
   const rootClass =
@@ -328,6 +337,7 @@ export function ChatPanel({
         {/* Composer */}
         <div className="flex items-end gap-2 border-t border-black/5 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <textarea
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -341,6 +351,9 @@ export function ChatPanel({
             className="max-h-32 flex-1 resize-none rounded-2xl border border-black/5 bg-canvas px-4 py-2.5 text-textPrimary outline-none transition focus:border-accentLight focus:bg-white"
           />
           <button
+            // Stop the tap from blurring the textarea (which dismisses the
+            // keyboard) — the click still fires and sends the message.
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleSend}
             disabled={!text.trim()}
             aria-label="Send"
