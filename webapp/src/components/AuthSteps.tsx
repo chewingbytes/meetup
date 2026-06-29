@@ -32,6 +32,11 @@ function cleanHandle(v: string) {
 export function AuthSteps({ action, intro }: AuthStepsProps) {
   const { signInWithGoogle } = useIdentity();
   const [step, setStep] = useState<1 | 2>(1);
+  // Only autofocus the handle field on devices with a fine pointer (desktop).
+  // On touch, autofocus pops the on-screen keyboard, which covers the modal.
+  const autoFocusInput =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(pointer: fine)").matches;
   const [handle, setHandle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -114,7 +119,7 @@ export function AuthSteps({ action, intro }: AuthStepsProps) {
                 onChange={(e) => setHandle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && next()}
                 placeholder="yourhandle"
-                autoFocus
+                autoFocus={autoFocusInput}
                 className="w-full bg-transparent py-3 pl-1 text-textPrimary outline-none"
               />
             </div>
