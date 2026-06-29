@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Instagram, MapPin} from "lucide-react";
+import { X, Instagram, MapPin } from "lucide-react";
 import { Sheet } from "./Sheet";
 import { AuthSteps } from "./AuthSteps";
 import { getCategoryConfig } from "@/lib/categories";
@@ -12,6 +12,10 @@ interface JoinModalProps {
   event: EventProps | null;
   open: boolean;
   onClose: () => void;
+}
+
+function igUrl(handle: string) {
+  return `https://instagram.com/${handle.replace(/^@/, "")}`;
 }
 
 /**
@@ -29,7 +33,12 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
   );
 
   return (
-    <Sheet open={open} onClose={onClose} variant="center" widthClass="max-w-3xl">
+    <Sheet
+      open={open}
+      onClose={onClose}
+      variant="center"
+      widthClass="max-w-3xl"
+    >
       <div className="relative overflow-hidden rounded-[28px] bg-white shadow-clayHero">
         <button
           onClick={onClose}
@@ -41,22 +50,38 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
 
         <div className="grid md:grid-cols-2">
           {/* Event summary */}
-          <div
-            className="flex flex-col gap-4 px-7 pt-7 text-white"
-          >
+          <div className="flex flex-col gap-4 px-7 pt-7 text-white">
             {/* <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
               <MapPin size={24} color="#fff" strokeWidth={2.2} />
             </div> */}
             <div>
               <p className="flex items-center gap-1 text-sm font-medium text-white">
                 {event.organizer_username && (
-                  <Instagram size={12} strokeWidth={2.5} className="shrink-0 text-accent" />
+                  <Instagram
+                    size={12}
+                    strokeWidth={2.5}
+                    className="shrink-0 text-accent"
+                  />
                 )}
                 <span className="truncate text-black">
-                  <span className="text-accent">{event.organizer_username ? `@${event.organizer_username}` : "Someone"} </span>wants to
+                  <a
+                    href={igUrl(event.organizer_username as string)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent"
+                  >
+                    <span className="text-accent">
+                      {event.organizer_username
+                        ? `@${event.organizer_username}`
+                        : "Someone"}{" "}
+                    </span>
+                    wants to
+                  </a>
                 </span>
               </p>
-              <h2 className="text-black font-heading text-3xl font-extrabold leading-tight">{event.name}</h2>
+              <h2 className="text-black font-heading text-3xl font-extrabold leading-tight">
+                {event.name}
+              </h2>
             </div>
             {/* {(day || countdown) && (
               <p className="text-sm font-semibold text-accent">
