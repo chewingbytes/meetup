@@ -42,12 +42,11 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
         <div className="grid md:grid-cols-2">
           {/* Event summary */}
           <div
-            className="flex flex-col gap-4 p-7 text-white"
-            style={{ background: grad(cat.gradient) }}
+            className="flex flex-col gap-4 px-7 pt-7 text-white"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
+            {/* <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20">
               <MapPin size={24} color="#fff" strokeWidth={2.2} />
-            </div>
+            </div> */}
             <div>
               <p className="flex items-center gap-1 text-sm font-medium text-white">
                 {event.organizer_username && (
@@ -59,7 +58,7 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
               </p>
               <h2 className="text-black font-heading text-3xl font-extrabold leading-tight">{event.name}</h2>
             </div>
-            {(day || countdown) && (
+            {/* {(day || countdown) && (
               <p className="text-sm font-semibold text-accent">
                 {day}
                 {countdown ? ` · ${countdown}` : ""}
@@ -77,11 +76,11 @@ export function JoinModal({ event, open, onClose }: JoinModalProps) {
               <p className="mt-1 text-sm leading-relaxed text-black/80 line-clamp-4">
                 {event.description}
               </p>
-            )}
+            )} */}
           </div>
 
           {/* Registration */}
-          <div className="p-7">
+          <div className="px-7 pb-7 pt-4">
             <h3 className="mb-1 font-heading text-lg font-extrabold text-textPrimary">
               Join this activity
             </h3>
